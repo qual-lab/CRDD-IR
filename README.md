@@ -22,6 +22,10 @@ CRDDに記録された要求・判断を、検証可能な振る舞いの契約�
 npm run lint:ir
 npm run simulate -- --input examples/place-wall/success.input.json
 npm run test:generate
+npm run test:contract
+npm run test:adapter
+npm run test:process
+npm run test:bundle
 npm run generate:unreal
 npm test
 ```
@@ -34,9 +38,31 @@ npm test
 crdd-ir lint <ir.json>
 crdd-ir simulate <ir.json> --input <input.json>
 crdd-ir test generate <ir.json> [--out <file>]
+crdd-ir test bundle <ir.json> [--out <file>]
+crdd-ir test run <ir.json> [--adapter <module>]
+crdd-ir test run <ir.json> --command <executable> [--arg <value>...]
 crdd-ir generate unreal <ir.json> [--out-dir <directory>]
 crdd-ir view trace <ir.json>
 ```
+
+`--adapter` を指定すると、Reference Simulatorではなく外部実装へ同じContract Testを適用できます。
+
+```bash
+crdd-ir test run examples/place-wall/place-wall.ir.json \
+  --adapter examples/place-wall/adapters/correct.adapter.ts
+```
+
+言語非依存の実装は、JSONを標準入力で受け取り結果を標準出力へ返すProcess Adapterとして接続できます。コマンドはシェルを介さず起動されます。
+
+```bash
+crdd-ir test run examples/place-wall/place-wall.ir.json \
+  --command node \
+  --arg examples/place-wall/adapters/process-correct.ts
+```
+
+`test bundle` は、UnrealなどTarget側のテストから直接読み込める入力・期待結果を単一JSONへ出力します。
+
+Process AdapterのJSON仕様は [docs/process-adapter-protocol.md](docs/process-adapter-protocol.md) を参照してください。
 
 ## Design boundaries
 

@@ -91,3 +91,38 @@ export type TestManifest = {
   traces: string[];
   cases: TestCase[];
 };
+
+export type TestCaseResult = {
+  id: string;
+  passed: boolean;
+  message: string;
+  traces: string[];
+};
+
+export type TestRunReport = {
+  operation: string;
+  passed: number;
+  failed: number;
+  total: number;
+  results: TestCaseResult[];
+};
+
+export type OperationAdapter = {
+  name: string;
+  execute(request: SimulationRequest): SimulationResult | Promise<SimulationResult>;
+};
+
+export type ConformanceCase = {
+  id: string;
+  description: string;
+  sourceRequirement?: string;
+  request: SimulationRequest;
+  expected: SimulationResult;
+};
+
+export type ConformanceBundle = {
+  protocol: "crdd-ir/conformance-v0.1";
+  operation: string;
+  traces: string[];
+  cases: ConformanceCase[];
+};

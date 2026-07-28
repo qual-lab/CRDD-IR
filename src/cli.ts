@@ -1,11 +1,15 @@
 #!/usr/bin/env node
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
+import { loadAdapter } from "./adapter.ts";
+import { generateConformanceBundle } from "./conformance.ts";
 import { formatDiagnostics, loadIr, validateIr } from "./ir.ts";
+import { createProcessAdapter } from "./process-adapter.ts";
 import { simulate } from "./simulator.ts";
 import { generateTestManifest } from "./test-manifest.ts";
+import { runTestManifest } from "./test-runner.ts";
 import { generateUnreal } from "./unreal.ts";
-import type { SimulationRequest } from "./model.ts";
+import type { SimulationRequest, TestManifest } from "./model.ts";
 
 const args = process.argv.slice(2);
 
@@ -55,6 +59,54 @@ async function main(argv: string[]): Promise<void> {
     return;
   }
 
+  if (command === "test" && subcommand === "bundle") {
+    const irPath = required(argv[2], "IR file");
+    const ir = await loadIr(irPath);
+    const manifestPath = option(argv, "--manifest");
+    const manifest = manifestPath
+      ? JSON.parse(await readFile(manifestPath, "utf8")) as TestManifest
+      : generateTestManifest(ir);
+    const out = option(argv, "--out") ?? "generated/place-wall.conformance.json";
+    await writeJson(out, generateConformanceBundle(ir, manifest));
+    console.log(`Generated ${out}`);
+    return;
+  }
+
+  if (command === "test" && subcommand === "run") {
+    const irPath = required(argv[2], "IR file");
+    const ir = await loadIr(irPath);
+    const manifestPath = option(argv, "--manifest");
+    const manifest = manifestPath
+      ? JSON.parse(await readFile(manifestPath, "utf8")) as TestManifest
+      : generateTestManifest(ir);
+    const adapterPath = option(argv, "--adapter");
+    const processCommand = option(argv, "--command");
+    if (adapterPath && processCommand) throw new Error("Use either --adapter or --command, not both");
+    const timeoutMs = numberOption(argv, "--timeout-ms") ?? 5_000;
+    const adapter = adapterPath
+      ? await loadAdapter(adapterPath)
+      : processCommand
+        ? createProcessAdapter({
+            command: processCommand,
+            args: options(argv, "--arg"),
+            operation: ir.operation.id,
+            timeoutMs,
+          })
+        : undefined;
+    const report = await runTestManifest(ir, manifest, adapter);
+    console.log(`Adapter: ${adapter?.name ?? "reference-simulator"}`);
+    console.table(
+      report.results.map((result) => ({
+        status: result.passed ? "PASS" : "FAIL",
+        case: result.id,
+        message: result.message,
+      })),
+    );
+    console.log(`${report.passed}/${report.total} contract tests passed`);
+    if (report.failed > 0) process.exitCode = 1;
+    return;
+  }
+
   if (command === "generate" && subcommand === "unreal") {
     const irPath = required(argv[2], "IR file");
     const ir = await loadIr(irPath);
@@ -94,6 +146,18 @@ function option(argv: string[], name: string): string | undefined {
   return index >= 0 ? argv[index + 1] : undefined;
 }
 
+function options(argv: string[], name: string): string[] {
+  return argv.flatMap((value, index) => value === name && argv[index + 1] ? [argv[index + 1]] : []);
+}
+
+function numberOption(argv: string[], name: string): number | undefined {
+  const value = option(argv, name);
+  if (value === undefined) return undefined;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) throw new Error(`${name} must be a number`);
+  return parsed;
+}
+
 function required(value: string | undefined, label: string): string {
   if (!value) throw new Error(`Missing ${label}`);
   return value;
@@ -106,6 +170,10 @@ Commands:
   lint <ir.json>
   simulate <ir.json> --input <input.json>
   test generate <ir.json> [--out <file>]
+  test bundle <ir.json> [--manifest <file>] [--out <file>]
+  test run <ir.json> [--manifest <file>] [--adapter <module>]
+                                      [--command <executable> [--arg <value>...]]
+                                      [--timeout-ms <milliseconds>]
   generate unreal <ir.json> [--out-dir <directory>]
   view trace <ir.json>`);
 }

@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { extractReferences } from "./expression.ts";
 import type { CrddIr, Diagnostic, FieldDefinition } from "./model.ts";
 
 const allowedFieldTypes = new Set(["number", "string", "boolean", "array"]);
@@ -121,7 +122,176 @@ export function validateIr(value: unknown): Diagnostic[] {
   }
 
   warnForDuplicates(operation.traces, "$.operation.traces", diagnostics);
+  validateSemantics(operation, diagnostics);
   return diagnostics;
+}
+
+function validateSemantics(operation: Record<string, unknown>, diagnostics: Diagnostic[]): void {
+  if (!isRecord(operation.input) || !isRecord(operation.state)) return;
+
+  const input = operation.input as Record<string, FieldDefinition>;
+  const state = operation.state as Record<string, FieldDefinition>;
+
+  if (Array.isArray(operation.requires)) {
+    const requirementIds: string[] = [];
+    operation.requires.forEach((requirement, index) => {
+      if (!isRecord(requirement)) return;
+      if (typeof requirement.id === "string") requirementIds.push(requirement.id);
+      if (typeof requirement.expression !== "string") return;
+      const path = `$.operation.requires[${index}].expression`;
+      validateExpressionReferences(requirement.expression, path, input, state, diagnostics);
+      validateComparisonUnits(requirement.expression, path, input, state, diagnostics);
+    });
+    reportDuplicateIds(requirementIds, "$.operation.requires", "requirement ID", diagnostics);
+  }
+
+  if (Array.isArray(operation.errors)) {
+    const errorCodes = operation.errors
+      .filter(isRecord)
+      .map((entry) => entry.code)
+      .filter((code): code is string => typeof code === "string");
+    reportDuplicateIds(errorCodes, "$.operation.errors", "error code", diagnostics);
+  }
+
+  if (Array.isArray(operation.effects)) {
+    operation.effects.forEach((effect, index) => {
+      if (!isRecord(effect) || typeof effect.target !== "string") return;
+      const path = `$.operation.effects[${index}]`;
+      const target = effect.target.startsWith("state.") ? effect.target.slice(6) : undefined;
+      if (!target) {
+        diagnostics.push(error(`${path}.target`, 'must start with "state."'));
+        return;
+      }
+      const targetField = state[target];
+      if (!targetField) {
+        diagnostics.push(error(`${path}.target`, `references undefined state field "${target}"`));
+        return;
+      }
+      if (effect.action === "append" && targetField.type !== "array") {
+        diagnostics.push(error(`${path}.target`, `append requires an array target, got "${targetField.type}"`));
+      }
+      if (effect.action === "assign" && typeof effect.expression === "string") {
+        validateExpressionReferences(effect.expression, `${path}.expression`, input, state, diagnostics);
+        validateAssignmentUnits(effect.expression, targetField, `${path}.expression`, input, state, diagnostics);
+      }
+      if (effect.action === "append") {
+        validateValueReferences(effect.value, `${path}.value`, input, state, diagnostics);
+      }
+    });
+
+    if (operation.effects.length > 0 && isRecord(operation.transaction)) {
+      if (operation.transaction.atomic !== true) {
+        diagnostics.push(error("$.operation.transaction.atomic", "must be true when effects modify state"));
+      }
+      if (operation.transaction.rollbackOnFailure !== true) {
+        diagnostics.push(
+          error("$.operation.transaction.rollbackOnFailure", "must be true when effects modify state"),
+        );
+      }
+    }
+  }
+}
+
+function validateExpressionReferences(
+  expression: string,
+  path: string,
+  input: Record<string, FieldDefinition>,
+  state: Record<string, FieldDefinition>,
+  diagnostics: Diagnostic[],
+): void {
+  for (const reference of extractReferences(expression)) {
+    if (!fieldForReference(reference, input, state)) {
+      diagnostics.push(error(path, `references undefined field "${reference}"`));
+    }
+  }
+}
+
+function validateValueReferences(
+  value: unknown,
+  path: string,
+  input: Record<string, FieldDefinition>,
+  state: Record<string, FieldDefinition>,
+  diagnostics: Diagnostic[],
+): void {
+  if (typeof value === "string" && value.startsWith("$")) {
+    const reference = value.slice(1);
+    if (!fieldForReference(reference, input, state)) {
+      diagnostics.push(error(path, `references undefined field "${reference}"`));
+    }
+    return;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => validateValueReferences(item, `${path}[${index}]`, input, state, diagnostics));
+  } else if (isRecord(value)) {
+    for (const [key, item] of Object.entries(value)) {
+      validateValueReferences(item, `${path}.${key}`, input, state, diagnostics);
+    }
+  }
+}
+
+function validateComparisonUnits(
+  expression: string,
+  path: string,
+  input: Record<string, FieldDefinition>,
+  state: Record<string, FieldDefinition>,
+  diagnostics: Diagnostic[],
+): void {
+  const comparison = expression.match(
+    /^\s*((?:input|state)\.[A-Za-z_][\w.]*)\s*(?:>=|<=|==|!=|>|<)\s*((?:input|state)\.[A-Za-z_][\w.]*)\s*$/,
+  );
+  if (!comparison) return;
+  const left = fieldForReference(comparison[1], input, state);
+  const right = fieldForReference(comparison[2], input, state);
+  if (!left || !right) return;
+  if (left.type !== right.type) {
+    diagnostics.push(error(path, `compares incompatible types "${left.type}" and "${right.type}"`));
+  } else if ((left.unit ?? null) !== (right.unit ?? null)) {
+    diagnostics.push(error(path, `compares incompatible units "${left.unit ?? "none"}" and "${right.unit ?? "none"}"`));
+  }
+}
+
+function validateAssignmentUnits(
+  expression: string,
+  target: FieldDefinition,
+  path: string,
+  input: Record<string, FieldDefinition>,
+  state: Record<string, FieldDefinition>,
+  diagnostics: Diagnostic[],
+): void {
+  for (const reference of extractReferences(expression)) {
+    const source = fieldForReference(reference, input, state);
+    if (!source) continue;
+    if (source.type !== target.type) {
+      diagnostics.push(error(path, `uses "${reference}" of type "${source.type}" for "${target.type}" target`));
+    } else if ((source.unit ?? null) !== (target.unit ?? null)) {
+      diagnostics.push(
+        error(path, `uses "${reference}" with unit "${source.unit ?? "none"}" for "${target.unit ?? "none"}" target`),
+      );
+    }
+  }
+}
+
+function fieldForReference(
+  reference: string,
+  input: Record<string, FieldDefinition>,
+  state: Record<string, FieldDefinition>,
+): FieldDefinition | undefined {
+  if (reference.startsWith("input.")) return input[reference.slice(6)];
+  if (reference.startsWith("state.")) return state[reference.slice(6)];
+  return undefined;
+}
+
+function reportDuplicateIds(
+  values: string[],
+  path: string,
+  label: string,
+  diagnostics: Diagnostic[],
+): void {
+  const seen = new Set<string>();
+  for (const value of values) {
+    if (seen.has(value)) diagnostics.push(error(path, `contains duplicate ${label} "${value}"`));
+    seen.add(value);
+  }
 }
 
 function validateFields(value: unknown, path: string, diagnostics: Diagnostic[]): void {

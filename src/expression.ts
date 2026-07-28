@@ -51,6 +51,12 @@ export function evaluateExpression(expression: string, context: Context): unknow
   return result;
 }
 
+export function extractReferences(expression: string): string[] {
+  return [...expression.matchAll(/\b(?:input|state)\.[A-Za-z_][A-Za-z0-9_.]*/g)].map(
+    (match) => match[0],
+  );
+}
+
 function tokenize(expression: string): Token[] {
   const tokens: Token[] = [];
   let remaining = expression.trim();

@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://crdd.dev/schema/conformance/v0.1.json",
+  "title": "CRDD IR Conformance Bundle v0.1",
+  "type": "object",
+  "required": ["protocol", "operation", "traces", "cases"],
+  "properties": {
+    "protocol": { "const": "crdd-ir/conformance-v0.1" },
+    "operation": { "type": "string", "minLength": 1 },
+    "traces": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "description", "request", "expected"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "description": { "type": "string", "minLength": 1 },
+          "sourceRequirement": { "type": "string", "minLength": 1 },
+          "request": {
+            "type": "object",
+            "required": ["input", "state"],
+            "properties": {
+              "input": { "type": "object" },
+              "state": { "type": "object" }
+            },
+            "additionalProperties": false
+          },
+          "expected": {
+            "type": "object",
+            "required": ["ok", "operation", "state", "traces"],
+            "properties": {
+              "ok": { "type": "boolean" },
+              "operation": { "type": "string" },
+              "error": { "type": "string" },
+              "failedRequirement": { "type": "string" },
+              "state": { "type": "object" },
+              "traces": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

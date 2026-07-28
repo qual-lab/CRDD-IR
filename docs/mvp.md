@@ -14,8 +14,30 @@ CRDD IRに事前条件、Effect、Error、Transaction、Trace IDを固定する�
 - 原子的なState変更
 - Error Code
 - 境界Test Manifest
+- Test Manifestの実行と契約判定
 - Unreal C++骨格
 - CRDD Requirement／Decisionとの対応
+
+## v0.1の意味検証
+
+Validatorは構造検証に加えて次を拒否する。
+
+- Requirement／Effectからの未定義Input・State参照
+- 異なる型・単位を持つField同士の比較
+- 未定義Stateを変更するEffect
+- 配列以外を対象とする `append`
+- Targetと異なる型・単位を使用する代入
+- 重複したRequirement ID／Error Code
+- State変更を伴う非原子的Operation
+- Rollback指定のないState変更
+
+`crdd-ir test run` は生成済み、または実行時に生成したTest ManifestをSimulatorへ投入し、成功可否、Error Code、完全Rollbackを自動判定する。
+
+`--adapter` を指定した場合は、外部実装の結果をReference Simulatorの意味と比較する。成功時の最終State、失敗時のError Code、Rollback、Trace IDを比較するため、Target実装におけるValidationやEffectの欠落を検出できる。
+
+`--command` は同じ検査を任意言語の外部プロセスへ適用する。Protocolは1回の実行につき標準入力から1件のJSON Envelopeを受け取り、標準出力へ1件のResult JSONを返す。シェル実行は使用せず、既定5秒のTimeoutと1 MiBの出力上限を設ける。
+
+`test bundle` は全ケースのRequestとReference Resultを `crdd-ir/conformance-v0.1` 形式で出力する。これはUnreal Automation Testなど、CRDD IR CLIを直接起動しないTarget側Testの入力として使用する。
 
 ## 意図的に扱わないもの
 
@@ -24,6 +46,7 @@ CRDD IRに事前条件、Effect、Error、Transaction、Trace IDを固定する�
 - Round-trip同期
 - Unrealの描画、入力、Actor Lifecycle
 - 完全なC++コンパイル可能性
+- 生成されたUnrealコードに対するContract Test実行
 - 複数Target
 
 ## 成功判定

@@ -10,6 +10,10 @@
     "lint:ir": "node src/cli.ts lint examples/place-wall/place-wall.ir.json",
     "simulate": "node src/cli.ts simulate examples/place-wall/place-wall.ir.json",
     "test:generate": "node src/cli.ts test generate examples/place-wall/place-wall.ir.json",
+    "test:contract": "node src/cli.ts test run examples/place-wall/place-wall.ir.json",
+    "test:adapter": "node src/cli.ts test run examples/place-wall/place-wall.ir.json --adapter examples/place-wall/adapters/correct.adapter.ts",
+    "test:process": "node src/cli.ts test run examples/place-wall/place-wall.ir.json --command node --arg examples/place-wall/adapters/process-correct.ts",
+    "test:bundle": "node src/cli.ts test bundle examples/place-wall/place-wall.ir.json",
     "generate:unreal": "node src/cli.ts generate unreal examples/place-wall/place-wall.ir.json",
     "test": "node --test test/*.test.ts"
   },
