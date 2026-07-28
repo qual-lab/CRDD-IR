@@ -20,6 +20,20 @@ export type ArrayFieldDefinition = {
 
 export type FieldDefinition = ScalarFieldDefinition | ArrayFieldDefinition;
 
+export type AssetDefinition = {
+  id: string;
+  type: "box";
+  dimensions: {
+    length: { value: number; unit: "m" };
+    width: { value: number; unit: "m" };
+    height: { value: number; unit: "m" };
+  };
+  material: {
+    baseColor: [number, number, number];
+  };
+  traces: string[];
+};
+
 export type Requirement = {
   id: string;
   expression: string;
@@ -55,6 +69,7 @@ export type Operation = {
     atomic: boolean;
     rollbackOnFailure: boolean;
   };
+  assets?: AssetDefinition[];
 };
 
 export type CrddIr = {

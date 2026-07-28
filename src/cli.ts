@@ -2,6 +2,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, extname, resolve } from "node:path";
 import { loadAdapter } from "./adapter.ts";
+import { generateAssets } from "./assets.ts";
 import { compileMarkdown } from "./compiler.ts";
 import { generateConformanceBundle } from "./conformance.ts";
 import { formatDiagnostics, loadIr, validateIr } from "./ir.ts";
@@ -151,6 +152,21 @@ async function main(argv: string[]): Promise<void> {
     return;
   }
 
+  if (command === "generate" && subcommand === "assets") {
+    const irPath = required(argv[2], "IR file");
+    const ir = await loadInput(irPath);
+    const outDir = option(argv, "--out-dir") ?? "generated/assets";
+    const files = generateAssets(ir);
+    if (files.length === 0) throw new Error(`Operation "${ir.operation.id}" declares no assets`);
+    await mkdir(outDir, { recursive: true });
+    for (const file of files) {
+      const path = resolve(outDir, file.name);
+      await writeFile(path, file.content, "utf8");
+      console.log(`Generated ${path}`);
+    }
+    return;
+  }
+
   if (command === "generate" && subcommand === "evidence") {
     const sourcePath = required(argv[2], "CRDD Markdown file");
     if (extname(sourcePath).toLowerCase() !== ".md") {
@@ -160,6 +176,7 @@ async function main(argv: string[]): Promise<void> {
     const testManifest = generateTestManifest(compilation.ir);
     const bundle = generateConformanceBundle(compilation.ir, testManifest);
     const generatedFiles = generateUnreal(compilation.ir);
+    const assetFiles = generateAssets(compilation.ir);
     const unrealReportPath = option(argv, "--unreal-report");
     const execution = unrealReportPath
       ? parseUnrealAutomationReport(await readFile(unrealReportPath, "utf8"), compilation.ir.operation.id)
@@ -172,6 +189,7 @@ async function main(argv: string[]): Promise<void> {
       testManifest,
       bundle,
       execution,
+      assetFiles,
     );
     const outDir = option(argv, "--out-dir") ?? "07_Quality/CRDD_IR";
     if (execution) await writeJson(resolve(outDir, "unreal-execution.json"), execution);
@@ -254,6 +272,7 @@ Commands:
                                       [--command <executable> [--arg <value>...]]
                                       [--timeout-ms <milliseconds>]
   generate unreal <ir.json> [--out-dir <directory>]
+  generate assets <ir.json> [--out-dir <directory>]
   generate evidence <spec.md> [--out-dir <directory>] [--unreal-report <index.json>]
   view trace <ir.json>`);
 }

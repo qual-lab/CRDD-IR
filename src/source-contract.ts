@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { LineCounter, parseDocument } from "yaml";
-import type { Effect, FieldDefinition } from "./model.ts";
+import type { AssetDefinition, Effect, FieldDefinition } from "./model.ts";
 
 export type SourceRequirement = {
   id: string;
@@ -22,6 +22,9 @@ export type SourceContract = {
       atomic: boolean;
       rollback_on_failure: boolean;
     };
+    assets?: Array<Omit<AssetDefinition, "material"> & {
+      material: { base_color: [number, number, number] };
+    }>;
   };
 };
 
@@ -107,6 +110,9 @@ function validateSourceContract(value: unknown, path: string, line: number): voi
   requireArray(operation, "requires", path, line);
   requireArray(operation, "effects", path, line);
   requireArray(operation, "errors", path, line);
+  if (operation.assets !== undefined && !Array.isArray(operation.assets)) {
+    fail(path, line, "assets must be an array");
+  }
   if (!isRecord(operation.transaction)) fail(path, line, "transaction must be an object");
   if (typeof operation.transaction.atomic !== "boolean") fail(path, line, "transaction.atomic must be boolean");
   if (typeof operation.transaction.rollback_on_failure !== "boolean") {

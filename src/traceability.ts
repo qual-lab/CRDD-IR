@@ -46,6 +46,7 @@ export function generateTraceabilityManifest(
   testManifest: TestManifest,
   bundle: ConformanceBundle,
   execution?: UnrealExecutionEvidence,
+  assetFiles: GeneratedFile[] = [],
 ): TraceabilityManifest {
   const errorTraces = new Map(ir.operation.errors.map((error) => [error.code, error.traces]));
   const requirementTraces = new Map(
@@ -59,11 +60,18 @@ export function generateTraceabilityManifest(
     protocol: "crdd-ir/traceability-v0.1",
     operation: ir.operation.id,
     source: { path: normalizePath(sourcePath), irSha256: irDigest },
-    generatedFiles: generatedFiles.map((file) => ({
-      path: `unreal/${file.name}`,
-      sha256: file.sha256,
-      traces: [...ir.operation.traces],
-    })),
+    generatedFiles: [
+      ...generatedFiles.map((file) => ({
+        path: `unreal/${file.name}`,
+        sha256: file.sha256,
+        traces: [...ir.operation.traces],
+      })),
+      ...assetFiles.map((file) => ({
+        path: `assets/${file.name}`,
+        sha256: file.sha256,
+        traces: [...(ir.operation.assets?.find((asset) => file.name.startsWith(`${asset.id}.`))?.traces ?? [])],
+      })),
+    ],
     requirements: ir.operation.requires.map((requirement) => ({
       id: requirement.id,
       error: requirement.error,

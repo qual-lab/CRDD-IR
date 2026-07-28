@@ -43,6 +43,17 @@ export async function compileMarkdown(path: string): Promise<CompilationResult> 
         atomic: contract.operation.transaction.atomic,
         rollbackOnFailure: contract.operation.transaction.rollback_on_failure,
       },
+      ...(contract.operation.assets
+        ? {
+            assets: contract.operation.assets.map((asset) => ({
+              id: asset.id,
+              type: asset.type,
+              dimensions: structuredClone(asset.dimensions),
+              material: { baseColor: [...asset.material.base_color] as [number, number, number] },
+              traces: [...asset.traces],
+            })),
+          }
+        : {}),
     },
   };
 

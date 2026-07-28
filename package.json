@@ -6,6 +6,12 @@
   "bin": {
     "crdd-ir": "./src/cli.ts"
   },
+  "files": [
+    "src",
+    "schemas",
+    "scripts",
+    "README.md"
+  ],
   "scripts": {
     "lint:ir": "node src/cli.ts lint examples/place-wall/place-wall.ir.json",
     "check:source": "node src/cli.ts check examples/place-wall/05_SPEC/01_Behavior_Specification.md",
@@ -18,8 +24,10 @@
     "test:bundle": "node src/cli.ts test bundle examples/place-wall/05_SPEC/01_Behavior_Specification.md",
     "test:bundle:source": "node src/cli.ts test bundle examples/place-wall/05_SPEC/01_Behavior_Specification.md --out generated/place-wall.conformance.json",
     "generate:unreal": "node src/cli.ts generate unreal examples/place-wall/05_SPEC/01_Behavior_Specification.md",
+    "generate:assets": "node src/cli.ts generate assets examples/place-wall/05_SPEC/01_Behavior_Specification.md",
     "generate:evidence": "node src/cli.ts generate evidence examples/place-wall/05_SPEC/01_Behavior_Specification.md --out-dir examples/place-wall/07_Quality/CRDD_IR --unreal-report examples/unreal/CrddCompilerFixture/Saved/TestReports/index.json",
     "verify:unreal": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/verify-unreal.ps1",
+    "pack:check": "npm pack --dry-run",
     "test": "node --test test/*.test.ts"
   },
   "engines": {

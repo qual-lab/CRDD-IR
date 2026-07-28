@@ -1,8 +1,8 @@
 {
   "protocol": "crdd-ir/unreal-execution-v0.1",
   "operation": "PlaceWall",
-  "reportCreatedOn": "2026.07.28-09.36.33",
-  "sourceReportSha256": "cf8985ec8b07b04c8fa5ca0c509e6446e7044230f61856b3a9c34c633ae860c9",
+  "reportCreatedOn": "2026.07.28-09.43.22",
+  "sourceReportSha256": "93fac76186e3d7c70ace428416fd07de476efebc5cf52be75615659a4c436af6",
   "platforms": [
     "WindowsEditor"
   ],
@@ -15,7 +15,7 @@
     {
       "path": "CRDD.PlaceWall.Conformance",
       "state": "Success",
-      "durationSeconds": 0.016309399157762527,
+      "durationSeconds": 0.016106802970170975,
       "warnings": 0,
       "errors": 0
     }

@@ -122,8 +122,57 @@ export function validateIr(value: unknown): Diagnostic[] {
   }
 
   warnForDuplicates(operation.traces, "$.operation.traces", diagnostics);
+  validateAssets(operation.assets, diagnostics);
   validateSemantics(operation, diagnostics);
   return diagnostics;
+}
+
+function validateAssets(value: unknown, diagnostics: Diagnostic[]): void {
+  if (value === undefined) return;
+  if (!Array.isArray(value)) {
+    diagnostics.push(error("$.operation.assets", "must be an array"));
+    return;
+  }
+  const ids: string[] = [];
+  value.forEach((asset, index) => {
+    const path = `$.operation.assets[${index}]`;
+    if (!isRecord(asset)) {
+      diagnostics.push(error(path, "must be an object"));
+      return;
+    }
+    const id = requireString(asset, "id", path, diagnostics);
+    if (id) ids.push(id);
+    if (asset.type !== "box") diagnostics.push(error(`${path}.type`, 'must equal "box"'));
+    if (!isRecord(asset.dimensions)) {
+      diagnostics.push(error(`${path}.dimensions`, "must be an object"));
+    } else {
+      for (const axis of ["length", "width", "height"]) {
+        const dimension = asset.dimensions[axis];
+        if (!isRecord(dimension)) {
+          diagnostics.push(error(`${path}.dimensions.${axis}`, "must be an object"));
+          continue;
+        }
+        if (typeof dimension.value !== "number" || dimension.value <= 0) {
+          diagnostics.push(error(`${path}.dimensions.${axis}.value`, "must be greater than zero"));
+        }
+        if (dimension.unit !== "m") {
+          diagnostics.push(error(`${path}.dimensions.${axis}.unit`, 'must equal "m"'));
+        }
+      }
+    }
+    if (
+      !isRecord(asset.material) ||
+      !Array.isArray(asset.material.baseColor) ||
+      asset.material.baseColor.length !== 3 ||
+      asset.material.baseColor.some(
+        (component) => typeof component !== "number" || component < 0 || component > 1,
+      )
+    ) {
+      diagnostics.push(error(`${path}.material.baseColor`, "must contain three numbers from 0 to 1"));
+    }
+    requireStringArray(asset, "traces", path, diagnostics);
+  });
+  reportDuplicateIds(ids, "$.operation.assets", "asset ID", diagnostics);
 }
 
 function validateSemantics(operation: Record<string, unknown>, diagnostics: Diagnostic[]): void {

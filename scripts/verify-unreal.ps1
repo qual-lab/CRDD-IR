@@ -50,6 +50,8 @@ Write-Host "[4/7] Generate Unreal C++"
 Assert-LastExitCode "Unreal reference generation"
 & node src/cli.ts generate unreal $spec --out-dir $fixtureGenerated
 Assert-LastExitCode "Unreal fixture generation"
+& node src/cli.ts generate assets $spec --out-dir generated/assets
+Assert-LastExitCode "3D asset generation"
 
 Write-Host "[5/7] Build Unreal fixture"
 & $buildTool CrddCompilerFixtureEditor Win64 $Configuration $project -WaitMutex -NoHotReload

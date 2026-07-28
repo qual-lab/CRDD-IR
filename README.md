@@ -29,6 +29,7 @@ npm run test:adapter
 npm run test:process
 npm run test:bundle
 npm run generate:unreal
+npm run generate:assets
 npm run generate:evidence
 npm run verify:unreal
 npm test
@@ -48,6 +49,7 @@ crdd-ir test bundle <ir.json> [--out <file>]
 crdd-ir test run <ir.json> [--adapter <module>]
 crdd-ir test run <ir.json> --command <executable> [--arg <value>...]
 crdd-ir generate unreal <ir.json> [--out-dir <directory>]
+crdd-ir generate assets <ir.json> [--out-dir <directory>]
 crdd-ir generate evidence <spec.md> [--out-dir <directory>] [--unreal-report <index.json>]
 crdd-ir view trace <ir.json>
 ```
@@ -83,6 +85,9 @@ Automation Test, and Evidence generation in one pipeline. Set
 GitHub Actions runs Node verification on a hosted runner. The Unreal job
 requires a Windows self-hosted runner labeled `unreal-5.8` with UE 5.8 and
 Visual Studio installed.
+
+CRDD repositoryへのsubmodule導入方法は
+[docs/crdd-integration.md](docs/crdd-integration.md)を参照する。
 
 ## Design boundaries
 

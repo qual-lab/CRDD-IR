@@ -76,4 +76,16 @@ operation:
   transaction:
     atomic: true
     rollback_on_failure: true
+
+  assets:
+    - id: WallPreview
+      type: box
+      dimensions:
+        length: { value: 1.0, unit: m }
+        width: { value: 0.2, unit: m }
+        height: { value: 2.4, unit: m }
+      material:
+        base_color: [0.65, 0.68, 0.72]
+      traces:
+        - REQ-WALL-001
 ```

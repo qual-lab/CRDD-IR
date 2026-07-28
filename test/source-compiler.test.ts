@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { compileMarkdown } from "../src/compiler.ts";
+import { generateAssets } from "../src/assets.ts";
 import { generateConformanceBundle } from "../src/conformance.ts";
 import { normalizeSourceExpression, parseSourceExpression } from "../src/source-expression.ts";
 import { extractContractFences } from "../src/source-contract.ts";
@@ -173,6 +174,7 @@ test("normalizes Unreal Automation results without device identity", async () =>
     tests,
     bundle,
     execution,
+    generateAssets(compiled.ir),
   );
   assert.equal(traceability.execution?.status, "passed");
   assert.equal(
@@ -180,4 +182,23 @@ test("normalizes Unreal Automation results without device identity", async () =>
     createHash("sha256").update(`${JSON.stringify(execution, null, 2)}\n`).digest("hex"),
   );
   assert.match(generateEvidenceMarkdown(traceability), /Unreal Execution[\s\S]*PASSED/);
+  assert.ok(
+    traceability.generatedFiles.some((file) => file.path === "assets/WallPreview.generated.obj"),
+  );
+});
+
+test("generates deterministic Unreal-scale 3D assets from CRDD", async () => {
+  const ir = (await compileMarkdown(fileURLToPath(sourcePath))).ir;
+  const first = generateAssets(ir);
+  const second = generateAssets(ir);
+  assert.deepEqual(first, second);
+  assert.deepEqual(
+    first.map((file) => file.name),
+    ["WallPreview.generated.obj", "WallPreview.generated.mtl"],
+  );
+  const obj = first.find((file) => file.name.endsWith(".obj"))?.content ?? "";
+  assert.match(obj, /Units: centimeters/);
+  assert.match(obj, /v -50 -10 0/);
+  assert.match(obj, /v 50 10 240/);
+  assert.match(obj, /CRDD-TRACE: REQ-WALL-001/);
 });
