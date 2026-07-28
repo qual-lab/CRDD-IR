@@ -368,6 +368,25 @@ test("generates one manifest entry for every declared 3D asset", async () => {
   );
 });
 
+test("generates deterministic cylinder geometry with UVs and normals", async () => {
+  const ir = structuredClone((await compileMarkdown(fileURLToPath(sourcePath))).ir);
+  const cylinder = structuredClone(ir.operation.assets?.[0]);
+  assert.ok(cylinder);
+  if (!cylinder) return;
+  cylinder.id = "ColumnPreview";
+  cylinder.type = "cylinder";
+  ir.operation.assets = [cylinder];
+  const first = generateAssets(ir);
+  const second = generateAssets(ir);
+  assert.deepEqual(first, second);
+  const obj = first.find((file) => file.name === "ColumnPreview.generated.obj")?.content ?? "";
+  assert.equal((obj.match(/^v /gm) ?? []).length, 50);
+  assert.equal((obj.match(/^vn /gm) ?? []).length, 26);
+  assert.equal((obj.match(/^vt /gm) ?? []).length, 50);
+  assert.equal((obj.match(/^f /gm) ?? []).length, 72);
+  assert.match(obj, /CRDD-TRACE: REQ-WALL-001/);
+});
+
 test("removes only obsolete generated 3D source files", async () => {
   const directory = await mkdtemp(join(tmpdir(), "crdd-assets-"));
   await Promise.all([

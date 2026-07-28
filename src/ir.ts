@@ -148,7 +148,9 @@ function validateAssets(value: unknown, diagnostics: Diagnostic[]): void {
         diagnostics.push(error(`${path}.id`, "must be an Unreal-safe identifier"));
       }
     }
-    if (asset.type !== "box") diagnostics.push(error(`${path}.type`, 'must equal "box"'));
+    if (asset.type !== "box" && asset.type !== "cylinder") {
+      diagnostics.push(error(`${path}.type`, 'must equal "box" or "cylinder"'));
+    }
     if (!isRecord(asset.dimensions)) {
       diagnostics.push(error(`${path}.dimensions`, "must be an object"));
     } else {

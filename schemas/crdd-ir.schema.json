@@ -115,7 +115,7 @@
       "required": ["id", "type", "dimensions", "material", "placement", "traces"],
       "properties": {
         "id": { "type": "string", "minLength": 1 },
-        "type": { "const": "box" },
+        "type": { "enum": ["box", "cylinder"] },
         "dimensions": { "$ref": "#/$defs/dimensions" },
         "material": {
           "type": "object",

@@ -22,7 +22,7 @@ export type FieldDefinition = ScalarFieldDefinition | ArrayFieldDefinition;
 
 export type AssetDefinition = {
   id: string;
-  type: "box";
+  type: "box" | "cylinder";
   dimensions: {
     length: { value: number; unit: "m" };
     width: { value: number; unit: "m" };

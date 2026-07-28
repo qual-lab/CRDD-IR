@@ -142,7 +142,7 @@
       "required": ["id", "type", "dimensions", "material", "placement", "traces"],
       "properties": {
         "id": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*$" },
-        "type": { "const": "box" },
+        "type": { "enum": ["box", "cylinder"] },
         "dimensions": { "$ref": "#/$defs/dimensions" },
         "material": {
           "type": "object",

@@ -39,6 +39,24 @@ counterexamples for non-boundary expressions, and records requirement failure
 coverage in traceability evidence. `doctor` fails before generation when that
 coverage cannot be constructed.
 
+Operational recovery is ownership-aware:
+
+```powershell
+.\tools\CRDD-IR\scripts\repair-project.ps1 -ProjectRoot .
+.\tools\CRDD-IR\scripts\uninstall-project.ps1 -ProjectRoot . -WhatIf
+.\tools\CRDD-IR\scripts\uninstall-project.ps1 -ProjectRoot .
+```
+
+Repair re-runs the installer from the validated project configuration and
+backs up modified managed files. Uninstall removes only manifest-owned files
+or the managed block inside shared guidance; user-owned surrounding content is
+preserved. Modified owned content is backed up and requires explicit
+`-ForceManagedRemoval`.
+
+3D source contracts support deterministic `box` and `cylinder` assets.
+Cylinders use 24 fixed segments and include side/cap faces, UV coordinates,
+vertex normals, material output, placement metadata, and CRDD trace comments.
+
 CRDD IR本体はCRDD適用先へコピーせず、repository rootの`tools/CRDD-IR`
 へGit submoduleとして配置する。
 

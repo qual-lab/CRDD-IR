@@ -2,6 +2,7 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $target = Join-Path $repoRoot ".crdd-ir\installer-test"
 $installer = Join-Path $repoRoot "scripts\install-project.ps1"
+$uninstaller = Join-Path $repoRoot "scripts\uninstall-project.ps1"
 
 if (Test-Path -LiteralPath $target) {
     Remove-Item -LiteralPath $target -Recurse -Force
@@ -38,6 +39,27 @@ try {
     }
 
     & $installer -ProjectRoot $target -ForceManagedUpdate
+
+    $agents = Join-Path $target "AGENTS.md"
+    [System.IO.File]::WriteAllText(
+        $agents,
+        "# Project guidance`n`n" + (Get-Content -LiteralPath $agents -Raw),
+        [System.Text.UTF8Encoding]::new($false)
+    )
+    & $uninstaller -ProjectRoot $target -WhatIf
+    if (-not (Test-Path -LiteralPath (Join-Path $target "tools\crdd-ir.ps1"))) {
+        throw "WhatIf changed an installed file"
+    }
+    & $uninstaller -ProjectRoot $target
+    if (Test-Path -LiteralPath (Join-Path $target "tools\crdd-ir.ps1")) {
+        throw "Uninstaller left a managed wrapper"
+    }
+    if ((Get-Content -LiteralPath $agents -Raw) -notmatch "# Project guidance") {
+        throw "Uninstaller removed user-owned guidance"
+    }
+    if ((Get-Content -LiteralPath $agents -Raw) -match "CRDD-IR:BEGIN") {
+        throw "Uninstaller left the managed guidance block"
+    }
     Write-Host "CRDD-IR installer regression test succeeded."
 }
 finally {
