@@ -1,0 +1,113 @@
+{
+  "version": "0.1",
+  "operation": "PlaceWall",
+  "traces": [
+    "REQ-WALL-001",
+    "DEC-WALL-003"
+  ],
+  "cases": [
+    {
+      "id": "place-wall-success",
+      "description": "PlaceWall succeeds when every precondition is satisfied",
+      "arrange": {
+        "input": {
+          "length": 1,
+          "cost": 100
+        },
+        "state": {
+          "budget": {
+            "remaining": 1000000
+          },
+          "walls": []
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "minimum-wall-length-at-boundary",
+      "sourceRequirement": "minimum-wall-length",
+      "description": "length equal to 0.3 is accepted",
+      "arrange": {
+        "input": {
+          "length": 0.3,
+          "cost": 100
+        },
+        "state": {
+          "budget": {
+            "remaining": 1000000
+          },
+          "walls": []
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "minimum-wall-length-below-boundary",
+      "sourceRequirement": "minimum-wall-length",
+      "description": "length below 0.3 is rejected without state changes",
+      "arrange": {
+        "input": {
+          "length": 0.299,
+          "cost": 100
+        },
+        "state": {
+          "budget": {
+            "remaining": 1000000
+          },
+          "walls": []
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "WALL_TOO_SHORT",
+        "stateUnchanged": true
+      }
+    },
+    {
+      "id": "sufficient-budget-exact",
+      "sourceRequirement": "sufficient-budget",
+      "description": "budget.remaining equal to cost is accepted",
+      "arrange": {
+        "input": {
+          "length": 1,
+          "cost": 100
+        },
+        "state": {
+          "budget": {
+            "remaining": 100
+          },
+          "walls": []
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "sufficient-budget-insufficient",
+      "sourceRequirement": "sufficient-budget",
+      "description": "budget.remaining one unit below cost is rejected without state changes",
+      "arrange": {
+        "input": {
+          "length": 1,
+          "cost": 100
+        },
+        "state": {
+          "budget": {
+            "remaining": 99
+          },
+          "walls": []
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "INSUFFICIENT_BUDGET",
+        "stateUnchanged": true
+      }
+    }
+  ]
+}

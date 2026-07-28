@@ -1,0 +1,12 @@
+{
+  "input": {
+    "length": 0.3,
+    "cost": 12000
+  },
+  "state": {
+    "budget": {
+      "remaining": 50000
+    },
+    "walls": []
+  }
+}

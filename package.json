@@ -1,0 +1,19 @@
+{
+  "name": "crdd-ir",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "crdd-ir": "./src/cli.ts"
+  },
+  "scripts": {
+    "lint:ir": "node src/cli.ts lint examples/place-wall/place-wall.ir.json",
+    "simulate": "node src/cli.ts simulate examples/place-wall/place-wall.ir.json",
+    "test:generate": "node src/cli.ts test generate examples/place-wall/place-wall.ir.json",
+    "generate:unreal": "node src/cli.ts generate unreal examples/place-wall/place-wall.ir.json",
+    "test": "node --test test/*.test.ts"
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  }
+}

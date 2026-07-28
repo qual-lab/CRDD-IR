@@ -1,0 +1,50 @@
+{
+  "irVersion": "0.1",
+  "operation": {
+    "id": "PlaceWall",
+    "traces": ["REQ-WALL-001", "DEC-WALL-003"],
+    "input": {
+      "length": { "type": "number", "unit": "m", "minimum": 0 },
+      "cost": { "type": "number", "unit": "JPY", "minimum": 0 }
+    },
+    "state": {
+      "budget.remaining": { "type": "number", "unit": "JPY", "minimum": 0 },
+      "walls": { "type": "array" }
+    },
+    "requires": [
+      {
+        "id": "minimum-wall-length",
+        "expression": "input.length >= 0.3",
+        "error": "WALL_TOO_SHORT"
+      },
+      {
+        "id": "sufficient-budget",
+        "expression": "state.budget.remaining >= input.cost",
+        "error": "INSUFFICIENT_BUDGET"
+      }
+    ],
+    "effects": [
+      {
+        "target": "state.walls",
+        "action": "append",
+        "value": {
+          "length": "$input.length",
+          "cost": "$input.cost"
+        }
+      },
+      {
+        "target": "state.budget.remaining",
+        "action": "assign",
+        "expression": "state.budget.remaining - input.cost"
+      }
+    ],
+    "errors": [
+      { "code": "WALL_TOO_SHORT", "traces": ["REQ-WALL-001"] },
+      { "code": "INSUFFICIENT_BUDGET", "traces": ["DEC-WALL-003"] }
+    ],
+    "transaction": {
+      "atomic": true,
+      "rollbackOnFailure": true
+    }
+  }
+}
