@@ -14,12 +14,14 @@ CRDDに記録された要求・判断を、検証可能な振る舞いの契約�
 
 - Node.js 22.18以降
 
-外部npmパッケージは使用していません。
+Markdown内のYAML契約解析に`yaml`の固定バージョンを使用します。
 
 ## Quick start
 
 ```bash
 npm run lint:ir
+npm run check:source
+npm run compile:source
 npm run simulate -- --input examples/place-wall/success.input.json
 npm run test:generate
 npm run test:contract
@@ -35,6 +37,8 @@ npm test
 ## CLI
 
 ```text
+crdd-ir compile <spec.md> [--out <debug-ir.json>]
+crdd-ir check <spec.md>
 crdd-ir lint <ir.json>
 crdd-ir simulate <ir.json> --input <input.json>
 crdd-ir test generate <ir.json> [--out <file>]
@@ -62,12 +66,14 @@ crdd-ir test run examples/place-wall/place-wall.ir.json \
 
 `test bundle` は、UnrealなどTarget側のテストから直接読み込める入力・期待結果を単一JSONへ出力します。
 
+`.md`を指定した場合、CLIは`crdd-contract` Fenceを決定的にCompileしてから既存の検証・生成Pipelineへ渡します。Debug IRは`.crdd-ir/`などGit管理外の領域へ出力します。
+
 Process AdapterのJSON仕様は [docs/process-adapter-protocol.md](docs/process-adapter-protocol.md) を参照してください。
 
 ## Design boundaries
 
-- CRDDは「なぜ」と「何を」の正本
-- CRDD IRは振る舞い・制約・状態遷移の正本
+- CRDD Markdownは人間向け記述と機械可読な構造化契約の正本
+- CRDD IRはCompilerが一時生成するVersion付き内部表現
 - 生成コードは一方向生成し、人間の実装は明示的な拡張点へ置く
 - Unreal固有の操作感、描画、最適化はIRへ取り込まない
 

@@ -2,7 +2,9 @@
 
 ## 検証仮説
 
-CRDD IRに事前条件、Effect、Error、Transaction、Trace IDを固定すると、実装を生成するAIやTargetが変わっても、必須の振る舞いと境界Testを安定して維持できる。
+CRDD Markdown内の構造化契約に事前条件、Effect、Error、Transaction、Trace IDを固定し、決定的にCRDD IRへCompileすると、実装を生成するAIやTargetが変わっても、必須の振る舞いと境界Testを安定して維持できる。
+
+CRDD Markdownが正本であり、CRDD IRインスタンスはCompiler処理中またはDebug出力としてだけ存在する。IR SchemaはVersion管理するが、再生成可能なIRインスタンスを正本としてGit管理しない。
 
 ## v0.1の範囲
 
@@ -17,6 +19,22 @@ CRDD IRに事前条件、Effect、Error、Transaction、Trace IDを固定する�
 - Test Manifestの実行と契約判定
 - Unreal C++骨格
 - CRDD Requirement／Decisionとの対応
+
+## CRDD Markdown Frontend
+
+FrontendはMarkdown内の`crdd-contract` Fenceだけを解析する。周辺の自然言語や通常のYAML Fenceを推測で解釈しない。
+
+```text
+05_SPEC/01_Behavior_Specification.md
+→ Source Contract
+→ Expression AST
+→ Canonical CRDD IR
+→ Validator / Simulator / Conformance / Target Adapter
+```
+
+Expression Language v0.1はField Reference、単位付き数値、比較、加減算、Boolean演算、括弧だけを許可する。`eval`、任意関数、I/O、時刻、乱数、Target固有処理は許可しない。
+
+同じSource Contractから生成したCanonical JSONのSHA-256 Digestが一致することを、決定性Testで確認する。
 
 ## v0.1の意味検証
 

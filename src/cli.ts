@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { dirname, extname, resolve } from "node:path";
 import { loadAdapter } from "./adapter.ts";
+import { compileMarkdown } from "./compiler.ts";
 import { generateConformanceBundle } from "./conformance.ts";
 import { formatDiagnostics, loadIr, validateIr } from "./ir.ts";
 import { createProcessAdapter } from "./process-adapter.ts";
@@ -29,6 +30,12 @@ async function main(argv: string[]): Promise<void> {
 
   if (command === "lint") {
     const path = required(argv[1], "IR file");
+    if (extname(path).toLowerCase() === ".md") {
+      const compilation = await compileMarkdown(path);
+      console.log(`OK ${path}`);
+      console.log(`IR SHA-256 ${compilation.digest}`);
+      return;
+    }
     const raw = JSON.parse(await readFile(path, "utf8"));
     const diagnostics = validateIr(raw);
     if (diagnostics.length === 0) {
@@ -40,11 +47,33 @@ async function main(argv: string[]): Promise<void> {
     return;
   }
 
+  if (command === "compile") {
+    const sourcePath = required(argv[1], "CRDD Markdown file");
+    const compilation = await compileMarkdown(sourcePath);
+    const out = option(argv, "--out");
+    if (out) {
+      await writeText(out, compilation.canonicalJson);
+      console.log(`Generated ${out}`);
+    } else {
+      process.stdout.write(compilation.canonicalJson);
+    }
+    console.error(`IR SHA-256 ${compilation.digest}`);
+    return;
+  }
+
+  if (command === "check") {
+    const sourcePath = required(argv[1], "CRDD Markdown file");
+    const compilation = await compileMarkdown(sourcePath);
+    console.log(`OK ${sourcePath}`);
+    console.log(`IR SHA-256 ${compilation.digest}`);
+    return;
+  }
+
   if (command === "simulate") {
     const irPath = required(argv[1], "IR file");
     const inputPath = option(argv, "--input");
     if (!inputPath) throw new Error("Missing --input <file>");
-    const ir = await loadIr(irPath);
+    const ir = await loadInput(irPath);
     const request = JSON.parse(await readFile(inputPath, "utf8")) as SimulationRequest;
     console.log(JSON.stringify(simulate(ir, request), null, 2));
     return;
@@ -52,7 +81,7 @@ async function main(argv: string[]): Promise<void> {
 
   if (command === "test" && subcommand === "generate") {
     const irPath = required(argv[2], "IR file");
-    const ir = await loadIr(irPath);
+    const ir = await loadInput(irPath);
     const out = option(argv, "--out") ?? "generated/place-wall.test-manifest.json";
     await writeJson(out, generateTestManifest(ir));
     console.log(`Generated ${out}`);
@@ -61,7 +90,7 @@ async function main(argv: string[]): Promise<void> {
 
   if (command === "test" && subcommand === "bundle") {
     const irPath = required(argv[2], "IR file");
-    const ir = await loadIr(irPath);
+    const ir = await loadInput(irPath);
     const manifestPath = option(argv, "--manifest");
     const manifest = manifestPath
       ? JSON.parse(await readFile(manifestPath, "utf8")) as TestManifest
@@ -74,7 +103,7 @@ async function main(argv: string[]): Promise<void> {
 
   if (command === "test" && subcommand === "run") {
     const irPath = required(argv[2], "IR file");
-    const ir = await loadIr(irPath);
+    const ir = await loadInput(irPath);
     const manifestPath = option(argv, "--manifest");
     const manifest = manifestPath
       ? JSON.parse(await readFile(manifestPath, "utf8")) as TestManifest
@@ -109,7 +138,7 @@ async function main(argv: string[]): Promise<void> {
 
   if (command === "generate" && subcommand === "unreal") {
     const irPath = required(argv[2], "IR file");
-    const ir = await loadIr(irPath);
+    const ir = await loadInput(irPath);
     const outDir = option(argv, "--out-dir") ?? "generated/unreal";
     await mkdir(outDir, { recursive: true });
     for (const file of generateUnreal(ir)) {
@@ -122,7 +151,7 @@ async function main(argv: string[]): Promise<void> {
 
   if (command === "view" && subcommand === "trace") {
     const irPath = required(argv[2], "IR file");
-    const ir = await loadIr(irPath);
+    const ir = await loadInput(irPath);
     const rows = [
       ...ir.operation.traces.map((trace) => ({ artifact: ir.operation.id, trace })),
       ...ir.operation.errors.flatMap((error) =>
@@ -139,6 +168,17 @@ async function main(argv: string[]): Promise<void> {
 async function writeJson(path: string, value: unknown): Promise<void> {
   await mkdir(dirname(resolve(path)), { recursive: true });
   await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
+async function writeText(path: string, value: string): Promise<void> {
+  await mkdir(dirname(resolve(path)), { recursive: true });
+  await writeFile(path, value, "utf8");
+}
+
+async function loadInput(path: string) {
+  return extname(path).toLowerCase() === ".md"
+    ? (await compileMarkdown(path)).ir
+    : loadIr(path);
 }
 
 function option(argv: string[], name: string): string | undefined {
@@ -167,6 +207,8 @@ function printHelp(): void {
   console.log(`crdd-ir
 
 Commands:
+  compile <spec.md> [--out <debug-ir.json>]
+  check <spec.md>
   lint <ir.json>
   simulate <ir.json> --input <input.json>
   test generate <ir.json> [--out <file>]
