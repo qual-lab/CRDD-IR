@@ -88,4 +88,14 @@ operation:
         base_color: [0.65, 0.68, 0.72]
       traces:
         - REQ-WALL-001
+    - id: DoorPreview
+      type: box
+      dimensions:
+        length: { value: 0.9, unit: m }
+        width: { value: 0.1, unit: m }
+        height: { value: 2.0, unit: m }
+      material:
+        base_color: [0.4, 0.2, 0.1]
+      traces:
+        - REQ-WALL-001
 ```

@@ -7,6 +7,25 @@
       "source": "WallPreview.generated.obj",
       "unrealDestination": "/Game/CRDD/Generated",
       "previewLevel": "/Game/CRDD/Generated/WallPreviewLevel",
+      "dimensionsCm": {
+        "length": 100,
+        "width": 20,
+        "height": 240
+      },
+      "traces": [
+        "REQ-WALL-001"
+      ]
+    },
+    {
+      "id": "DoorPreview",
+      "source": "DoorPreview.generated.obj",
+      "unrealDestination": "/Game/CRDD/Generated",
+      "previewLevel": "/Game/CRDD/Generated/DoorPreviewLevel",
+      "dimensionsCm": {
+        "length": 90,
+        "width": 10,
+        "height": 200
+      },
       "traces": [
         "REQ-WALL-001"
       ]

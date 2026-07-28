@@ -3,7 +3,7 @@
   "operation": "PlaceWall",
   "source": {
     "path": "examples/place-wall/05_SPEC/01_Behavior_Specification.md",
-    "irSha256": "1fc7e43e67b3c08e3c047f18b0707ce705e3eca9dfd4ff5c7380a7e9bb9ae9cd"
+    "irSha256": "0f25e83029412fcfc1d87daa4ecdec5713f20994f7b5a1385a931d7b0cafeb85"
   },
   "generatedFiles": [
     {
@@ -37,8 +37,22 @@
       ]
     },
     {
+      "path": "assets/DoorPreview.generated.obj",
+      "sha256": "dd2c06a1b7b6a474ad3e980f25bb546bfb2f18e2587c0c6673395daaef8eb783",
+      "traces": [
+        "REQ-WALL-001"
+      ]
+    },
+    {
+      "path": "assets/DoorPreview.generated.mtl",
+      "sha256": "4fa40f4b4d053a8507b8e3c73b5b23301659db67124d36a72b776707e21c9cfa",
+      "traces": [
+        "REQ-WALL-001"
+      ]
+    },
+    {
       "path": "assets/assets.manifest.json",
-      "sha256": "98de4b09c1a5f3d08292866b3454728122e7515dfbd275995a70a4b12c6e379f",
+      "sha256": "85932c1f8d1c42ad56aca6742a7ed77e44b5d7848e161eee5b4800b7e32a56c1",
       "traces": []
     }
   ],
@@ -109,9 +123,11 @@
   },
   "execution": {
     "path": "unreal-execution.json",
-    "sha256": "caf15f2cb96ac6dc51019c0cd90cc1263aa5164404fec9c8bb26a520903cf910",
+    "sha256": "decd9c278580f3ada7b492c9409d8064da9b19ecbab9b31699f4f5b9ab1b8ba0",
     "status": "passed",
     "tests": [
+      "CRDD.Assets.DoorPreview",
+      "CRDD.Assets.DoorPreviewLevel",
       "CRDD.Assets.WallPreview",
       "CRDD.Assets.WallPreviewLevel",
       "CRDD.PlaceWall.Conformance"

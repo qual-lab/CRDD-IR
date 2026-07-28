@@ -18,6 +18,11 @@ export function generateAssets(ir: CrddIr): GeneratedFile[] {
             source: `${asset.id}.generated.obj`,
             unrealDestination: "/Game/CRDD/Generated",
             previewLevel: `/Game/CRDD/Generated/${asset.id}Level`,
+            dimensionsCm: {
+              length: metersToCentimeters(asset.dimensions.length.value),
+              width: metersToCentimeters(asset.dimensions.width.value),
+              height: metersToCentimeters(asset.dimensions.height.value),
+            },
             traces: asset.traces,
           })),
         },

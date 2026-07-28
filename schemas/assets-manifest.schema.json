@@ -12,12 +12,22 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["id", "source", "unrealDestination", "previewLevel", "traces"],
+        "required": ["id", "source", "unrealDestination", "previewLevel", "dimensionsCm", "traces"],
         "properties": {
           "id": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*$" },
           "source": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*\\.generated\\.obj$" },
           "unrealDestination": { "type": "string", "pattern": "^/Game(?:/[A-Za-z][A-Za-z0-9_]*)+$" },
           "previewLevel": { "type": "string", "pattern": "^/Game(?:/[A-Za-z][A-Za-z0-9_]*)+$" },
+          "dimensionsCm": {
+            "type": "object",
+            "required": ["length", "width", "height"],
+            "properties": {
+              "length": { "type": "number", "exclusiveMinimum": 0 },
+              "width": { "type": "number", "exclusiveMinimum": 0 },
+              "height": { "type": "number", "exclusiveMinimum": 0 }
+            },
+            "additionalProperties": false
+          },
           "traces": {
             "type": "array",
             "minItems": 1,

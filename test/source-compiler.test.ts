@@ -201,7 +201,13 @@ test("generates deterministic Unreal-scale 3D assets from CRDD", async () => {
   assert.deepEqual(first, second);
   assert.deepEqual(
     first.map((file) => file.name),
-    ["WallPreview.generated.obj", "WallPreview.generated.mtl", "assets.manifest.json"],
+    [
+      "WallPreview.generated.obj",
+      "WallPreview.generated.mtl",
+      "DoorPreview.generated.obj",
+      "DoorPreview.generated.mtl",
+      "assets.manifest.json",
+    ],
   );
   const obj = first.find((file) => file.name.endsWith(".obj"))?.content ?? "";
   assert.match(obj, /Units: centimeters/);
@@ -222,6 +228,15 @@ test("generates deterministic Unreal-scale 3D assets from CRDD", async () => {
         source: "WallPreview.generated.obj",
         unrealDestination: "/Game/CRDD/Generated",
         previewLevel: "/Game/CRDD/Generated/WallPreviewLevel",
+        dimensionsCm: { length: 100, width: 20, height: 240 },
+        traces: ["REQ-WALL-001"],
+      },
+      {
+        id: "DoorPreview",
+        source: "DoorPreview.generated.obj",
+        unrealDestination: "/Game/CRDD/Generated",
+        previewLevel: "/Game/CRDD/Generated/DoorPreviewLevel",
+        dimensionsCm: { length: 90, width: 10, height: 200 },
         traces: ["REQ-WALL-001"],
       },
     ],
@@ -231,7 +246,7 @@ test("generates deterministic Unreal-scale 3D assets from CRDD", async () => {
 test("generates one manifest entry for every declared 3D asset", async () => {
   const ir = structuredClone((await compileMarkdown(fileURLToPath(sourcePath))).ir);
   ir.operation.assets?.push({
-    id: "DoorPreview",
+    id: "DoorPreview2",
     type: "box",
     dimensions: {
       length: { value: 0.9, unit: "m" },
@@ -243,12 +258,12 @@ test("generates one manifest entry for every declared 3D asset", async () => {
   });
 
   const files = generateAssets(ir);
-  assert.ok(files.some((file) => file.name === "DoorPreview.generated.obj"));
+  assert.ok(files.some((file) => file.name === "DoorPreview2.generated.obj"));
   const manifest = JSON.parse(
     files.find((file) => file.name === "assets.manifest.json")?.content ?? "",
   );
   assert.deepEqual(
     manifest.assets.map((asset: { id: string }) => asset.id),
-    ["WallPreview", "DoorPreview"],
+    ["WallPreview", "DoorPreview", "DoorPreview2"],
   );
 });

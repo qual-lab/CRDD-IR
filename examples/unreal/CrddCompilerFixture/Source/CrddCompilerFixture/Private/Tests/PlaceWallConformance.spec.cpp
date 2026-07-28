@@ -33,6 +33,18 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter
 )
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FCrddDoorPreviewLevelTest,
+    "CRDD.Assets.DoorPreviewLevel",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter
+)
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FCrddDoorPreviewAssetTest,
+    "CRDD.Assets.DoorPreview",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter
+)
+
 namespace
 {
 bool ReadBundle(
@@ -243,6 +255,61 @@ bool FCrddWallPreviewLevelTest::RunTest(const FString& Parameters)
     }
 
     TestTrue(TEXT("Generated level contains CRDD_WallPreview"), bFoundPlacedWall);
+    return true;
+}
+
+bool FCrddDoorPreviewAssetTest::RunTest(const FString& Parameters)
+{
+    const UStaticMesh* Mesh = LoadObject<UStaticMesh>(
+        nullptr,
+        TEXT("/Game/CRDD/Generated/DoorPreview.DoorPreview")
+    );
+    if (!TestNotNull(TEXT("Generated DoorPreview StaticMesh exists"), Mesh))
+    {
+        return false;
+    }
+
+    const FVector Size = Mesh->GetBoundingBox().GetSize();
+    TestTrue(TEXT("DoorPreview length is 90cm"), FMath::IsNearlyEqual(Size.X, 90.0, 0.1));
+    TestTrue(TEXT("DoorPreview width is 10cm"), FMath::IsNearlyEqual(Size.Y, 10.0, 0.1));
+    TestTrue(TEXT("DoorPreview height is 200cm"), FMath::IsNearlyEqual(Size.Z, 200.0, 0.1));
+    return true;
+}
+
+bool FCrddDoorPreviewLevelTest::RunTest(const FString& Parameters)
+{
+    FAutomationEditorCommonUtils::LoadMap(TEXT("/Game/CRDD/Generated/DoorPreviewLevel"));
+    UWorld* World = GEditor ? GEditor->GetEditorWorldContext().World() : nullptr;
+    if (!TestNotNull(TEXT("Generated DoorPreview level loads"), World))
+    {
+        return false;
+    }
+
+    bool bFoundPlacedDoor = false;
+    for (TActorIterator<AActor> It(World); It; ++It)
+    {
+        const AActor* Actor = *It;
+        if (!Actor || Actor->GetActorLabel() != TEXT("CRDD_DoorPreview"))
+        {
+            continue;
+        }
+
+        const UStaticMeshComponent* Component =
+            Actor->FindComponentByClass<UStaticMeshComponent>();
+        const UStaticMesh* Mesh = Component ? Component->GetStaticMesh() : nullptr;
+        bFoundPlacedDoor = true;
+        TestTrue(
+            TEXT("Placed actor references generated DoorPreview"),
+            Mesh && Mesh->GetPathName() == TEXT("/Game/CRDD/Generated/DoorPreview.DoorPreview")
+        );
+        TestTrue(
+            TEXT("Placed actor is at the origin"),
+            Actor->GetActorLocation().Equals(FVector::ZeroVector, 0.01)
+        );
+        break;
+    }
+
+    TestTrue(TEXT("Generated level contains CRDD_DoorPreview"), bFoundPlacedDoor);
     return true;
 }
 
