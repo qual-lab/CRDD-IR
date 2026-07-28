@@ -1,0 +1,15 @@
+{
+  "protocol": "crdd-ir/assets-v0.1",
+  "operation": "PlaceWall",
+  "assets": [
+    {
+      "id": "WallPreview",
+      "source": "WallPreview.generated.obj",
+      "unrealDestination": "/Game/CRDD/Generated",
+      "previewLevel": "/Game/CRDD/Generated/WallPreviewLevel",
+      "traces": [
+        "REQ-WALL-001"
+      ]
+    }
+  ]
+}

@@ -141,7 +141,12 @@ function validateAssets(value: unknown, diagnostics: Diagnostic[]): void {
       return;
     }
     const id = requireString(asset, "id", path, diagnostics);
-    if (id) ids.push(id);
+    if (id) {
+      ids.push(id);
+      if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(id)) {
+        diagnostics.push(error(`${path}.id`, "must be an Unreal-safe identifier"));
+      }
+    }
     if (asset.type !== "box") diagnostics.push(error(`${path}.type`, 'must equal "box"'));
     if (!isRecord(asset.dimensions)) {
       diagnostics.push(error(`${path}.dimensions`, "must be an object"));

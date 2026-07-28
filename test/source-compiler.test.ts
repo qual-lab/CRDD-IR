@@ -201,7 +201,7 @@ test("generates deterministic Unreal-scale 3D assets from CRDD", async () => {
   assert.deepEqual(first, second);
   assert.deepEqual(
     first.map((file) => file.name),
-    ["WallPreview.generated.obj", "WallPreview.generated.mtl"],
+    ["WallPreview.generated.obj", "WallPreview.generated.mtl", "assets.manifest.json"],
   );
   const obj = first.find((file) => file.name.endsWith(".obj"))?.content ?? "";
   assert.match(obj, /Units: centimeters/);
@@ -210,4 +210,45 @@ test("generates deterministic Unreal-scale 3D assets from CRDD", async () => {
   assert.match(obj, /vt 1 1/);
   assert.match(obj, /f 1\/1 4\/4 3\/3 2\/2/);
   assert.match(obj, /CRDD-TRACE: REQ-WALL-001/);
+  const manifest = JSON.parse(
+    first.find((file) => file.name === "assets.manifest.json")?.content ?? "",
+  );
+  assert.deepEqual(manifest, {
+    protocol: "crdd-ir/assets-v0.1",
+    operation: "PlaceWall",
+    assets: [
+      {
+        id: "WallPreview",
+        source: "WallPreview.generated.obj",
+        unrealDestination: "/Game/CRDD/Generated",
+        previewLevel: "/Game/CRDD/Generated/WallPreviewLevel",
+        traces: ["REQ-WALL-001"],
+      },
+    ],
+  });
+});
+
+test("generates one manifest entry for every declared 3D asset", async () => {
+  const ir = structuredClone((await compileMarkdown(fileURLToPath(sourcePath))).ir);
+  ir.operation.assets?.push({
+    id: "DoorPreview",
+    type: "box",
+    dimensions: {
+      length: { value: 0.9, unit: "m" },
+      width: { value: 0.1, unit: "m" },
+      height: { value: 2.0, unit: "m" },
+    },
+    material: { baseColor: [0.4, 0.2, 0.1] },
+    traces: ["REQ-WALL-001"],
+  });
+
+  const files = generateAssets(ir);
+  assert.ok(files.some((file) => file.name === "DoorPreview.generated.obj"));
+  const manifest = JSON.parse(
+    files.find((file) => file.name === "assets.manifest.json")?.content ?? "",
+  );
+  assert.deepEqual(
+    manifest.assets.map((asset: { id: string }) => asset.id),
+    ["WallPreview", "DoorPreview"],
+  );
 });

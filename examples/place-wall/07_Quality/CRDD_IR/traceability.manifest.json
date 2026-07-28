@@ -35,6 +35,11 @@
       "traces": [
         "REQ-WALL-001"
       ]
+    },
+    {
+      "path": "assets/assets.manifest.json",
+      "sha256": "98de4b09c1a5f3d08292866b3454728122e7515dfbd275995a70a4b12c6e379f",
+      "traces": []
     }
   ],
   "requirements": [
@@ -104,7 +109,7 @@
   },
   "execution": {
     "path": "unreal-execution.json",
-    "sha256": "505808c8cd74739687128f906ff939c154d2491b03daa1f17f7d8a64e8800537",
+    "sha256": "caf15f2cb96ac6dc51019c0cd90cc1263aa5164404fec9c8bb26a520903cf910",
     "status": "passed",
     "tests": [
       "CRDD.Assets.WallPreview",

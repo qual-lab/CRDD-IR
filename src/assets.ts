@@ -3,7 +3,29 @@ import type { AssetDefinition, CrddIr } from "./model.ts";
 import type { GeneratedFile } from "./unreal.ts";
 
 export function generateAssets(ir: CrddIr): GeneratedFile[] {
-  return (ir.operation.assets ?? []).flatMap((asset) => generateBox(asset));
+  const assets = ir.operation.assets ?? [];
+  if (assets.length === 0) return [];
+  return [
+    ...assets.flatMap((asset) => generateBox(asset)),
+    generated(
+      "assets.manifest.json",
+      `${JSON.stringify(
+        {
+          protocol: "crdd-ir/assets-v0.1",
+          operation: ir.operation.id,
+          assets: assets.map((asset) => ({
+            id: asset.id,
+            source: `${asset.id}.generated.obj`,
+            unrealDestination: "/Game/CRDD/Generated",
+            previewLevel: `/Game/CRDD/Generated/${asset.id}Level`,
+            traces: asset.traces,
+          })),
+        },
+        null,
+        2,
+      )}\n`,
+    ),
+  ];
 }
 
 function generateBox(asset: AssetDefinition): GeneratedFile[] {

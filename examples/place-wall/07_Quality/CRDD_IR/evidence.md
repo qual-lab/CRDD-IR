@@ -21,9 +21,10 @@
 | unreal/PlaceWall.generated.cpp | `d78e9c18758b43dc34e6d84b4105f33d109353d1eeb62ad77974603ba543a51f` | REQ-WALL-001, DEC-WALL-003 |
 | assets/WallPreview.generated.obj | `1aa038429906fc0e614a0c625033686f35f19b9cf47426e90eae2ba122e3c752` | REQ-WALL-001 |
 | assets/WallPreview.generated.mtl | `1607240ad13b4560495b8b431245f3bdb8ff49a88f924a0cc1a9d94b623d9e30` | REQ-WALL-001 |
+| assets/assets.manifest.json | `98de4b09c1a5f3d08292866b3454728122e7515dfbd275995a70a4b12c6e379f` |  |
 ## Unreal Execution
 
 - Status: **PASSED**
 - Evidence: `unreal-execution.json`
-- Evidence SHA-256: `505808c8cd74739687128f906ff939c154d2491b03daa1f17f7d8a64e8800537`
+- Evidence SHA-256: `caf15f2cb96ac6dc51019c0cd90cc1263aa5164404fec9c8bb26a520903cf910`
 - Tests: CRDD.Assets.WallPreview, CRDD.Assets.WallPreviewLevel, CRDD.PlaceWall.Conformance
