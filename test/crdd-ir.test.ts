@@ -154,6 +154,56 @@ test("Unreal implementation carries contracts, effects, and CRDD trace IDs", () 
   assert.ok(generated.every((file) => /^[a-f0-9]{64}$/.test(file.sha256)));
 });
 
+test("generates Unreal code for a second operation without PlaceWall names", () => {
+  const purchaseItem: CrddIr = {
+    irVersion: "0.1",
+    operation: {
+      id: "PurchaseItem",
+      traces: ["REQ-SHOP-001"],
+      input: {
+        quantity: { type: "number" },
+        price: { type: "number", unit: "JPY" },
+      },
+      state: {
+        balance: { type: "number", unit: "JPY" },
+        purchases: { type: "array" },
+      },
+      requires: [
+        {
+          id: "sufficient-balance",
+          expression: "state.balance >= input.price",
+          error: "INSUFFICIENT_BALANCE",
+        },
+      ],
+      effects: [
+        {
+          target: "state.purchases",
+          action: "append",
+          value: { quantity: "$input.quantity", price: "$input.price" },
+        },
+        {
+          target: "state.balance",
+          action: "assign",
+          expression: "state.balance - input.price",
+        },
+      ],
+      errors: [{ code: "INSUFFICIENT_BALANCE", traces: ["REQ-SHOP-001"] }],
+      transaction: { atomic: true, rollbackOnFailure: true },
+    },
+  };
+
+  const generated = generateUnreal(purchaseItem);
+  const combined = generated.map((file) => file.content).join("\n");
+  assert.deepEqual(
+    generated.map((file) => file.name),
+    ["PurchaseItem.generated.h", "PurchaseItem.generated.cpp"],
+  );
+  assert.match(combined, /FCrddPurchaseItemOperation/);
+  assert.match(combined, /TArray<FCrddPurchaseItemPurchasesItem>/);
+  assert.match(combined, /Result\.State\.Purchases\.Add\(\{Input\.Quantity, Input\.PriceJPY\}\)/);
+  assert.doesNotMatch(combined, /PlaceWall/);
+});
+
 test("reports a requirement that references an undeclared error", () => {
   const invalid = structuredClone(ir);
   invalid.operation.requires[0].error = "UNKNOWN";

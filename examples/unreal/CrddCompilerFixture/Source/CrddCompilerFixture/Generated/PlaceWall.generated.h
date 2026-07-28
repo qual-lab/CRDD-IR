@@ -5,7 +5,7 @@
 
 #include "CoreMinimal.h"
 
-struct FCrddPlacedWall
+struct FCrddPlaceWallWallsItem
 {
     double LengthMeters = 0.0;
     int64 CostJPY = 0;
@@ -20,7 +20,7 @@ struct FCrddPlaceWallInput
 struct FCrddPlaceWallState
 {
     int64 BudgetRemainingJPY = 0;
-    TArray<FCrddPlacedWall> Walls;
+    TArray<FCrddPlaceWallWallsItem> Walls;
 };
 
 enum class ECrddPlaceWallError : uint8
