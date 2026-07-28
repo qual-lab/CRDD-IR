@@ -18,6 +18,9 @@ node src/cli.ts generate unreal `
 
 ## Build
 
+Repository rootで`npm run verify:unreal`を実行すると、生成、Build、
+Automation Test、`07_Quality/CRDD_IR`のEvidence更新までを一括実行する。
+
 ```powershell
 & 'C:\Program Files\Epic Games\UE_5.8\Engine\Build\BatchFiles\Build.bat' `
   CrddCompilerFixtureEditor `

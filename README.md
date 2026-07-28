@@ -30,6 +30,7 @@ npm run test:process
 npm run test:bundle
 npm run generate:unreal
 npm run generate:evidence
+npm run verify:unreal
 npm test
 ```
 
@@ -71,6 +72,17 @@ crdd-ir test run examples/place-wall/place-wall.ir.json \
 `.md`を指定した場合、CLIは`crdd-contract` Fenceを決定的にCompileしてから既存の検証・生成Pipelineへ渡します。Debug IRは`.crdd-ir/`などGit管理外の領域へ出力します。
 
 Process AdapterのJSON仕様は [docs/process-adapter-protocol.md](docs/process-adapter-protocol.md) を参照してください。
+
+## End-to-end Unreal verification
+
+`npm run verify:unreal` executes CRDD validation, C++ generation, UE build,
+Automation Test, and Evidence generation in one pipeline. Set
+`CRDD_UNREAL_ROOT` when Unreal Engine is installed outside
+`C:\Program Files\Epic Games\UE_5.8`.
+
+GitHub Actions runs Node verification on a hosted runner. The Unreal job
+requires a Windows self-hosted runner labeled `unreal-5.8` with UE 5.8 and
+Visual Studio installed.
 
 ## Design boundaries
 
