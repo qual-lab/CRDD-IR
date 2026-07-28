@@ -204,20 +204,10 @@ function cppEffect(effect: Effect, operation: Operation): string {
 
 function generateArrayElementStruct(operation: Operation, stateName: string): string {
   const operationName = pascalIdentifier(operation.id);
-  const effect = operation.effects.find(
-    (entry) => entry.action === "append" && entry.target === `state.${stateName}`,
-  );
-  if (!effect || typeof effect.value !== "object" || effect.value === null) {
-    throw new Error(`Unreal array state "${stateName}" requires an object append effect`);
-  }
-  const fields = Object.entries(effect.value as Record<string, unknown>)
-    .map(([name, reference]) => {
-      if (typeof reference !== "string" || !reference.startsWith("$input.")) {
-        throw new Error(`Unreal array field "${stateName}.${name}" requires an input reference`);
-      }
-      const inputName = reference.slice("$input.".length);
-      const field = operation.input[inputName];
-      if (!field) throw new Error(`Unknown Unreal input reference "${reference}"`);
+  const arrayField = operation.state[stateName];
+  if (arrayField?.type !== "array") throw new Error(`Unreal state "${stateName}" is not an array`);
+  const fields = Object.entries(arrayField.items.properties)
+    .map(([name, field]) => {
       return `    ${cppType(field)} ${cppField(name, field)} = ${cppDefault(field)};`;
     })
     .join("\n");

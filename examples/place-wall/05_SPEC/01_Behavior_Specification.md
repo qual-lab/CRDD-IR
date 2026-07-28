@@ -37,6 +37,15 @@ operation:
       minimum: 0
     walls:
       type: array
+      items:
+        type: object
+        properties:
+          length:
+            type: number
+            unit: m
+          cost:
+            type: number
+            unit: JPY
 
   requires:
     - id: minimum-wall-length

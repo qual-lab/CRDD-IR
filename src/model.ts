@@ -1,8 +1,24 @@
-export type FieldDefinition = {
-  type: "number" | "string" | "boolean" | "array";
+export type ScalarFieldDefinition = {
+  type: "number" | "string" | "boolean";
   unit?: string;
   minimum?: number;
 };
+
+export type ObjectFieldDefinition = {
+  type: "object";
+  properties: Record<string, ScalarFieldDefinition>;
+  unit?: never;
+  minimum?: never;
+};
+
+export type ArrayFieldDefinition = {
+  type: "array";
+  items: ObjectFieldDefinition;
+  unit?: never;
+  minimum?: never;
+};
+
+export type FieldDefinition = ScalarFieldDefinition | ArrayFieldDefinition;
 
 export type Requirement = {
   id: string;

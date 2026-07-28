@@ -166,7 +166,16 @@ test("generates Unreal code for a second operation without PlaceWall names", () 
       },
       state: {
         balance: { type: "number", unit: "JPY" },
-        purchases: { type: "array" },
+        purchases: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              quantity: { type: "number" },
+              price: { type: "number", unit: "JPY" },
+            },
+          },
+        },
       },
       requires: [
         {
@@ -235,6 +244,29 @@ test("rejects append effects on non-array state", () => {
   invalid.operation.effects[0].target = "state.budget.remaining";
   assert.ok(
     validateIr(invalid).some((diagnostic) => diagnostic.message.includes("append requires an array target")),
+  );
+});
+
+test("requires an explicit item schema for array state", () => {
+  const invalid = structuredClone(ir) as unknown as {
+    operation: { state: Record<string, Record<string, unknown>> };
+  };
+  delete invalid.operation.state.walls.items;
+  assert.ok(
+    validateIr(invalid).some(
+      (diagnostic) => diagnostic.path.endsWith(".walls.items") && diagnostic.message.includes("object item schema"),
+    ),
+  );
+});
+
+test("rejects append values that do not match the array item schema", () => {
+  const invalid = structuredClone(ir);
+  if (invalid.operation.state.walls.type !== "array") return;
+  invalid.operation.state.walls.items.properties.cost.unit = "USD";
+  assert.ok(
+    validateIr(invalid).some(
+      (diagnostic) => diagnostic.path.endsWith(".value.cost") && diagnostic.message.includes('expected "USD"'),
+    ),
   );
 });
 

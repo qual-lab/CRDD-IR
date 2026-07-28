@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { extractReferences } from "./expression.ts";
 import type { CrddIr, Diagnostic, FieldDefinition } from "./model.ts";
 
-const allowedFieldTypes = new Set(["number", "string", "boolean", "array"]);
+const allowedFieldTypes = new Set(["number", "string", "boolean", "array", "object"]);
 const allowedEffectActions = new Set(["assign", "append"]);
 
 export async function loadIr(path: string): Promise<CrddIr> {
@@ -176,6 +176,20 @@ function validateSemantics(operation: Record<string, unknown>, diagnostics: Diag
       }
       if (effect.action === "append") {
         validateValueReferences(effect.value, `${path}.value`, input, state, diagnostics);
+        if (
+          targetField.type === "array" &&
+          isRecord(targetField.items) &&
+          isRecord(targetField.items.properties)
+        ) {
+          validateAppendValue(
+            effect.value,
+            targetField.items.properties as Record<string, FieldDefinition>,
+            `${path}.value`,
+            input,
+            state,
+            diagnostics,
+          );
+        }
       }
     });
 
@@ -188,6 +202,46 @@ function validateSemantics(operation: Record<string, unknown>, diagnostics: Diag
           error("$.operation.transaction.rollbackOnFailure", "must be true when effects modify state"),
         );
       }
+    }
+  }
+}
+
+function validateAppendValue(
+  value: unknown,
+  properties: Record<string, FieldDefinition>,
+  path: string,
+  input: Record<string, FieldDefinition>,
+  state: Record<string, FieldDefinition>,
+  diagnostics: Diagnostic[],
+): void {
+  if (!isRecord(value)) {
+    diagnostics.push(error(path, "must be an object matching the array item schema"));
+    return;
+  }
+  for (const key of Object.keys(value)) {
+    if (!properties[key]) diagnostics.push(error(`${path}.${key}`, "is not declared in the array item schema"));
+  }
+  for (const [key, expected] of Object.entries(properties)) {
+    if (!(key in value)) {
+      diagnostics.push(error(`${path}.${key}`, "is required by the array item schema"));
+      continue;
+    }
+    const candidate = value[key];
+    if (typeof candidate !== "string" || !candidate.startsWith("$")) {
+      diagnostics.push(error(`${path}.${key}`, "must be a field reference"));
+      continue;
+    }
+    const source = fieldForReference(candidate.slice(1), input, state);
+    if (!source) continue;
+    if (source.type !== expected.type) {
+      diagnostics.push(error(`${path}.${key}`, `has type "${source.type}", expected "${expected.type}"`));
+    } else if ((source.unit ?? null) !== (expected.unit ?? null)) {
+      diagnostics.push(
+        error(
+          `${path}.${key}`,
+          `has unit "${source.unit ?? "none"}", expected "${expected.unit ?? "none"}"`,
+        ),
+      );
     }
   }
 }
@@ -306,13 +360,28 @@ function validateFields(value: unknown, path: string, diagnostics: Diagnostic[])
       diagnostics.push(error(fieldPath, "must be an object"));
       continue;
     }
-    const field = rawField as FieldDefinition;
-    if (typeof field.type !== "string" || !allowedFieldTypes.has(field.type)) {
-      diagnostics.push(error(`${fieldPath}.type`, "has an unsupported field type"));
+    validateField(rawField, fieldPath, diagnostics);
+  }
+}
+
+function validateField(rawField: Record<string, unknown>, path: string, diagnostics: Diagnostic[]): void {
+  if (typeof rawField.type !== "string" || !allowedFieldTypes.has(rawField.type)) {
+    diagnostics.push(error(`${path}.type`, "has an unsupported field type"));
+    return;
+  }
+  if (rawField.minimum !== undefined && typeof rawField.minimum !== "number") {
+    diagnostics.push(error(`${path}.minimum`, "must be a number"));
+  }
+  if (rawField.type === "array") {
+    if (!isRecord(rawField.items) || rawField.items.type !== "object") {
+      diagnostics.push(error(`${path}.items`, 'must define an object item schema'));
+      return;
     }
-    if (field.minimum !== undefined && typeof field.minimum !== "number") {
-      diagnostics.push(error(`${fieldPath}.minimum`, "must be a number"));
+    if (!isRecord(rawField.items.properties) || Object.keys(rawField.items.properties).length === 0) {
+      diagnostics.push(error(`${path}.items.properties`, "must be a non-empty object"));
+      return;
     }
+    validateFields(rawField.items.properties, `${path}.items.properties`, diagnostics);
   }
 }
 
