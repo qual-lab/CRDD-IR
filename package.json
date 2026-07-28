@@ -11,6 +11,7 @@
     "schemas",
     "scripts",
     "templates",
+    "examples/unreal/CrddCompilerFixture/Scripts/import_generated_assets.py",
     "README.md"
   ],
   "scripts": {

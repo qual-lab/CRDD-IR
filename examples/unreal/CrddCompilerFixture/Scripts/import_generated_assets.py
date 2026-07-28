@@ -4,8 +4,11 @@ import unreal
 
 
 project_dir = unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir())
-source_dir = os.path.normpath(os.path.join(project_dir, "../../../generated/assets"))
-manifest_path = os.path.join(source_dir, "assets.manifest.json")
+default_manifest_path = os.path.normpath(
+    os.path.join(project_dir, "../../../generated/assets/assets.manifest.json")
+)
+manifest_path = os.environ.get("CRDD_ASSET_MANIFEST", default_manifest_path)
+source_dir = os.path.dirname(manifest_path)
 if not os.path.isfile(manifest_path):
     raise RuntimeError(f"Generated asset manifest not found: {manifest_path}")
 
@@ -19,6 +22,38 @@ actor_subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
 imported_assets = []
 asset_definitions = manifest.get("assets", [])
 generated_owner_tag = unreal.Name("CRDD_GENERATED")
+
+previous_manifest_path = os.environ.get("CRDD_PREVIOUS_ASSET_MANIFEST")
+if previous_manifest_path and os.path.isfile(previous_manifest_path):
+    with open(previous_manifest_path, encoding="utf-8") as previous_file:
+        previous_manifest = json.load(previous_file)
+    current_ids = {asset["id"] for asset in asset_definitions}
+    removed_assets = [
+        asset
+        for asset in previous_manifest.get("assets", [])
+        if asset["id"] not in current_ids
+    ]
+    previous_scene = previous_manifest.get("scene", {}).get("unrealLevel")
+    current_scene = manifest.get("scene", {}).get("unrealLevel")
+    stale_paths = []
+    for removed in removed_assets:
+        stale_paths.extend(
+            [
+                removed["previewLevel"],
+                f'{removed["unrealDestination"]}/{removed["id"]}',
+                f'{removed["unrealDestination"]}/{removed["id"]}Material',
+            ]
+        )
+    if previous_scene and previous_scene != current_scene:
+        stale_paths.append(previous_scene)
+
+    if stale_paths:
+        unreal.EditorLoadingAndSavingUtils.new_blank_map(False)
+        for stale_path in stale_paths:
+            if unreal.EditorAssetLibrary.does_asset_exist(stale_path):
+                if not unreal.EditorAssetLibrary.delete_asset(stale_path):
+                    raise RuntimeError(f"Failed to delete stale Unreal asset: {stale_path}")
+                unreal.log(f"CRDD removed stale Unreal asset: {stale_path}")
 
 
 def tag_generated_actor(actor, asset_id):

@@ -2,7 +2,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, extname, resolve } from "node:path";
 import { loadAdapter } from "./adapter.ts";
-import { generateAssets } from "./assets.ts";
+import { generateAssets, removeStaleGeneratedAssets } from "./assets.ts";
 import { compileMarkdown } from "./compiler.ts";
 import { generateConformanceBundle } from "./conformance.ts";
 import { formatDiagnostics, loadIr, validateIr } from "./ir.ts";
@@ -159,6 +159,7 @@ async function main(argv: string[]): Promise<void> {
     const files = generateAssets(ir);
     if (files.length === 0) throw new Error(`Operation "${ir.operation.id}" declares no assets`);
     await mkdir(outDir, { recursive: true });
+    await removeStaleGeneratedAssets(outDir, new Set(files.map((file) => file.name)));
     for (const file of files) {
       const path = resolve(outDir, file.name);
       await writeFile(path, file.content, "utf8");

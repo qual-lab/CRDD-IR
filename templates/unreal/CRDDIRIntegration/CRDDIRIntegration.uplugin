@@ -1,0 +1,27 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "0.1.0",
+  "FriendlyName": "CRDD IR Integration",
+  "Description": "Imports and verifies deterministic assets generated from CRDD contracts.",
+  "Category": "CRDD",
+  "CanContainContent": false,
+  "EnabledByDefault": true,
+  "Plugins": [
+    {
+      "Name": "PythonScriptPlugin",
+      "Enabled": true
+    },
+    {
+      "Name": "EditorScriptingUtilities",
+      "Enabled": true
+    }
+  ],
+  "Modules": [
+    {
+      "Name": "CRDDIRIntegration",
+      "Type": "Editor",
+      "LoadingPhase": "Default"
+    }
+  ]
+}

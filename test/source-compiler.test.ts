@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { compileMarkdown } from "../src/compiler.ts";
-import { generateAssets } from "../src/assets.ts";
+import { generateAssets, removeStaleGeneratedAssets } from "../src/assets.ts";
 import { generateConformanceBundle } from "../src/conformance.ts";
 import { normalizeSourceExpression, parseSourceExpression } from "../src/source-expression.ts";
 import { extractContractFences } from "../src/source-contract.ts";
@@ -163,10 +165,17 @@ test("normalizes Unreal Automation results without device identity", async () =>
         warnings: 0,
         errors: 0,
       },
+      {
+        fullTestPath: "CRDD.Integration.GeneratedAssets",
+        state: "Success",
+        duration: 0.03,
+        warnings: 0,
+        errors: 0,
+      },
     ],
   });
   const execution = parseUnrealAutomationReport(`\uFEFF${raw}`, "PlaceWall");
-  assert.deepEqual(execution.summary, { succeeded: 2, failed: 0, notRun: 0 });
+  assert.deepEqual(execution.summary, { succeeded: 3, failed: 0, notRun: 0 });
   assert.deepEqual(execution.platforms, ["WindowsEditor"]);
   assert.doesNotMatch(JSON.stringify(execution), /developer-machine|private-instance-id/);
 
@@ -288,5 +297,25 @@ test("generates one manifest entry for every declared 3D asset", async () => {
   assert.deepEqual(
     manifest.assets.map((asset: { id: string }) => asset.id),
     ["WallPreview", "DoorPreview", "DoorPreview2"],
+  );
+});
+
+test("removes only obsolete generated 3D source files", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "crdd-assets-"));
+  await Promise.all([
+    writeFile(join(directory, "Current.generated.obj"), "current"),
+    writeFile(join(directory, "Old.generated.obj"), "old"),
+    writeFile(join(directory, "Old.generated.mtl"), "old"),
+    writeFile(join(directory, "hand-authored.obj"), "keep"),
+  ]);
+
+  await removeStaleGeneratedAssets(
+    directory,
+    new Set(["Current.generated.obj", "assets.manifest.json"]),
+  );
+
+  assert.deepEqual(
+    (await readdir(directory)).sort(),
+    ["Current.generated.obj", "hand-authored.obj"],
   );
 });

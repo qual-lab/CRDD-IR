@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { readdir, unlink } from "node:fs/promises";
+import { resolve } from "node:path";
 import type { AssetDefinition, CrddIr } from "./model.ts";
 import type { GeneratedFile } from "./unreal.ts";
 
@@ -46,6 +48,24 @@ export function generateAssets(ir: CrddIr): GeneratedFile[] {
       )}\n`,
     ),
   ];
+}
+
+export async function removeStaleGeneratedAssets(
+  outDir: string,
+  expected: Set<string>,
+): Promise<void> {
+  const entries = await readdir(outDir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (
+      entry.isFile() &&
+      (entry.name.endsWith(".generated.obj") || entry.name.endsWith(".generated.mtl")) &&
+      !expected.has(entry.name)
+    ) {
+      const path = resolve(outDir, entry.name);
+      await unlink(path);
+      console.log(`Removed stale generated asset ${path}`);
+    }
+  }
 }
 
 function generateBox(asset: AssetDefinition): GeneratedFile[] {

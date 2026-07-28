@@ -40,7 +40,9 @@ export function parseUnrealAutomationReport(
     .filter(
       (test) =>
         test.fullTestPath === expectedPath ||
-        (typeof test.fullTestPath === "string" && test.fullTestPath.startsWith("CRDD.Assets.")),
+        (typeof test.fullTestPath === "string" &&
+          (test.fullTestPath.startsWith("CRDD.Assets.") ||
+            test.fullTestPath.startsWith("CRDD.Integration."))),
     )
     .map((test) => ({
       path: requireString(test, "fullTestPath"),
@@ -50,7 +52,9 @@ export function parseUnrealAutomationReport(
       errors: requireNumber(test, "errors"),
     }));
   if (tests.length === 0) {
-    throw new Error(`Unreal Automation report does not contain "${expectedPath}"`);
+    throw new Error(
+      `Unreal Automation report contains no CRDD conformance or integration tests`,
+    );
   }
 
   const platforms = [

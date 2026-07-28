@@ -12,6 +12,9 @@ if (-not (Test-Path -LiteralPath $configPath)) {
 }
 
 $config = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
+if ($config.protocol -ne "crdd-ir/project-config-v0.1") {
+    throw "Unsupported CRDD-IR project config protocol: $($config.protocol)"
+}
 $toolRoot = Join-Path $projectRoot $config.toolRoot
 $cli = Join-Path $toolRoot "src\cli.ts"
 $source = Join-Path $projectRoot $config.source
@@ -48,6 +51,16 @@ switch ($Command) {
     "verify" {
         Invoke-Generate
         Invoke-CrddIr @("test", "run", $source)
-        Invoke-CrddIr @("generate", "evidence", $source, "--out-dir", $evidence)
+        if ($null -ne $config.unreal) {
+            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (
+                Join-Path $toolRoot "scripts\verify-project-unreal.ps1"
+            ) -ProjectRoot $projectRoot
+            if ($LASTEXITCODE -ne 0) {
+                throw "CRDD Unreal project verification failed with exit code $LASTEXITCODE"
+            }
+        }
+        else {
+            Invoke-CrddIr @("generate", "evidence", $source, "--out-dir", $evidence)
+        }
     }
 }

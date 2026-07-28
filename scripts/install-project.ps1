@@ -5,7 +5,10 @@ param(
     [string]$GeneratedSource = "40_Develop/Generated/Source",
     [string]$GeneratedAssets = "40_Develop/Generated/Assets",
     [string]$Evidence = "07_Quality/CRDD_IR",
-    [string]$ToolRoot = "tools/CRDD-IR"
+    [string]$ToolRoot = "tools/CRDD-IR",
+    [string]$UnrealProject = "",
+    [string]$UnrealEngineRoot = "C:/Program Files/Epic Games/UE_5.8",
+    [string]$UnrealEditorTarget = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -72,6 +75,18 @@ $config = [ordered]@{
     generatedSource = $GeneratedSource.Replace("\", "/")
     generatedAssets = $GeneratedAssets.Replace("\", "/")
     evidence = $Evidence.Replace("\", "/")
+    unreal = if ([string]::IsNullOrWhiteSpace($UnrealProject)) {
+        $null
+    }
+    else {
+        [ordered]@{
+            project = $UnrealProject.Replace("\", "/")
+            engineRoot = $UnrealEngineRoot.Replace("\", "/")
+            editorTarget = $UnrealEditorTarget
+            configuration = "Development"
+            integrationPlugin = "CRDDIRIntegration"
+        }
+    }
 }
 Write-Utf8File (
     Join-Path $resolvedProjectRoot "crdd-ir.config.json"
@@ -80,6 +95,24 @@ Write-Utf8File (
 Install-ManagedBlock "AGENTS.md" "AGENTS.md.template"
 Install-ManagedBlock "CLAUDE.md" "CLAUDE.md.template"
 Install-ManagedBlock ".github\copilot-instructions.md" "copilot-instructions.md.template"
+
+if (-not [string]::IsNullOrWhiteSpace($UnrealProject)) {
+    $unrealProjectPath = Join-Path $resolvedProjectRoot $UnrealProject
+    if (-not (Test-Path -LiteralPath $unrealProjectPath -PathType Leaf)) {
+        throw "Unreal project not found: $unrealProjectPath"
+    }
+    $unrealRoot = Split-Path -Parent $unrealProjectPath
+    $pluginSource = Join-Path $installerRoot "templates\unreal\CRDDIRIntegration"
+    $pluginTarget = Join-Path $unrealRoot "Plugins\CRDDIRIntegration"
+    New-Item -ItemType Directory -Force -Path $pluginTarget | Out-Null
+    Copy-Item -Path (Join-Path $pluginSource "*") -Destination $pluginTarget -Recurse -Force
+
+    $pythonSource = Join-Path $installerRoot (
+        "examples\unreal\CrddCompilerFixture\Scripts\import_generated_assets.py"
+    )
+    $pythonTarget = Join-Path $resolvedProjectRoot "tools\crdd-import-generated-assets.py"
+    Write-Utf8File $pythonTarget (Get-Content -LiteralPath $pythonSource -Raw)
+}
 
 $gitignorePath = Join-Path $resolvedProjectRoot ".gitignore"
 $gitignore = if (Test-Path -LiteralPath $gitignorePath) {
