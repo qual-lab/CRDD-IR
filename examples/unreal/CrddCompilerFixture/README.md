@@ -1,6 +1,8 @@
 # CRDD Compiler Unreal Fixture
 
-UE 5.8上で、CRDD Markdownから生成した`CreateEntity` C++実装へConformance Bundleを適用する最小検証Project。
+UE 5.8上でTarget Profile付き生成、UHT/UBT、Asset再ロード、Automation、
+Shipping Cook/Packageを検証する、このCompiler自体の開発用Fixtureです。
+Git Submodule利用者が適用先へコピーするProjectではありません。
 
 ## Inputs
 
@@ -11,8 +13,9 @@ UE 5.8上で、CRDD Markdownから生成した`CreateEntity` C++実装へConform
 ## Generate
 
 ```powershell
-node src/cli.ts generate unreal `
+node src/cli.ts unreal generate `
   examples/create-entity/05_SPEC/01_Behavior_Specification.md `
+  --profile examples/unreal/profiles/ue-5.8-editor.json `
   --out-dir examples/unreal/CrddCompilerFixture/Source/CrddCompilerFixture/Generated
 ```
 
@@ -21,7 +24,7 @@ node src/cli.ts generate unreal `
 Repository rootで`npm run verify:unreal`を実行すると、生成、Build、
 OBJから`/Game/CRDD/Generated/EntityPreview`へのStaticMesh Import、
 `/Game/CRDD/Generated/EntityPreviewLevel`への永続配置、Automation Test、
-`07_Quality/CRDD_IR`のEvidence更新までを一括実行する。
+Shipping Cook/Package、`07_Quality/CRDD_IR`のEvidence更新までを一括実行する。
 Import対象は`generated/assets/assets.manifest.json`から読み取るため、
 CRDD ContractへAssetを追加してもPython Scriptの固定名変更は不要。
 また、全AssetをContract指定のTransformで

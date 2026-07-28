@@ -1,110 +1,147 @@
 # CRDD IR
 
-CRDDに記録された要求・判断を、検証可能な振る舞いの契約として実装へ接続するための実証プロジェクトです。
+CRDD Markdownに記録した構造化契約を検証し、Unreal C++、3D Asset、
+Conformance Test、Traceability Evidenceへ決定的に変換するCompilerです。
 
-CRDD Structured Contractに記述された任意ドメインのOperationを対象に、次を提供します。
+通常はCRDD適用先リポジトリの`tools/CRDD-IR`へGit Submoduleとして導入します。
+CRDD Coreへ組み込む必要はありません。
 
-- IRの構造・意味検証
-- Operationの原子的なSimulation
-- 境界値・Rollback用Test Manifest生成
-- Unreal C++とAutomation Testの骨格生成
-- CRDD IDとのTraceability
+## 適用先へ導入する
 
-## Requirements
+前提:
 
+- Windows PowerShell
 - Node.js 22.18以降
+- Unreal連携を使う場合はUnreal Engine 5.8とVisual Studio 2022
+- 適用先リポジトリにCRDD Markdownと`.uproject`が存在すること
 
-Markdown内のYAML契約解析に`yaml`の固定バージョンを使用します。
+適用先リポジトリのルートで実行します。
 
-## Quick start
+```powershell
+git submodule add https://github.com/qual-lab/CRDD-IR.git tools/CRDD-IR
+npm.cmd ci --prefix tools/CRDD-IR
 
-```bash
-npm run lint:ir
-npm run check:source
-npm run compile:source
-npm run simulate -- --input examples/create-entity/success.input.json
-npm run test:generate
-npm run test:contract
-npm run test:adapter
-npm run test:process
-npm run test:bundle
-npm run generate:unreal
-npm run generate:assets
-npm run generate:evidence
-npm run verify:unreal
-npm test
+.\tools\CRDD-IR\scripts\install-project.ps1 `
+  -ProjectRoot . `
+  -Source @(
+    "05_SPEC/operations/create-entity.md",
+    "05_SPEC/operations/update-entity.md"
+  ) `
+  -AssetSource "05_SPEC/operations/create-entity.md" `
+  -GeneratedSource "40_Develop/MyGame/Source/MyGame/Generated" `
+  -GeneratedAssets "40_Develop/Generated/Assets" `
+  -UnrealProject "40_Develop/MyGame/MyGame.uproject" `
+  -UnrealEngineRoot "C:/Program Files/Epic Games/UE_5.8"
 ```
 
-生成物は既定で `generated/` に出力されます。
+`-Source`が1件なら`-AssetSource`は省略できます。Unrealを使わない場合は
+`-UnrealProject`と`-UnrealEngineRoot`を省略します。
 
-## CLI
+Installerは次を適用先へ追加します。
 
-```text
-crdd-ir compile <spec.md> [--out <debug-ir.json>]
-crdd-ir check <spec.md>
-crdd-ir lint <ir.json>
-crdd-ir simulate <ir.json> --input <input.json>
-crdd-ir test generate <ir.json> [--out <file>]
-crdd-ir test bundle <ir.json> [--out <file>]
-crdd-ir test run <ir.json> [--adapter <module>]
-crdd-ir test run <ir.json> --command <executable> [--arg <value>...]
-crdd-ir generate unreal <ir.json> [--out-dir <directory>]
-crdd-ir unreal plan <spec.md> --profile <profile.json> [--out <plan.json>]
-crdd-ir unreal generate <spec.md> --profile <profile.json> --out-dir <directory>
-crdd-ir unreal config apply <profile.json> --project-root <directory>
-crdd-ir unreal evidence <spec.md> --profile <profile.json> --automation-report <index.json> --package-dir <directory> --out <evidence.json>
-crdd-ir unreal diagnostics <unreal.log>
-crdd-ir generate assets <ir.json> [--out-dir <directory>]
-crdd-ir generate evidence <spec.md> [--out-dir <directory>] [--unreal-report <index.json>]
-crdd-ir view trace <ir.json>
+- `crdd-ir.config.json`: 適用先固有のパスとUnreal設定
+- `tools/crdd-ir.ps1`: 日常操作用Wrapper
+- `Config/CRDD/*.json`: Editor/Shipping Target Profile
+- `Plugins/CRDDIRIntegration`: Runtime/Editor分離済みUnreal Plugin
+- Codex、Claude Code、GitHub Copilot向けの管理区間
+
+既存ファイル全体は所有せず、管理ファイルまたは
+`CRDD-IR:BEGIN/END`区間だけを更新します。
+
+## 最初の確認
+
+```powershell
+.\tools\crdd-ir.ps1 doctor
+.\tools\crdd-ir.ps1 check
+.\tools\crdd-ir.ps1 generate
 ```
 
-`--adapter` を指定すると、Reference Simulatorではなく外部実装へ同じContract Testを適用できます。
+- `doctor`: 設定、Submodule、入力、出力先、Unreal前提条件を事前診断
+- `check`: CRDD Structured Contractを検証
+- `generate`: Unreal C++と3D Assetを再生成
+- `verify`: 上記に加えてContract Test、UE Build、Asset import、
+  Automation、Shipping Cook/Package、Evidence生成を実行
 
-```bash
-crdd-ir test run examples/create-entity/create-entity.ir.json \
-  --adapter examples/create-entity/adapters/correct.adapter.ts
+本番適用前またはCIでは次を実行します。
+
+```powershell
+.\tools\crdd-ir.ps1 verify
 ```
 
-言語非依存の実装は、JSONを標準入力で受け取り結果を標準出力へ返すProcess Adapterとして接続できます。コマンドはシェルを介さず起動されます。
+中間IR、ログ、Packageは`.crdd-ir/`へ置かれ、Git管理しません。
+追跡可能な検証要約は`07_Quality/CRDD_IR/`へ生成されます。
 
-```bash
-crdd-ir test run examples/create-entity/create-entity.ir.json \
-  --command node \
-  --arg examples/create-entity/adapters/process-correct.ts
+## チームメンバーがCloneする
+
+```powershell
+git clone --recurse-submodules <app-repository-url>
+cd <app-repository>
+npm.cmd ci --prefix tools/CRDD-IR
+.\tools\crdd-ir.ps1 doctor
 ```
 
-`test bundle` は、UnrealなどTarget側のテストから直接読み込める入力・期待結果を単一JSONへ出力します。
+すでに通常Cloneした場合:
 
-`.md`を指定した場合、CLIは`crdd-contract` Fenceを決定的にCompileしてから既存の検証・生成Pipelineへ渡します。Debug IRは`.crdd-ir/`などGit管理外の領域へ出力します。
+```powershell
+git submodule update --init --recursive
+npm.cmd ci --prefix tools/CRDD-IR
+```
 
-Process AdapterのJSON仕様は [docs/process-adapter-protocol.md](docs/process-adapter-protocol.md) を参照してください。
+## CRDD IRを更新する
 
-## End-to-end Unreal verification
+Submoduleは適用先が検証済みcommitを固定します。自動的に最新版へ追従させず、
+更新後に`doctor`と`verify`を通してから適用先側でpointerをコミットしてください。
 
-`npm run verify:unreal` executes CRDD validation, C++ generation, UE build,
-Automation Test, and Evidence generation in one pipeline. Set
-`CRDD_UNREAL_ROOT` when Unreal Engine is installed outside
-`C:\Program Files\Epic Games\UE_5.8`.
+```powershell
+git -C tools/CRDD-IR fetch origin
+git -C tools/CRDD-IR checkout <tested-commit-or-tag>
+npm.cmd ci --prefix tools/CRDD-IR
 
-GitHub Actions runs Node verification on a hosted runner. The Unreal job
-requires a Windows self-hosted runner labeled `unreal-5.8` with UE 5.8 and
-Visual Studio installed.
+.\tools\CRDD-IR\scripts\repair-project.ps1 -ProjectRoot .
+.\tools\crdd-ir.ps1 doctor
+.\tools\crdd-ir.ps1 verify
 
-CRDD repositoryへのsubmodule導入方法は
-[docs/crdd-integration.md](docs/crdd-integration.md)を参照する。
+git status --short
+git add -A
+git commit -m "Update CRDD IR"
+```
 
-適用先には`tools/CRDD-IR`として任意導入し、Codex、Claude Code、
-GitHub Copilotで共通の`tools/crdd-ir.ps1`を使用する。CRDD Coreには
-Compilerを組み込まない。
+`repair-project.ps1`は現在の設定を使って管理ファイルとPluginを更新します。
+変更済みの管理対象を上書きする前に`.crdd-ir/backups/`へ退避します。
 
-## Design boundaries
+## 生成物を手で編集しない
 
-- CRDD Markdownは人間向け記述と機械可読な構造化契約の正本
-- CRDD IRはCompilerが一時生成するVersion付き内部表現
-- 生成コードは一方向生成し、人間の実装は明示的な拡張点へ置く
-- Unreal固有の操作感、描画、最適化はIRへ取り込まない
-- 配布用Unreal生成は固定したTarget ProfileからVersion付きTarget Planを作り、
-  Module/Plugin/UHT/GC/Thread/Cook/Shipping制約に違反すれば生成前に停止する
+生成ファイルには所有manifestとSHA-256があります。編集済み生成物は、
+明示的な`--force`なしでは上書きしません。製品固有ロジックは生成コードではなく、
+生成物を呼び出すAdapter、Subsystem、Componentなどへ実装してください。
 
-詳細は [docs/mvp.md](docs/mvp.md) を参照してください。
+CRDD Markdownが正本です。Internal IR instanceを`30_IR`などへ恒久保存する必要は
+ありません。
+
+## 詳細
+
+- [Git Submodule導入・運用ガイド](docs/crdd-integration.md)
+- [対応範囲と設計境界](docs/mvp.md)
+- [Process Adapter Protocol](docs/process-adapter-protocol.md)
+- [Unreal fixture](examples/unreal/CrddCompilerFixture/README.md)
+
+## このリポジトリを開発する
+
+```powershell
+npm.cmd ci
+npm.cmd test
+npm.cmd run test:installer
+npm.cmd run verify:unreal
+```
+
+`verify:unreal`はUE 5.8のUHT、Editor Build、Automation、Shipping Build、
+Cook、Pak/IoStore、Evidence生成まで実行します。既定以外へUEをインストールした
+場合は`CRDD_UNREAL_ROOT`を設定してください。
+
+## 設計境界
+
+- CRDD Markdownが人間向け記述と機械可読契約の正本
+- CRDD IRはCompiler内部のVersion付き一時表現
+- Target ProfileがEngine、Module、UHT、GC、Thread、Cook、Shipping条件を固定
+- 生成は一方向で、製品固有の操作感・描画・最適化はTarget側が所有
+- AIは候補作成を支援できるが、未確定情報をCompilerが推測して補完しない
