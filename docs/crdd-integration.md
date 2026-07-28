@@ -44,14 +44,20 @@ and `remove` use an exact-match `where` object whose values may be typed
 literals or input/state references; `update` additionally requires a typed
 `set` object. The compiler validates every referenced item field, simulates the
 mutation deterministically, seeds an observable matching item in generated
-conformance cases, and emits equivalent Unreal C++. The `UpdateWall` example is
-compiled beside `PlaceWall` by the UE 5.8 verification fixture.
+conformance cases, and emits equivalent Unreal C++. The `UpdateEntity` example is
+compiled beside `CreateEntity` by the UE 5.8 verification fixture.
 
 Scalar fields may declare a closed string `enum`. Optional scalar fields must
 also declare a type-correct `default`; omission deterministically materializes
 that value in the reference simulator, conformance baseline, and generated
 Unreal struct. Defaults outside the enum or below a numeric minimum are compile
 errors. This deliberately avoids target-specific null/undefined behavior.
+
+Input and State may group scalar fields in typed `object` fields. The frontend
+indexes qualified property paths, the validator resolves deep references,
+optional defaults materialize without mutating caller input, Effects may target
+object properties, and the Unreal adapter emits dedicated nested C++ structs.
+Legacy dotted top-level field names remain supported without ambiguity.
 
 Operational recovery is ownership-aware:
 

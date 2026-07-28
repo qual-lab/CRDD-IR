@@ -1,0 +1,44 @@
+{
+  "protocol": "crdd-ir/unreal-execution-v0.1",
+  "operation": "CreateEntity",
+  "reportCreatedOn": "2026.07.28-13.03.47",
+  "sourceReportSha256": "f28950d00eb15e740538a1c69dc7ccd65690727cd8120e79f8d7e9d1315aa983",
+  "platforms": [
+    "WindowsEditor"
+  ],
+  "summary": {
+    "succeeded": 4,
+    "failed": 0,
+    "notRun": 0
+  },
+  "tests": [
+    {
+      "path": "CRDD.Assets.GeneratedMeshes",
+      "state": "Success",
+      "durationSeconds": 0.029663998633623123,
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "path": "CRDD.Assets.GeneratedPreviewLevels",
+      "state": "Success",
+      "durationSeconds": 0.34329161047935486,
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "path": "CRDD.Assets.GeneratedScene",
+      "state": "Success",
+      "durationSeconds": 0.13071119785308838,
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "path": "CRDD.CreateEntity.Conformance",
+      "state": "Success",
+      "durationSeconds": 0.015742000192403793,
+      "warnings": 0,
+      "errors": 0
+    }
+  ]
+}

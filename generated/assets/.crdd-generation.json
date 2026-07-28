@@ -3,23 +3,23 @@
   "files": [
     {
       "path": "assets.manifest.json",
-      "sha256": "c370c9edd0299dc7ba1109a41f61f6edf83026f3fcead702cc84daea8f4fdd7f"
+      "sha256": "20005ccf92c91efddcf4dc62c3e6417f0039e35e9fc8c41b217089ff86b11f3a"
     },
     {
-      "path": "DoorPreview.generated.mtl",
-      "sha256": "4fa40f4b4d053a8507b8e3c73b5b23301659db67124d36a72b776707e21c9cfa"
+      "path": "EntityPreview.generated.mtl",
+      "sha256": "75fd255dfafcf433ffe9555e602569be2dbed9dff76c90badd9d8dc492909792"
     },
     {
-      "path": "DoorPreview.generated.obj",
-      "sha256": "dd2c06a1b7b6a474ad3e980f25bb546bfb2f18e2587c0c6673395daaef8eb783"
+      "path": "EntityPreview.generated.obj",
+      "sha256": "a8cbc7e791cef05227bae119f4e561af4747f8740f75586778871c7978718f7a"
     },
     {
-      "path": "WallPreview.generated.mtl",
-      "sha256": "1607240ad13b4560495b8b431245f3bdb8ff49a88f924a0cc1a9d94b623d9e30"
+      "path": "SecondaryPreview.generated.mtl",
+      "sha256": "8ce01a862f958517dde3d50e4cb855cefad9fc75c1f23a31670746f4d493732f"
     },
     {
-      "path": "WallPreview.generated.obj",
-      "sha256": "1aa038429906fc0e614a0c625033686f35f19b9cf47426e90eae2ba122e3c752"
+      "path": "SecondaryPreview.generated.obj",
+      "sha256": "d186e821dffacccb1a1ca8db42c95faf20f1ce868d631ca2399d93af0b079023"
     }
   ]
 }

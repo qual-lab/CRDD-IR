@@ -77,29 +77,54 @@ function matches(value: unknown, where: Record<string, unknown>): boolean {
 function validateRequest(ir: CrddIr, request: SimulationRequest): Record<string, unknown> {
   const input = structuredClone(request.input);
   for (const [name, definition] of Object.entries(ir.operation.input)) {
-    let value = input[name];
-    if (value === undefined && definition.type !== "array" && definition.optional) {
-      value = structuredClone(definition.default);
-      input[name] = value;
-    }
-    if (value === undefined) throw new Error(`Missing input "${name}"`);
-    if (definition.type === "number" && typeof value !== "number") {
-      throw new Error(`Input "${name}" must be a number`);
-    }
-    if (definition.type === "string" && typeof value !== "string") {
-      throw new Error(`Input "${name}" must be a string`);
-    }
-    if (definition.type === "boolean" && typeof value !== "boolean") {
-      throw new Error(`Input "${name}" must be a boolean`);
-    }
-    if (definition.type === "string" && definition.enum && !definition.enum.includes(value as string)) {
-      throw new Error(`Input "${name}" must be one of: ${definition.enum.join(", ")}`);
-    }
-    if (definition.minimum !== undefined && typeof value === "number" && value < definition.minimum) {
-      throw new Error(`Input "${name}" must be >= ${definition.minimum}`);
-    }
+    input[name] = validateFieldValue(input[name], definition, `Input "${name}"`);
   }
   return input;
+}
+
+function validateFieldValue(
+  candidate: unknown,
+  definition: import("./model.ts").FieldDefinition,
+  label: string,
+): unknown {
+  let value = candidate;
+  if (value === undefined && definition.type !== "array" && definition.type !== "object" && definition.optional) {
+    value = structuredClone(definition.default);
+  }
+  if (value === undefined) throw new Error(`Missing ${label.toLowerCase()}`);
+  if (definition.type === "object") {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+      throw new Error(`${label} must be an object`);
+    }
+    const result = structuredClone(value) as Record<string, unknown>;
+    for (const [name, property] of Object.entries(definition.properties)) {
+      result[name] = validateFieldValue(result[name], property, `${label}.${name}`);
+    }
+    for (const name of Object.keys(result)) {
+      if (!definition.properties[name]) throw new Error(`${label}.${name} is not declared`);
+    }
+    return result;
+  }
+  if (definition.type === "array") {
+    if (!Array.isArray(value)) throw new Error(`${label} must be an array`);
+    return value;
+  }
+    if (definition.type === "number" && typeof value !== "number") {
+      throw new Error(`${label} must be a number`);
+    }
+    if (definition.type === "string" && typeof value !== "string") {
+      throw new Error(`${label} must be a string`);
+    }
+    if (definition.type === "boolean" && typeof value !== "boolean") {
+      throw new Error(`${label} must be a boolean`);
+    }
+    if (definition.type === "string" && definition.enum && !definition.enum.includes(value as string)) {
+      throw new Error(`${label} must be one of: ${definition.enum.join(", ")}`);
+    }
+    if (definition.minimum !== undefined && typeof value === "number" && value < definition.minimum) {
+      throw new Error(`${label} must be >= ${definition.minimum}`);
+    }
+  return value;
 }
 
 function resolveValue(value: unknown, context: Record<string, unknown>): unknown {

@@ -1,4 +1,4 @@
-# PlaceWall MVP
+# CRDD Compiler Scope
 
 ## 検証仮説
 
@@ -8,7 +8,7 @@ CRDD Markdownが正本であり、CRDD IRインスタンスはCompiler処理中�
 
 ## v0.1の範囲
 
-`PlaceWall` の次の意味だけを扱う。
+Compiler本体は、CRDD Structured Contractに適合する任意ドメインのOperationを扱う。
 
 - 数値入力と単位Metadata
 - 事前条件
@@ -69,9 +69,9 @@ Validatorは構造検証に加えて次を拒否する。
 
 ## 成功判定
 
-1. `0.299m` を拒否し、`0.300m` を受理できる
-2. 予算不足時に壁と予算の双方が変更されない
-3. 契約から上記Testを機械的に導出できる
+1. 契約上の境界値を決定的に受理・拒否できる
+2. 失敗時にTransaction対象Stateが完全にRollbackされる
+3. 契約から成功・失敗Testを機械的に導出できる
 4. 生成物からCRDD IDへ戻れる
 5. Target固有実装を生成領域の外に維持できる
 

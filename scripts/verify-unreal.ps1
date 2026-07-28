@@ -15,11 +15,11 @@ $buildTool = Join-Path $UnrealRoot "Engine\Build\BatchFiles\Build.bat"
 $editorCmd = Join-Path $UnrealRoot "Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
 $project = Join-Path $repoRoot "examples\unreal\CrddCompilerFixture\CrddCompilerFixture.uproject"
 $assetImportScript = Join-Path $repoRoot "examples\unreal\CrddCompilerFixture\Scripts\import_generated_assets.py"
-$spec = "examples/place-wall/05_SPEC/01_Behavior_Specification.md"
-$updateWallSpec = "examples/update-wall/05_SPEC/01_Behavior_Specification.md"
+$spec = "examples/create-entity/05_SPEC/01_Behavior_Specification.md"
+$updateEntitySpec = "examples/update-entity/05_SPEC/01_Behavior_Specification.md"
 $fixtureGenerated = "examples/unreal/CrddCompilerFixture/Source/CrddCompilerFixture/Generated"
 $fixtureBatchGenerated = Join-Path $repoRoot ".crdd-ir\fixture-operations"
-$evidenceDir = "examples/place-wall/07_Quality/CRDD_IR"
+$evidenceDir = "examples/create-entity/07_Quality/CRDD_IR"
 $runId = [Guid]::NewGuid().ToString("N")
 $reportDir = Join-Path $repoRoot ".crdd-ir\reports\$runId"
 $reportPath = Join-Path $reportDir "index.json"
@@ -46,25 +46,25 @@ Write-Host "[2/8] Compile and validate CRDD Markdown"
 Assert-LastExitCode "CRDD source validation"
 
 Write-Host "[3/8] Generate Conformance Bundle"
-& node src/cli.ts test bundle $spec --out generated/place-wall.conformance.json
+& node src/cli.ts test bundle $spec --out generated/create-entity.conformance.json
 Assert-LastExitCode "Conformance Bundle generation"
 
 Write-Host "[4/8] Generate Unreal C++ and 3D assets"
-& node src/cli.ts generate unreal $spec --out-dir generated/unreal
+& node src/cli.ts generate unreal $spec --out-dir generated/unreal --force
 Assert-LastExitCode "Unreal reference generation"
-& node src/cli.ts generate unreal $spec --out-dir $fixtureGenerated
+& node src/cli.ts generate unreal $spec --out-dir $fixtureGenerated --force
 Assert-LastExitCode "Unreal fixture generation"
-& node src/cli.ts batch unreal $spec $updateWallSpec --out-dir $fixtureBatchGenerated
+& node src/cli.ts batch unreal $spec $updateEntitySpec --out-dir $fixtureBatchGenerated
 Assert-LastExitCode "Multi-operation Unreal fixture generation"
 Copy-Item `
-    (Join-Path $fixtureBatchGenerated "UpdateWall\UpdateWall.generated.h") `
-    (Join-Path $repoRoot "$fixtureGenerated\UpdateWall.generated.h") `
+    (Join-Path $fixtureBatchGenerated "UpdateEntity\UpdateEntity.generated.h") `
+    (Join-Path $repoRoot "$fixtureGenerated\UpdateEntity.generated.h") `
     -Force
 Copy-Item `
-    (Join-Path $fixtureBatchGenerated "UpdateWall\UpdateWall.generated.cpp") `
-    (Join-Path $repoRoot "$fixtureGenerated\UpdateWall.generated.cpp") `
+    (Join-Path $fixtureBatchGenerated "UpdateEntity\UpdateEntity.generated.cpp") `
+    (Join-Path $repoRoot "$fixtureGenerated\UpdateEntity.generated.cpp") `
     -Force
-& node src/cli.ts generate assets $spec --out-dir generated/assets
+& node src/cli.ts generate assets $spec --out-dir generated/assets --force
 Assert-LastExitCode "3D asset generation"
 
 Write-Host "[5/8] Build Unreal fixture"

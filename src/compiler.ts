@@ -83,9 +83,22 @@ function fieldIndex(
   state: Record<string, FieldDefinition>,
 ): Record<string, FieldDefinition> {
   return Object.fromEntries([
-    ...Object.entries(input).map(([name, field]) => [`input.${name}`, field]),
-    ...Object.entries(state).map(([name, field]) => [`state.${name}`, field]),
+    ...flattenFields("input", input),
+    ...flattenFields("state", state),
   ]);
+}
+
+function flattenFields(
+  prefix: string,
+  fields: Record<string, FieldDefinition>,
+): Array<[string, FieldDefinition]> {
+  return Object.entries(fields).flatMap(([name, field]) => {
+    const path = `${prefix}.${name}`;
+    return [
+      [path, field] as [string, FieldDefinition],
+      ...(field.type === "object" ? flattenFields(path, field.properties) : []),
+    ];
+  });
 }
 
 function normalizeWithContext(

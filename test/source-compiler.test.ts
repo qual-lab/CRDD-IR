@@ -22,11 +22,11 @@ import { validateIr } from "../src/ir.ts";
 import type { CrddIr, FieldDefinition } from "../src/model.ts";
 
 const sourcePath = new URL(
-  "../examples/place-wall/05_SPEC/01_Behavior_Specification.md",
+  "../examples/create-entity/05_SPEC/01_Behavior_Specification.md",
   import.meta.url,
 );
-const updateWallSourcePath = new URL(
-  "../examples/update-wall/05_SPEC/01_Behavior_Specification.md",
+const updateEntitySourcePath = new URL(
+  "../examples/update-entity/05_SPEC/01_Behavior_Specification.md",
   import.meta.url,
 );
 
@@ -74,8 +74,8 @@ test("supports string and boolean literals in deterministic expressions", () => 
     "input.enabled": { type: "boolean" },
   };
   assert.equal(
-    normalizeSourceExpression('input.label == "wall" && input.enabled == true', fields),
-    'input.label == "wall" && input.enabled == true',
+    normalizeSourceExpression('input.label == "entity" && input.enabled == true', fields),
+    'input.label == "entity" && input.enabled == true',
   );
 });
 
@@ -92,7 +92,7 @@ test("rejects incompatible units", () => {
 test("compiles CRDD Markdown into the existing Internal IR", async () => {
   const compiled = await compileMarkdown(fileURLToPath(sourcePath));
   const expected = JSON.parse(
-    await readFile(new URL("../examples/place-wall/place-wall.ir.json", import.meta.url), "utf8"),
+    await readFile(new URL("../examples/create-entity/create-entity.ir.json", import.meta.url), "utf8"),
   ) as CrddIr;
   assert.deepEqual(compiled.ir, expected);
   assert.match(compiled.digest, /^[a-f0-9]{64}$/);
@@ -109,7 +109,7 @@ test("produces byte-identical IR and digest from the same CRDD source", async ()
 test("produces the same conformance semantics from Markdown and legacy IR", async () => {
   const compiled = await compileMarkdown(fileURLToPath(sourcePath));
   const legacy = JSON.parse(
-    await readFile(new URL("../examples/place-wall/place-wall.ir.json", import.meta.url), "utf8"),
+    await readFile(new URL("../examples/create-entity/create-entity.ir.json", import.meta.url), "utf8"),
   ) as CrddIr;
   assert.deepEqual(
     generateConformanceBundle(compiled.ir, generateTestManifest(compiled.ir)),
@@ -121,18 +121,18 @@ test("produces byte-identical Unreal C++ from the same CRDD source", async () =>
   const first = generateUnreal((await compileMarkdown(fileURLToPath(sourcePath))).ir);
   const second = generateUnreal((await compileMarkdown(fileURLToPath(sourcePath))).ir);
   assert.deepEqual(first, second);
-  assert.ok(first.some((file) => file.content.includes("Result.State.Walls.Add")));
+  assert.ok(first.some((file) => file.content.includes("Result.State.Entities.Add")));
 });
 
 test("generates Unreal append values for references and typed literals", async () => {
   const ir = structuredClone((await compileMarkdown(fileURLToPath(sourcePath))).ir);
-  const walls = ir.operation.state.walls;
-  assert.equal(walls.type, "array");
-  if (walls.type !== "array") return;
-  walls.items.properties.label = { type: "string" };
-  walls.items.properties.enabled = { type: "boolean" };
+  const entities = ir.operation.state.entities;
+  assert.equal(entities.type, "array");
+  if (entities.type !== "array") return;
+  entities.items.properties.label = { type: "string" };
+  entities.items.properties.enabled = { type: "boolean" };
   ir.operation.effects[0] = {
-    target: "state.walls",
+    target: "state.entities",
     action: "append",
     value: {
       length: "$input.length",
@@ -154,10 +154,10 @@ test("validates and generates numeric increment effects end to end", async () =>
   }];
   const result = simulate(ir, {
     input: { length: 1, cost: 100 },
-    state: { walls: [], budget: { remaining: 1_000 } },
+    state: { entities: [], budget: { remaining: 1_000 } },
   });
   assert.equal(result.ok, true);
-  assert.deepEqual(result.state, { walls: [], budget: { remaining: 900 } });
+  assert.deepEqual(result.state, { entities: [], budget: { remaining: 900 } });
   const source = generateUnreal(ir).find((file) => file.name.endsWith(".cpp"))?.content ?? "";
   assert.match(source, /Result\.State\.BudgetRemainingJPY \+= -Input\.CostJPY/);
 });
@@ -168,7 +168,7 @@ test("derives deterministic counterexamples for non-boundary requirements", asyn
   ir.operation.requires = [{
     id: "must-be-enabled",
     expression: "input.enabled == true",
-    error: "WALL_TOO_SHORT",
+    error: "ENTITY_TOO_SHORT",
   }];
   const manifest = generateTestManifest(ir);
   const counterexample = manifest.cases.find((item) => item.sourceRequirement === "must-be-enabled");
@@ -186,7 +186,7 @@ test("validates, simulates, and generates typed array update/remove effects", as
     input: { length: 1, cost: 100 },
     state: {
       budget: { remaining: 1_000 },
-      walls: [
+      entities: [
         { length: 1, cost: 100 },
         { length: 3, cost: 300 },
       ],
@@ -195,7 +195,7 @@ test("validates, simulates, and generates typed array update/remove effects", as
 
   const update = structuredClone(base);
   update.operation.effects = [{
-    target: "state.walls",
+    target: "state.entities",
     action: "update",
     where: { cost: "$input.cost" },
     set: { length: 2 },
@@ -203,31 +203,31 @@ test("validates, simulates, and generates typed array update/remove effects", as
   assert.deepEqual(validateIr(update).filter((item) => item.severity === "error"), []);
   const updated = simulate(update, structuredClone(request));
   assert.equal(updated.ok, true);
-  assert.deepEqual(updated.state.walls, [
+  assert.deepEqual(updated.state.entities, [
     { length: 2, cost: 100 },
     { length: 3, cost: 300 },
   ]);
   const updateCpp = generateUnreal(update).find((file) => file.name.endsWith(".cpp"))?.content ?? "";
-  assert.match(updateCpp, /for \(FCrddPlaceWallWallsItem& Item/);
+  assert.match(updateCpp, /for \(FCrddCreateEntityEntitiesItem& Item/);
   assert.match(updateCpp, /Item\.CostJPY == Input\.CostJPY/);
   assert.match(updateCpp, /Item\.LengthMeters = 2/);
 
   const remove = structuredClone(base);
   remove.operation.effects = [{
-    target: "state.walls",
+    target: "state.entities",
     action: "remove",
     where: { cost: "$input.cost" },
   }];
   assert.deepEqual(validateIr(remove).filter((item) => item.severity === "error"), []);
   const removed = simulate(remove, structuredClone(request));
   assert.equal(removed.ok, true);
-  assert.deepEqual(removed.state.walls, [{ length: 3, cost: 300 }]);
+  assert.deepEqual(removed.state.entities, [{ length: 3, cost: 300 }]);
   const removeCpp = generateUnreal(remove).find((file) => file.name.endsWith(".cpp"))?.content ?? "";
   assert.match(removeCpp, /RemoveAll/);
 });
 
-test("compiles the UpdateWall source contract and exercises its generated case", async () => {
-  const ir = (await compileMarkdown(fileURLToPath(updateWallSourcePath))).ir;
+test("compiles the UpdateEntity source contract and exercises its generated case", async () => {
+  const ir = (await compileMarkdown(fileURLToPath(updateEntitySourcePath))).ir;
   assert.deepEqual(validateIr(ir).filter((item) => item.severity === "error"), []);
   const manifest = generateTestManifest(ir);
   const success = manifest.cases.find((item) => item.expect.ok);
@@ -235,37 +235,46 @@ test("compiles the UpdateWall source contract and exercises its generated case",
   if (!success) return;
   const result = simulate(ir, structuredClone(success.arrange));
   assert.equal(result.ok, true);
-  assert.equal((result.state.walls as Array<{ length: number }>)[0].length, 1);
+  assert.equal((result.state.entities as Array<{ length: number }>)[0].length, 1);
   const mutation = (await import("../src/mutation.ts")).analyzeMutationCoverage(ir, manifest);
   assert.equal(mutation.score, 100);
 });
 
 test("materializes optional enum defaults and rejects unknown values", async () => {
-  const compiled = await compileMarkdown(fileURLToPath(updateWallSourcePath));
+  const compiled = await compileMarkdown(fileURLToPath(updateEntitySourcePath));
   const request = {
-    input: { wall_id: "wall-1", new_length: 2 },
-    state: { walls: [{ wall_id: "wall-1", length: 1 }] },
+    input: { entity_id: "entity-1", new_length: 2, options: {} },
+    state: {
+      audit: { mode: "preserve_metadata" },
+      entities: [{ entity_id: "entity-1", length: 1 }],
+    },
   };
   const result = simulate(compiled.ir, request);
   assert.equal(result.ok, true);
-  assert.equal(Object.hasOwn(request.input, "update_mode"), false);
+  if (result.ok) assert.equal((result.state.audit as { mode: string }).mode, "replace");
+  assert.equal(Object.hasOwn(request.input.options, "mode"), false);
   assert.throws(
     () => simulate(compiled.ir, {
-      input: { ...request.input, update_mode: "invent" },
+      input: { ...request.input, options: { mode: "invent" } },
       state: request.state,
     }),
     /must be one of: replace, preserve_metadata/,
   );
   const header = generateUnreal(compiled.ir).find((file) => file.name.endsWith(".h"))?.content ?? "";
-  assert.match(header, /FString UpdateMode = TEXT\("replace"\);/);
+  assert.match(header, /struct FCrddUpdateEntityInputOptions/);
+  assert.match(header, /struct FCrddUpdateEntityStateAudit/);
+  assert.match(header, /FString Mode = TEXT\("replace"\);/);
+  const source = generateUnreal(compiled.ir).find((file) => file.name.endsWith(".cpp"))?.content ?? "";
+  assert.match(source, /Result\.State\.Audit\.Mode = Input\.Options\.Mode;/);
 });
 
 test("rejects invalid optional defaults and enums", async () => {
-  const compiled = await compileMarkdown(fileURLToPath(updateWallSourcePath));
+  const compiled = await compileMarkdown(fileURLToPath(updateEntitySourcePath));
   const ir = structuredClone(compiled.ir);
-  const mode = ir.operation.input.update_mode;
-  assert.equal(mode.type, "string");
-  if (mode.type !== "string") return;
+  const options = ir.operation.input.options;
+  assert.equal(options.type, "object");
+  if (options.type !== "object") return;
+  const mode = options.properties.mode;
   mode.default = "invent";
   mode.enum = ["replace", "replace"];
   const diagnostics = validateIr(ir);
@@ -299,10 +308,10 @@ test("produces deterministic traceability evidence from CRDD source", async () =
   assert.match(first.source.irSha256, /^[a-f0-9]{64}$/);
   assert.ok(first.generatedFiles.every((file) => /^[a-f0-9]{64}$/.test(file.sha256)));
   assert.deepEqual(
-    first.requirements.find((requirement) => requirement.id === "minimum-wall-length")?.traces,
-    ["REQ-WALL-001"],
+    first.requirements.find((requirement) => requirement.id === "minimum-entity-length")?.traces,
+    ["REQ-ENTITY-001"],
   );
-  assert.match(generateEvidenceMarkdown(first), /REQ-WALL-001/);
+  assert.match(generateEvidenceMarkdown(first), /REQ-ENTITY-001/);
   assert.doesNotMatch(generateEvidenceMarkdown(first), /Generated at|timestamp/i);
 });
 
@@ -318,14 +327,14 @@ test("normalizes Unreal Automation results without device identity", async () =>
     reportCreatedOn: "2026.07.28-09.23.02",
     tests: [
       {
-        fullTestPath: "CRDD.PlaceWall.Conformance",
+        fullTestPath: "CRDD.CreateEntity.Conformance",
         state: "Success",
         duration: 0.016,
         warnings: 0,
         errors: 0,
       },
       {
-        fullTestPath: "CRDD.Assets.WallPreview",
+        fullTestPath: "CRDD.Assets.EntityPreview",
         state: "Success",
         duration: 0.02,
         warnings: 0,
@@ -340,7 +349,7 @@ test("normalizes Unreal Automation results without device identity", async () =>
       },
     ],
   });
-  const execution = parseUnrealAutomationReport(`\uFEFF${raw}`, "PlaceWall");
+  const execution = parseUnrealAutomationReport(`\uFEFF${raw}`, "CreateEntity");
   assert.deepEqual(execution.summary, { succeeded: 3, failed: 0, notRun: 0 });
   assert.deepEqual(execution.platforms, ["WindowsEditor"]);
   assert.doesNotMatch(JSON.stringify(execution), /developer-machine|private-instance-id/);
@@ -365,7 +374,7 @@ test("normalizes Unreal Automation results without device identity", async () =>
   );
   assert.match(generateEvidenceMarkdown(traceability), /Unreal Execution[\s\S]*PASSED/);
   assert.ok(
-    traceability.generatedFiles.some((file) => file.path === "assets/WallPreview.generated.obj"),
+    traceability.generatedFiles.some((file) => file.path === "assets/EntityPreview.generated.obj"),
   );
 });
 
@@ -377,10 +386,10 @@ test("generates deterministic Unreal-scale 3D assets from CRDD", async () => {
   assert.deepEqual(
     first.map((file) => file.name),
     [
-      "WallPreview.generated.obj",
-      "WallPreview.generated.mtl",
-      "DoorPreview.generated.obj",
-      "DoorPreview.generated.mtl",
+      "EntityPreview.generated.obj",
+      "EntityPreview.generated.mtl",
+      "SecondaryPreview.generated.obj",
+      "SecondaryPreview.generated.mtl",
       "assets.manifest.json",
     ],
   );
@@ -390,22 +399,22 @@ test("generates deterministic Unreal-scale 3D assets from CRDD", async () => {
   assert.match(obj, /v 50 10 240/);
   assert.match(obj, /vt 1 1/);
   assert.match(obj, /f 1\/1 4\/4 3\/3 2\/2/);
-  assert.match(obj, /CRDD-TRACE: REQ-WALL-001/);
+  assert.match(obj, /CRDD-TRACE: REQ-ENTITY-001/);
   const manifest = JSON.parse(
     first.find((file) => file.name === "assets.manifest.json")?.content ?? "",
   );
   assert.deepEqual(manifest, {
     protocol: "crdd-ir/assets-v0.1",
-    operation: "PlaceWall",
+    operation: "CreateEntity",
     scene: {
-      unrealLevel: "/Game/CRDD/Generated/PlaceWallScene",
+      unrealLevel: "/Game/CRDD/Generated/CreateEntityScene",
     },
     assets: [
       {
-        id: "WallPreview",
-        source: "WallPreview.generated.obj",
+        id: "EntityPreview",
+        source: "EntityPreview.generated.obj",
         unrealDestination: "/Game/CRDD/Generated",
-        previewLevel: "/Game/CRDD/Generated/WallPreviewLevel",
+        previewLevel: "/Game/CRDD/Generated/EntityPreviewLevel",
         dimensionsCm: { length: 100, width: 20, height: 240 },
         collision: { shape: "box" },
         lod: { group: "LevelArchitecture" },
@@ -413,13 +422,13 @@ test("generates deterministic Unreal-scale 3D assets from CRDD", async () => {
           locationCm: { x: 0, y: 0, z: 0 },
           rotationDeg: { pitch: 0, yaw: 0, roll: 0 },
         },
-        traces: ["REQ-WALL-001"],
+        traces: ["REQ-ENTITY-001"],
       },
       {
-        id: "DoorPreview",
-        source: "DoorPreview.generated.obj",
+        id: "SecondaryPreview",
+        source: "SecondaryPreview.generated.obj",
         unrealDestination: "/Game/CRDD/Generated",
-        previewLevel: "/Game/CRDD/Generated/DoorPreviewLevel",
+        previewLevel: "/Game/CRDD/Generated/SecondaryPreviewLevel",
         dimensionsCm: { length: 90, width: 10, height: 200 },
         collision: { shape: "box" },
         lod: { group: "LargeProp" },
@@ -427,7 +436,7 @@ test("generates deterministic Unreal-scale 3D assets from CRDD", async () => {
           locationCm: { x: 150, y: 25, z: 0 },
           rotationDeg: { pitch: 0, yaw: 90, roll: 0 },
         },
-        traces: ["REQ-WALL-001"],
+        traces: ["REQ-ENTITY-001"],
       },
     ],
   });
@@ -448,7 +457,7 @@ test("rejects unsupported collision shapes and LOD groups", async () => {
 test("generates one manifest entry for every declared 3D asset", async () => {
   const ir = structuredClone((await compileMarkdown(fileURLToPath(sourcePath))).ir);
   ir.operation.assets?.push({
-    id: "DoorPreview2",
+    id: "SecondaryPreview2",
     type: "box",
     dimensions: {
       length: { value: 0.9, unit: "m" },
@@ -470,17 +479,17 @@ test("generates one manifest entry for every declared 3D asset", async () => {
         roll: { value: 0, unit: "deg" },
       },
     },
-    traces: ["REQ-WALL-001"],
+    traces: ["REQ-ENTITY-001"],
   });
 
   const files = generateAssets(ir);
-  assert.ok(files.some((file) => file.name === "DoorPreview2.generated.obj"));
+  assert.ok(files.some((file) => file.name === "SecondaryPreview2.generated.obj"));
   const manifest = JSON.parse(
     files.find((file) => file.name === "assets.manifest.json")?.content ?? "",
   );
   assert.deepEqual(
     manifest.assets.map((asset: { id: string }) => asset.id),
-    ["WallPreview", "DoorPreview", "DoorPreview2"],
+    ["EntityPreview", "SecondaryPreview", "SecondaryPreview2"],
   );
 });
 
@@ -500,7 +509,7 @@ test("generates deterministic cylinder geometry with UVs and normals", async () 
   assert.equal((obj.match(/^vn /gm) ?? []).length, 26);
   assert.equal((obj.match(/^vt /gm) ?? []).length, 50);
   assert.equal((obj.match(/^f /gm) ?? []).length, 72);
-  assert.match(obj, /CRDD-TRACE: REQ-WALL-001/);
+  assert.match(obj, /CRDD-TRACE: REQ-ENTITY-001/);
 });
 
 test("removes only obsolete generated 3D source files", async () => {

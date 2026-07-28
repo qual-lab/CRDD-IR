@@ -1,15 +1,15 @@
 {
   "protocol": "crdd-ir/assets-v0.1",
-  "operation": "PlaceWall",
+  "operation": "CreateEntity",
   "scene": {
-    "unrealLevel": "/Game/CRDD/Generated/PlaceWallScene"
+    "unrealLevel": "/Game/CRDD/Generated/CreateEntityScene"
   },
   "assets": [
     {
-      "id": "WallPreview",
-      "source": "WallPreview.generated.obj",
+      "id": "EntityPreview",
+      "source": "EntityPreview.generated.obj",
       "unrealDestination": "/Game/CRDD/Generated",
-      "previewLevel": "/Game/CRDD/Generated/WallPreviewLevel",
+      "previewLevel": "/Game/CRDD/Generated/EntityPreviewLevel",
       "dimensionsCm": {
         "length": 100,
         "width": 20,
@@ -34,14 +34,14 @@
         }
       },
       "traces": [
-        "REQ-WALL-001"
+        "REQ-ENTITY-001"
       ]
     },
     {
-      "id": "DoorPreview",
-      "source": "DoorPreview.generated.obj",
+      "id": "SecondaryPreview",
+      "source": "SecondaryPreview.generated.obj",
       "unrealDestination": "/Game/CRDD/Generated",
-      "previewLevel": "/Game/CRDD/Generated/DoorPreviewLevel",
+      "previewLevel": "/Game/CRDD/Generated/SecondaryPreviewLevel",
       "dimensionsCm": {
         "length": 90,
         "width": 10,
@@ -66,7 +66,7 @@
         }
       },
       "traces": [
-        "REQ-WALL-001"
+        "REQ-ENTITY-001"
       ]
     }
   ]

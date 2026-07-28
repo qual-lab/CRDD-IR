@@ -13,7 +13,7 @@ async function fixture(): Promise<{ root: string; configPath: string; config: Re
   await writeFile(join(root, "tools/CRDD-IR/src/cli.ts"), "");
   await writeFile(join(root, "tools/CRDD-IR/package.json"), '{"version":"0.1.0"}');
   await cp(
-    fileURLToPath(new URL("../examples/place-wall/05_SPEC/01_Behavior_Specification.md", import.meta.url)),
+    fileURLToPath(new URL("../examples/create-entity/05_SPEC/01_Behavior_Specification.md", import.meta.url)),
     join(root, "05_SPEC/spec.md"),
   );
   const config = {

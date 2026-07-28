@@ -31,15 +31,30 @@ function generateHeader(operation: Operation): string {
     .filter(([, field]) => field.type === "array")
     .map(([name]) => generateArrayElementStruct(operation, name))
     .join("\n");
+  const objectStructs = [
+    ...Object.entries(operation.input)
+      .filter(([, field]) => field.type === "object")
+      .map(([name, field]) => generateObjectStruct(operation, "Input", name, field)),
+    ...Object.entries(operation.state)
+      .filter(([, field]) => field.type === "object")
+      .map(([name, field]) => generateObjectStruct(operation, "State", name, field)),
+  ].join("\n");
   const inputFields = Object.entries(operation.input)
-    .map(([name, field]) => `    ${cppType(field)} ${cppField(name, field)} = ${cppDefault(field)};`)
+    .map(([name, field]) => {
+      const type = field.type === "object"
+        ? objectStructName(operation, "Input", name)
+        : cppType(field);
+      return `    ${type} ${cppField(name, field)} = ${cppDefault(field)};`;
+    })
     .join("\n");
   const stateFields = Object.entries(operation.state)
     .map(([name, field]) => {
       const type =
         field.type === "array"
           ? `TArray<FCrdd${operationName}${pascalIdentifier(name)}Item>`
-          : cppType(field);
+          : field.type === "object"
+            ? objectStructName(operation, "State", name)
+            : cppType(field);
       return `    ${type} ${cppField(name, field)}${field.type === "array" ? "" : ` = ${cppDefault(field)}`};`;
     })
     .join("\n");
@@ -51,6 +66,7 @@ ${traceComment}
 #include "CoreMinimal.h"
 
 ${arrayStructs}
+${objectStructs}
 
 struct FCrdd${operationName}Input
 {
@@ -88,6 +104,27 @@ public:
     static FString ErrorCode(ECrdd${operationName}Error Error);
 };
 `;
+}
+
+function generateObjectStruct(
+  operation: Operation,
+  scope: "Input" | "State",
+  name: string,
+  field: Extract<FieldDefinition, { type: "object" }>,
+): string {
+  const fields = Object.entries(field.properties)
+    .map(([propertyName, property]) =>
+      `    ${cppType(property)} ${cppField(propertyName, property)} = ${cppDefault(property)};`
+    )
+    .join("\n");
+  return `struct ${objectStructName(operation, scope, name)}
+{
+${fields}
+};`;
+}
+
+function objectStructName(operation: Operation, scope: "Input" | "State", name: string): string {
+  return `FCrdd${pascalIdentifier(operation.id)}${scope}${pascalIdentifier(name)}`;
 }
 
 function generateSource(operation: Operation): string {
@@ -276,16 +313,38 @@ function cppEffectValue(value: unknown, operation: Operation): string {
 
 function cppReference(reference: string, operation: Operation, stateRoot: string): string {
   if (reference.startsWith("input.")) {
-    const name = reference.slice("input.".length);
-    const field = operation.input[name];
+    const relative = reference.slice("input.".length);
+    const exact = operation.input[relative];
+    if (exact) return `Input.${cppField(relative, exact)}`;
+    const [name, ...properties] = relative.split(".");
+    let field = operation.input[name];
     if (!field) throw new Error(`Unknown Unreal input reference "${reference}"`);
-    return `Input.${cppField(name, field)}`;
+    let result = `Input.${cppField(name, field)}`;
+    for (const propertyName of properties) {
+      if (field.type !== "object" || !field.properties[propertyName]) {
+        throw new Error(`Unknown Unreal input reference "${reference}"`);
+      }
+      field = field.properties[propertyName];
+      result += `.${cppField(propertyName, field)}`;
+    }
+    return result;
   }
   if (reference.startsWith("state.")) {
-    const name = reference.slice("state.".length);
-    const field = operation.state[name];
+    const relative = reference.slice("state.".length);
+    const exact = operation.state[relative];
+    if (exact) return `${stateRoot}.${cppField(relative, exact)}`;
+    const [name, ...properties] = relative.split(".");
+    let field = operation.state[name];
     if (!field) throw new Error(`Unknown Unreal state reference "${reference}"`);
-    return `${stateRoot}.${cppField(name, field)}`;
+    let result = `${stateRoot}.${cppField(name, field)}`;
+    for (const propertyName of properties) {
+      if (field.type !== "object" || !field.properties[propertyName]) {
+        throw new Error(`Unknown Unreal state reference "${reference}"`);
+      }
+      field = field.properties[propertyName];
+      result += `.${cppField(propertyName, field)}`;
+    }
+    return result;
   }
   throw new Error(`Unsupported Unreal reference "${reference}"`);
 }

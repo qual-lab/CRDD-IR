@@ -21,7 +21,7 @@ export type ArrayFieldDefinition = {
   minimum?: never;
 };
 
-export type FieldDefinition = ScalarFieldDefinition | ArrayFieldDefinition;
+export type FieldDefinition = ScalarFieldDefinition | ObjectFieldDefinition | ArrayFieldDefinition;
 
 export type AssetDefinition = {
   id: string;

@@ -272,7 +272,7 @@ function validateSemantics(operation: Record<string, unknown>, diagnostics: Diag
         diagnostics.push(error(`${path}.target`, 'must start with "state."'));
         return;
       }
-      const targetField = state[target];
+      const targetField = fieldForReference(effect.target, input, state);
       if (!targetField) {
         diagnostics.push(error(`${path}.target`, `references undefined state field "${target}"`));
         return;
@@ -485,9 +485,17 @@ function fieldForReference(
   input: Record<string, FieldDefinition>,
   state: Record<string, FieldDefinition>,
 ): FieldDefinition | undefined {
-  if (reference.startsWith("input.")) return input[reference.slice(6)];
-  if (reference.startsWith("state.")) return state[reference.slice(6)];
-  return undefined;
+  const root = reference.startsWith("input.") ? input : reference.startsWith("state.") ? state : undefined;
+  if (!root) return undefined;
+  const relative = reference.slice(reference.indexOf(".") + 1);
+  if (root[relative]) return root[relative];
+  const parts = relative.split(".");
+  let field = root[parts.shift() ?? ""];
+  for (const part of parts) {
+    if (field?.type !== "object") return undefined;
+    field = field.properties[part];
+  }
+  return field;
 }
 
 function reportDuplicateIds(
@@ -573,6 +581,12 @@ function validateField(rawField: Record<string, unknown>, path: string, diagnost
       return;
     }
     validateFields(rawField.items.properties, `${path}.items.properties`, diagnostics);
+  } else if (rawField.type === "object") {
+    if (!isRecord(rawField.properties) || Object.keys(rawField.properties).length === 0) {
+      diagnostics.push(error(`${path}.properties`, "must be a non-empty object"));
+      return;
+    }
+    validateFields(rawField.properties, `${path}.properties`, diagnostics);
   }
 }
 

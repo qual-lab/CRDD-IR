@@ -155,6 +155,7 @@
     "field": {
       "oneOf": [
         { "$ref": "#/$defs/scalar" },
+        { "$ref": "#/$defs/object" },
         {
           "type": "object",
           "required": ["type", "items"],

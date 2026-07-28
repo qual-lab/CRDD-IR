@@ -19,7 +19,7 @@ RunnerはContract Caseごとに新しいProcessを起動する。シェルは使
 ```json
 {
   "protocol": "crdd-ir/adapter-v0.1",
-  "operation": "PlaceWall",
+  "operation": "CreateEntity",
   "request": {
     "input": {
       "length": 0.3,
@@ -29,7 +29,7 @@ RunnerはContract Caseごとに新しいProcessを起動する。シェルは使
       "budget": {
         "remaining": 50000
       },
-      "walls": []
+      "entities": []
     }
   }
 }
@@ -40,12 +40,12 @@ RunnerはContract Caseごとに新しいProcessを起動する。シェルは使
 ```json
 {
   "ok": true,
-  "operation": "PlaceWall",
+  "operation": "CreateEntity",
   "state": {
     "budget": {
       "remaining": 38000
     },
-    "walls": [
+    "entities": [
       {
         "length": 0.3,
         "cost": 12000
@@ -53,8 +53,8 @@ RunnerはContract Caseごとに新しいProcessを起動する。シェルは使
     ]
   },
   "traces": [
-    "REQ-WALL-001",
-    "DEC-WALL-003"
+    "REQ-ENTITY-001",
+    "DEC-ENTITY-003"
   ]
 }
 ```
@@ -64,17 +64,17 @@ RunnerはContract Caseごとに新しいProcessを起動する。シェルは使
 ```json
 {
   "ok": false,
-  "operation": "PlaceWall",
-  "error": "WALL_TOO_SHORT",
-  "failedRequirement": "minimum-wall-length",
+  "operation": "CreateEntity",
+  "error": "ENTITY_TOO_SHORT",
+  "failedRequirement": "minimum-entity-length",
   "state": {
     "budget": {
       "remaining": 50000
     },
-    "walls": []
+    "entities": []
   },
   "traces": [
-    "REQ-WALL-001"
+    "REQ-ENTITY-001"
   ]
 }
 ```

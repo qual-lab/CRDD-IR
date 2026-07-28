@@ -33,5 +33,5 @@ jobs:
         with:
           name: crdd-unreal-evidence
           path: |
-            examples/place-wall/07_Quality/CRDD_IR
+            examples/create-entity/07_Quality/CRDD_IR
             .crdd-ir/reports

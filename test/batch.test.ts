@@ -8,16 +8,16 @@ import test from "node:test";
 import { generateBatch } from "../src/batch.ts";
 
 const source = fileURLToPath(
-  new URL("../examples/place-wall/05_SPEC/01_Behavior_Specification.md", import.meta.url),
+  new URL("../examples/create-entity/05_SPEC/01_Behavior_Specification.md", import.meta.url),
 );
 
 test("generates an operation-scoped deterministic batch", async () => {
   const outDir = await mkdtemp(join(tmpdir(), "crdd-batch-"));
   const manifest = await generateBatch([source], outDir, "unreal");
-  assert.equal(manifest.operations[0].id, "PlaceWall");
+  assert.equal(manifest.operations[0].id, "CreateEntity");
   assert.deepEqual(
     manifest.operations[0].files.map((file) => file.path),
-    ["PlaceWall.generated.cpp", "PlaceWall.generated.h"],
+    ["CreateEntity.generated.cpp", "CreateEntity.generated.h"],
   );
   assert.ok(manifest.operations[0].files.every((file) => /^[a-f0-9]{64}$/.test(file.sha256)));
   const persisted = JSON.parse(await readFile(join(outDir, "batch.manifest.json"), "utf8"));
@@ -27,7 +27,7 @@ test("generates an operation-scoped deterministic batch", async () => {
 test("reuses verified outputs and recovers a corrupt batch manifest", async () => {
   const outDir = await mkdtemp(join(tmpdir(), "crdd-batch-"));
   const first = await generateBatch([source], outDir, "ir");
-  const output = join(outDir, "PlaceWall", first.operations[0].files[0].path);
+  const output = join(outDir, "CreateEntity", first.operations[0].files[0].path);
   const before = await stat(output);
   await new Promise((resolve) => setTimeout(resolve, 20));
   await generateBatch([source], outDir, "ir");
@@ -44,6 +44,6 @@ test("rejects duplicate operation IDs before writing outputs", async () => {
   const outDir = await mkdtemp(join(tmpdir(), "crdd-batch-"));
   await assert.rejects(
     generateBatch([source, source], outDir, "ir"),
-    /Duplicate operation ID\(s\) in batch: PlaceWall/,
+    /Duplicate operation ID\(s\) in batch: CreateEntity/,
   );
 });

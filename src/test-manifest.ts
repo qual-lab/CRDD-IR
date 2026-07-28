@@ -147,16 +147,12 @@ function mutationCandidates(value: unknown): unknown[] {
 function createBaseline(ir: CrddIr): SimulationRequest {
   const input: Record<string, unknown> = {};
   for (const [name, field] of Object.entries(ir.operation.input)) {
-    if (field.type !== "array" && field.default !== undefined) input[name] = structuredClone(field.default);
-    else if (field.type === "number") input[name] = Math.max(field.minimum ?? 0, name === "cost" ? 100 : 1);
-    else if (field.type === "string") input[name] = field.enum?.[0] ?? "sample";
-    else if (field.type === "boolean") input[name] = true;
-    else input[name] = [];
+    input[name] = baselineFieldValue(field);
   }
 
   const state: Record<string, unknown> = {};
   for (const [path, field] of Object.entries(ir.operation.state)) {
-    const value = field.type === "array" ? [] : field.type === "number" ? 1_000_000 : null;
+    const value = field.type === "number" ? 1_000_000 : baselineFieldValue(field);
     setPath(state, path, value);
   }
   for (const effect of ir.operation.effects) {
@@ -173,6 +169,19 @@ function createBaseline(ir: CrddIr): SimulationRequest {
     collection.push(item);
   }
   return { input, state };
+}
+
+function baselineFieldValue(field: import("./model.ts").FieldDefinition): unknown {
+  if (field.type === "object") {
+    return Object.fromEntries(
+      Object.entries(field.properties).map(([name, property]) => [name, baselineFieldValue(property)]),
+    );
+  }
+  if (field.type === "array") return [];
+  if (field.default !== undefined) return structuredClone(field.default);
+  if (field.type === "number") return Math.max(field.minimum ?? 0, 1);
+  if (field.type === "string") return field.enum?.[0] ?? "sample";
+  return true;
 }
 
 function resolveTemplate(

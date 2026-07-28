@@ -155,7 +155,7 @@ async function main(argv: string[]): Promise<void> {
   if (command === "test" && subcommand === "generate") {
     const irPath = required(argv[2], "IR file");
     const ir = await loadInput(irPath);
-    const out = option(argv, "--out") ?? "generated/place-wall.test-manifest.json";
+    const out = option(argv, "--out") ?? `generated/${fileSlug(ir.operation.id)}.test-manifest.json`;
     await writeJson(out, generateTestManifest(ir));
     console.log(`Generated ${out}`);
     return;
@@ -168,7 +168,7 @@ async function main(argv: string[]): Promise<void> {
     const manifest = manifestPath
       ? JSON.parse(await readFile(manifestPath, "utf8")) as TestManifest
       : generateTestManifest(ir);
-    const out = option(argv, "--out") ?? "generated/place-wall.conformance.json";
+    const out = option(argv, "--out") ?? `generated/${fileSlug(ir.operation.id)}.conformance.json`;
     await writeJson(out, generateConformanceBundle(ir, manifest));
     console.log(`Generated ${out}`);
     return;
@@ -347,6 +347,16 @@ function operandsAfter(argv: string[], start: number): string[] {
 function required(value: string | undefined, label: string): string {
   if (!value) throw new Error(`Missing ${label}`);
   return value;
+}
+
+function fileSlug(value: string): string {
+  const slug = value
+    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
+    .replace(/[^A-Za-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase();
+  if (!slug) throw new Error(`Operation ID cannot form a safe output name: "${value}"`);
+  return slug;
 }
 
 function printHelp(): void {

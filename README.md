@@ -2,7 +2,7 @@
 
 CRDDに記録された要求・判断を、検証可能な振る舞いの契約として実装へ接続するための実証プロジェクトです。
 
-現在のMVPは注文住宅ゲームの `PlaceWall` Operationに限定し、次を提供します。
+CRDD Structured Contractに記述された任意ドメインのOperationを対象に、次を提供します。
 
 - IRの構造・意味検証
 - Operationの原子的なSimulation
@@ -22,7 +22,7 @@ Markdown内のYAML契約解析に`yaml`の固定バージョンを使用しま�
 npm run lint:ir
 npm run check:source
 npm run compile:source
-npm run simulate -- --input examples/place-wall/success.input.json
+npm run simulate -- --input examples/create-entity/success.input.json
 npm run test:generate
 npm run test:contract
 npm run test:adapter
@@ -57,16 +57,16 @@ crdd-ir view trace <ir.json>
 `--adapter` を指定すると、Reference Simulatorではなく外部実装へ同じContract Testを適用できます。
 
 ```bash
-crdd-ir test run examples/place-wall/place-wall.ir.json \
-  --adapter examples/place-wall/adapters/correct.adapter.ts
+crdd-ir test run examples/create-entity/create-entity.ir.json \
+  --adapter examples/create-entity/adapters/correct.adapter.ts
 ```
 
 言語非依存の実装は、JSONを標準入力で受け取り結果を標準出力へ返すProcess Adapterとして接続できます。コマンドはシェルを介さず起動されます。
 
 ```bash
-crdd-ir test run examples/place-wall/place-wall.ir.json \
+crdd-ir test run examples/create-entity/create-entity.ir.json \
   --command node \
-  --arg examples/place-wall/adapters/process-correct.ts
+  --arg examples/create-entity/adapters/process-correct.ts
 ```
 
 `test bundle` は、UnrealなどTarget側のテストから直接読み込める入力・期待結果を単一JSONへ出力します。
