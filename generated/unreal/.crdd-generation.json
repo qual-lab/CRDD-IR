@@ -1,0 +1,13 @@
+{
+  "protocol": "crdd-ir/generation-v0.1",
+  "files": [
+    {
+      "path": "PlaceWall.generated.cpp",
+      "sha256": "d78e9c18758b43dc34e6d84b4105f33d109353d1eeb62ad77974603ba543a51f"
+    },
+    {
+      "path": "PlaceWall.generated.h",
+      "sha256": "1758106f98246e1f645f829ff01d342fdf3c4961cddbfbb59971acb4efcad0d9"
+    }
+  ]
+}

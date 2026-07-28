@@ -94,6 +94,12 @@ export type Diagnostic = {
   severity: "error" | "warning";
   path: string;
   message: string;
+  location?: {
+    line: number;
+    column: number;
+    endLine?: number;
+    endColumn?: number;
+  };
 };
 
 export type SimulationRequest = {

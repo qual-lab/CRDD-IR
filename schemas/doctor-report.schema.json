@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://crdd.dev/schema/doctor/v0.1.json",
+  "title": "CRDD IR Doctor Report v0.1",
+  "type": "object",
+  "required": ["protocol", "ok", "checks"],
+  "properties": {
+    "protocol": { "const": "crdd-ir/doctor-v0.1" },
+    "ok": { "type": "boolean" },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "status", "message"],
+        "properties": {
+          "code": { "type": "string", "pattern": "^CRDD_[A-Z0-9_]+$" },
+          "status": { "enum": ["pass", "warning", "fail"] },
+          "message": { "type": "string" },
+          "path": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

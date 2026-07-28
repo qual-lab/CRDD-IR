@@ -18,7 +18,18 @@
           "code": { "type": "string", "pattern": "^CRDD_[A-Z0-9_]+$" },
           "severity": { "enum": ["error", "warning"] },
           "path": { "type": "string" },
-          "message": { "type": "string" }
+          "message": { "type": "string" },
+          "location": {
+            "type": "object",
+            "required": ["line", "column"],
+            "properties": {
+              "line": { "type": "integer", "minimum": 1 },
+              "column": { "type": "integer", "minimum": 1 },
+              "endLine": { "type": "integer", "minimum": 1 },
+              "endColumn": { "type": "integer", "minimum": 1 }
+            },
+            "additionalProperties": false
+          }
         },
         "additionalProperties": false
       }

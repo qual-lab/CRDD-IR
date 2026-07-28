@@ -2,8 +2,9 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, extname, resolve } from "node:path";
 import { DiagnosticError, diagnosticEnvelope, unexpectedDiagnostic } from "./diagnostics.ts";
+import { runDoctor } from "./doctor.ts";
 import { loadAdapter } from "./adapter.ts";
-import { generateAssets, removeStaleGeneratedAssets } from "./assets.ts";
+import { generateAssets } from "./assets.ts";
 import { generateBatch, type BatchTarget } from "./batch.ts";
 import { compileMarkdown } from "./compiler.ts";
 import { generateConformanceBundle } from "./conformance.ts";
@@ -14,6 +15,7 @@ import { simulate } from "./simulator.ts";
 import { generateTestManifest } from "./test-manifest.ts";
 import { runTestManifest } from "./test-runner.ts";
 import { generateEvidenceMarkdown, generateTraceabilityManifest } from "./traceability.ts";
+import { generateTransactionally } from "./generation.ts";
 import { generateUnreal } from "./unreal.ts";
 import { parseUnrealAutomationReport } from "./unreal-report.ts";
 import type { SimulationRequest, TestManifest } from "./model.ts";
@@ -122,6 +124,24 @@ async function main(argv: string[]): Promise<void> {
     return;
   }
 
+  if (command === "project" && subcommand === "doctor") {
+    const configPath = required(argv[2], "project config file");
+    const report = await runDoctor(configPath);
+    if (option(argv, "--format") === "json") {
+      console.log(JSON.stringify(report, null, 2));
+    } else {
+      console.table(report.checks.map((check) => ({
+        status: check.status.toUpperCase(),
+        code: check.code,
+        message: check.message,
+        path: check.path ?? "",
+      })));
+      console.log(report.ok ? "Project is ready." : "Project is not ready.");
+    }
+    if (!report.ok) process.exitCode = 1;
+    return;
+  }
+
   if (command === "simulate") {
     const irPath = required(argv[1], "IR file");
     const inputPath = option(argv, "--input");
@@ -193,12 +213,7 @@ async function main(argv: string[]): Promise<void> {
     const irPath = required(argv[2], "IR file");
     const ir = await loadInput(irPath);
     const outDir = option(argv, "--out-dir") ?? "generated/unreal";
-    await mkdir(outDir, { recursive: true });
-    for (const file of generateUnreal(ir)) {
-      const path = resolve(outDir, file.name);
-      await writeFile(path, file.content, "utf8");
-      console.log(`Generated ${path}`);
-    }
+    await runGeneration(outDir, generateUnreal(ir), argv);
     return;
   }
 
@@ -208,13 +223,7 @@ async function main(argv: string[]): Promise<void> {
     const outDir = option(argv, "--out-dir") ?? "generated/assets";
     const files = generateAssets(ir);
     if (files.length === 0) throw new Error(`Operation "${ir.operation.id}" declares no assets`);
-    await mkdir(outDir, { recursive: true });
-    await removeStaleGeneratedAssets(outDir, new Set(files.map((file) => file.name)));
-    for (const file of files) {
-      const path = resolve(outDir, file.name);
-      await writeFile(path, file.content, "utf8");
-      console.log(`Generated ${path}`);
-    }
+    await runGeneration(outDir, files, argv);
     return;
   }
 
@@ -281,6 +290,25 @@ async function writeText(path: string, value: string): Promise<void> {
   await writeFile(path, value, "utf8");
 }
 
+async function runGeneration(
+  outDir: string,
+  files: ReturnType<typeof generateUnreal>,
+  argv: string[],
+): Promise<void> {
+  const changes = await generateTransactionally({
+    outDir,
+    files,
+    dryRun: argv.includes("--dry-run"),
+    force: argv.includes("--force"),
+  });
+  console.table(changes);
+  if (argv.includes("--dry-run")) {
+    if (changes.some((change) => change.action === "conflict")) process.exitCode = 1;
+    return;
+  }
+  console.log(`Generated ${files.length} file(s) in ${resolve(outDir)}`);
+}
+
 async function loadInput(path: string) {
   return extname(path).toLowerCase() === ".md"
     ? (await compileMarkdown(path)).ir
@@ -329,6 +357,7 @@ Commands:
   batch <ir|unreal|assets> <spec.md>... [--out-dir <directory>]
   check <spec.md> [--format json]
   project check <crdd-ir.config.json>
+  project doctor <crdd-ir.config.json> [--format json]
   lint <ir.json> [--format json]
   simulate <ir.json> --input <input.json>
   test generate <ir.json> [--out <file>]
@@ -336,8 +365,8 @@ Commands:
   test run <ir.json> [--manifest <file>] [--adapter <module>]
                                       [--command <executable> [--arg <value>...]]
                                       [--timeout-ms <milliseconds>]
-  generate unreal <ir.json> [--out-dir <directory>]
-  generate assets <ir.json> [--out-dir <directory>]
+  generate unreal <ir.json> [--out-dir <directory>] [--dry-run] [--force]
+  generate assets <ir.json> [--out-dir <directory>] [--dry-run] [--force]
   generate evidence <spec.md> [--out-dir <directory>] [--unreal-report <index.json>]
   view trace <ir.json>`);
 }

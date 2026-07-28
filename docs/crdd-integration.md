@@ -22,6 +22,16 @@ Use `--format json` with validation commands to receive the versioned
 The expression language and Unreal adapter support numeric, boolean, and string
 literals; array append effects may mix typed literals and field references.
 
+Run `.\tools\crdd-ir.ps1 doctor` before the first generation on a project.
+It checks the tool/config versions, source compilation, output separation and
+permissions, installer-owned hashes, and all configured Unreal prerequisites.
+`generate unreal` and `generate assets` support `--dry-run`; generated output
+is ownership-tracked in `.crdd-generation.json`, staged before replacement,
+and never overwrites an edited generated file unless `--force` is explicit.
+
+Source diagnostics collect multiple structural problems in one pass and report
+their exact Markdown line and column in JSON and text formats.
+
 CRDD IR本体はCRDD適用先へコピーせず、repository rootの`tools/CRDD-IR`
 へGit submoduleとして配置する。
 

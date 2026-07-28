@@ -18,7 +18,8 @@ export class DiagnosticError extends Error {
 export function formatDiagnosticText(diagnostics: Diagnostic[], source?: string): string {
   return diagnostics
     .map((item) =>
-      `${item.severity.toUpperCase()} ${item.code} ${source ? `${source} ` : ""}${item.path}: ${item.message}`
+      `${item.severity.toUpperCase()} ${item.code} ${source ? `${source}` : ""}` +
+      `${item.location ? `:${item.location.line}:${item.location.column}` : ""} ${item.path}: ${item.message}`
     )
     .join("\n");
 }

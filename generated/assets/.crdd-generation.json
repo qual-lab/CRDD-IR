@@ -1,0 +1,25 @@
+{
+  "protocol": "crdd-ir/generation-v0.1",
+  "files": [
+    {
+      "path": "assets.manifest.json",
+      "sha256": "2028eb491bfaeaec08eef9e36d5e5aa50567319194b6a75b291fe353484ca5ec"
+    },
+    {
+      "path": "DoorPreview.generated.mtl",
+      "sha256": "4fa40f4b4d053a8507b8e3c73b5b23301659db67124d36a72b776707e21c9cfa"
+    },
+    {
+      "path": "DoorPreview.generated.obj",
+      "sha256": "dd2c06a1b7b6a474ad3e980f25bb546bfb2f18e2587c0c6673395daaef8eb783"
+    },
+    {
+      "path": "WallPreview.generated.mtl",
+      "sha256": "1607240ad13b4560495b8b431245f3bdb8ff49a88f924a0cc1a9d94b623d9e30"
+    },
+    {
+      "path": "WallPreview.generated.obj",
+      "sha256": "1aa038429906fc0e614a0c625033686f35f19b9cf47426e90eae2ba122e3c752"
+    }
+  ]
+}

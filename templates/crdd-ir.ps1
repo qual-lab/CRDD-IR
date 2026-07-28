@@ -1,6 +1,6 @@
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("check", "generate", "verify")]
+    [ValidateSet("doctor", "check", "generate", "verify")]
     [string]$Command = "check"
 )
 
@@ -58,12 +58,16 @@ function Invoke-CrddIr([string[]]$Arguments) {
 }
 
 function Invoke-Generate {
+    Invoke-CrddIr @("project", "doctor", $configPath)
     Invoke-CrddIr @("check", $source)
     Invoke-CrddIr @("generate", "unreal", $source, "--out-dir", $generatedSource)
     Invoke-CrddIr @("generate", "assets", $source, "--out-dir", $generatedAssets)
 }
 
 switch ($Command) {
+    "doctor" {
+        Invoke-CrddIr @("project", "doctor", $configPath)
+    }
     "check" {
         Invoke-CrddIr @("check", $source)
     }

@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { LineCounter, parseDocument } from "yaml";
-import type { AssetDefinition, Effect, FieldDefinition } from "./model.ts";
+import { DiagnosticError } from "./diagnostics.ts";
+import type { AssetDefinition, Diagnostic, Effect, FieldDefinition } from "./model.ts";
 
 export type SourceRequirement = {
   id: string;
@@ -54,14 +55,24 @@ export async function loadSourceContract(path: string): Promise<{
     uniqueKeys: true,
   });
   if (document.errors.length > 0) {
-    const problem = document.errors[0];
-    const position = problem.linePos?.[0];
-    const line = position ? fence.startLine + position.line : fence.startLine;
-    throw new Error(`${path}:${line}:${position?.col ?? 1}: ${problem.message}`);
+    throw new DiagnosticError(document.errors.map((problem) => {
+      const position = problem.linePos?.[0];
+      return {
+        code: "CRDD_SOURCE_YAML",
+        severity: "error",
+        path: "$",
+        message: problem.message,
+        location: {
+          line: position ? fence.startLine + position.line - 1 : fence.startLine,
+          column: position?.col ?? 1,
+        },
+      };
+    }), path);
   }
 
   const value = document.toJS() as unknown;
-  validateSourceContract(value, path, fence.startLine);
+  const diagnostics = validateSourceContract(value, document, lineCounter, fence);
+  if (diagnostics.length > 0) throw new DiagnosticError(diagnostics, path);
   return { contract: value as SourceContract, fence };
 }
 
@@ -96,59 +107,129 @@ export function extractContractFences(markdown: string, sourcePath = "<memory>")
   return fences;
 }
 
-function validateSourceContract(value: unknown, path: string, line: number): void {
-  if (!isRecord(value)) fail(path, line, "contract must be an object");
+function validateSourceContract(
+  value: unknown,
+  document: ReturnType<typeof parseDocument>,
+  lineCounter: LineCounter,
+  fence: ContractFence,
+): Diagnostic[] {
+  const diagnostics: Diagnostic[] = [];
+  const add = (code: string, path: string, message: string) => diagnostics.push(
+    located(code, path, message, document, lineCounter, fence),
+  );
+  if (!isRecord(value)) {
+    add("CRDD_SOURCE_TYPE", "$", "contract must be an object");
+    return diagnostics;
+  }
+  rejectUnknown(value, ["schema", "operation"], "$", add);
   if (value.schema !== "crdd-source-contract/v0.1") {
-    fail(path, line, 'schema must equal "crdd-source-contract/v0.1"');
+    add("CRDD_SOURCE_VERSION", "$.schema", 'must equal "crdd-source-contract/v0.1"');
   }
-  if (!isRecord(value.operation)) fail(path, line, "operation must be an object");
+  if (!isRecord(value.operation)) {
+    add("CRDD_SOURCE_REQUIRED", "$.operation", "must be an object");
+    return diagnostics;
+  }
   const operation = value.operation;
-  requireString(operation, "id", path, line);
-  requireStringArray(operation, "traces", path, line);
-  requireRecord(operation, "input", path, line);
-  requireRecord(operation, "state", path, line);
-  requireArray(operation, "requires", path, line);
-  requireArray(operation, "effects", path, line);
-  requireArray(operation, "errors", path, line);
+  rejectUnknown(
+    operation,
+    ["id", "traces", "input", "state", "requires", "effects", "errors", "assets", "transaction"],
+    "$.operation",
+    add,
+  );
+  requireString(operation.id, "$.operation.id", add);
+  requireStringArray(operation.traces, "$.operation.traces", add);
+  requireRecord(operation.input, "$.operation.input", add);
+  requireRecord(operation.state, "$.operation.state", add);
+  requireArray(operation.requires, "$.operation.requires", add);
+  requireArray(operation.effects, "$.operation.effects", add);
+  requireArray(operation.errors, "$.operation.errors", add);
   if (operation.assets !== undefined && !Array.isArray(operation.assets)) {
-    fail(path, line, "assets must be an array");
+    add("CRDD_SOURCE_TYPE", "$.operation.assets", "must be an array");
   }
-  if (!isRecord(operation.transaction)) fail(path, line, "transaction must be an object");
-  if (typeof operation.transaction.atomic !== "boolean") fail(path, line, "transaction.atomic must be boolean");
-  if (typeof operation.transaction.rollback_on_failure !== "boolean") {
-    fail(path, line, "transaction.rollback_on_failure must be boolean");
+  if (!isRecord(operation.transaction)) {
+    add("CRDD_SOURCE_REQUIRED", "$.operation.transaction", "must be an object");
+  } else {
+    rejectUnknown(operation.transaction, ["atomic", "rollback_on_failure"], "$.operation.transaction", add);
+    requireBoolean(operation.transaction.atomic, "$.operation.transaction.atomic", add);
+    requireBoolean(
+      operation.transaction.rollback_on_failure,
+      "$.operation.transaction.rollback_on_failure",
+      add,
+    );
   }
+  if (Array.isArray(operation.requires)) {
+    for (const [index, requirement] of operation.requires.entries()) {
+      const base = `$.operation.requires[${index}]`;
+      if (!isRecord(requirement)) {
+        add("CRDD_SOURCE_TYPE", base, "must be an object");
+        continue;
+      }
+      rejectUnknown(requirement, ["id", "condition", "error"], base, add);
+      requireString(requirement.id, `${base}.id`, add);
+      requireString(requirement.condition, `${base}.condition`, add);
+      requireString(requirement.error, `${base}.error`, add);
+    }
+  }
+  return diagnostics;
+}
 
-  for (const [index, requirement] of operation.requires.entries()) {
-    if (!isRecord(requirement)) fail(path, line, `requires[${index}] must be an object`);
-    requireString(requirement, "id", path, line);
-    requireString(requirement, "condition", path, line);
-    requireString(requirement, "error", path, line);
+type AddDiagnostic = (code: string, path: string, message: string) => void;
+
+function rejectUnknown(
+  value: Record<string, unknown>,
+  allowed: string[],
+  path: string,
+  add: AddDiagnostic,
+): void {
+  for (const key of Object.keys(value).filter((key) => !allowed.includes(key))) {
+    add("CRDD_SOURCE_UNKNOWN_FIELD", `${path}.${key}`, "field is not allowed");
   }
 }
 
-function requireString(value: Record<string, unknown>, key: string, path: string, line: number): void {
-  if (typeof value[key] !== "string" || value[key].length === 0) fail(path, line, `${key} must be a string`);
+function requireString(value: unknown, path: string, add: AddDiagnostic): void {
+  if (typeof value !== "string" || value.length === 0) add("CRDD_SOURCE_REQUIRED", path, "must be a non-empty string");
 }
-
-function requireStringArray(value: Record<string, unknown>, key: string, path: string, line: number): void {
-  if (!Array.isArray(value[key]) || (value[key] as unknown[]).some((item) => typeof item !== "string")) {
-    fail(path, line, `${key} must be a string array`);
+function requireStringArray(value: unknown, path: string, add: AddDiagnostic): void {
+  if (!Array.isArray(value) || value.length === 0 ||
+      value.some((item) => typeof item !== "string" || item.length === 0)) {
+    add("CRDD_SOURCE_TYPE", path, "must be a non-empty string array");
   }
 }
-
-function requireRecord(value: Record<string, unknown>, key: string, path: string, line: number): void {
-  if (!isRecord(value[key])) fail(path, line, `${key} must be an object`);
+function requireRecord(value: unknown, path: string, add: AddDiagnostic): void {
+  if (!isRecord(value)) add("CRDD_SOURCE_TYPE", path, "must be an object");
+}
+function requireArray(value: unknown, path: string, add: AddDiagnostic): void {
+  if (!Array.isArray(value) || value.length === 0) add("CRDD_SOURCE_REQUIRED", path, "must be a non-empty array");
+}
+function requireBoolean(value: unknown, path: string, add: AddDiagnostic): void {
+  if (typeof value !== "boolean") add("CRDD_SOURCE_TYPE", path, "must be a boolean");
 }
 
-function requireArray(value: Record<string, unknown>, key: string, path: string, line: number): void {
-  if (!Array.isArray(value[key]) || (value[key] as unknown[]).length === 0) {
-    fail(path, line, `${key} must be a non-empty array`);
+function located(
+  code: string,
+  path: string,
+  message: string,
+  document: ReturnType<typeof parseDocument>,
+  lineCounter: LineCounter,
+  fence: ContractFence,
+): Diagnostic {
+  const segments = [...path.matchAll(/\.([A-Za-z_][A-Za-z0-9_]*)|\[(\d+)\]/g)]
+    .map((match) => match[1] ?? Number(match[2]));
+  let node: any;
+  for (let length = segments.length; length >= 0 && !node; length -= 1) {
+    node = document.getIn(segments.slice(0, length), true);
   }
-}
-
-function fail(path: string, line: number, message: string): never {
-  throw new Error(`${path}:${line}: ${message}`);
+  const position = node?.range ? lineCounter.linePos(node.range[0]) : undefined;
+  return {
+    code,
+    severity: "error",
+    path,
+    message,
+    location: {
+      line: position ? fence.startLine + position.line - 1 : fence.startLine,
+      column: position?.col ?? 1,
+    },
+  };
 }
 
 function isRecord(value: unknown): value is Record<string, any> {
