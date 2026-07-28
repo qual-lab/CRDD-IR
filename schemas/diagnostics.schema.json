@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://crdd.dev/schema/diagnostics/v0.1.json",
+  "title": "CRDD IR Diagnostics v0.1",
+  "type": "object",
+  "required": ["protocol", "ok", "diagnostics"],
+  "properties": {
+    "protocol": { "const": "crdd-ir/diagnostics-v0.1" },
+    "ok": { "type": "boolean" },
+    "source": { "type": "string" },
+    "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "severity", "path", "message"],
+        "properties": {
+          "code": { "type": "string", "pattern": "^CRDD_[A-Z0-9_]+$" },
+          "severity": { "enum": ["error", "warning"] },
+          "path": { "type": "string" },
+          "message": { "type": "string" },
+          "location": {
+            "type": "object",
+            "required": ["line", "column"],
+            "properties": {
+              "line": { "type": "integer", "minimum": 1 },
+              "column": { "type": "integer", "minimum": 1 },
+              "endLine": { "type": "integer", "minimum": 1 },
+              "endColumn": { "type": "integer", "minimum": 1 }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,13 @@
+{
+  "protocol": "crdd-ir/generation-v0.1",
+  "files": [
+    {
+      "path": "CreateEntity.generated.cpp",
+      "sha256": "d293120ecac980bb8368b8aa6e99081d2e14bf1f740b0ef41447cc7d8bed3e9d"
+    },
+    {
+      "path": "CreateEntity.generated.h",
+      "sha256": "d1162f88d82efcb2f55dfd4308c5eca371e487b910267cc91cebf2cefbb1a290"
+    }
+  ]
+}

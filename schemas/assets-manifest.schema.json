@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://crdd.dev/schema/assets-manifest/v0.1.json",
+  "title": "CRDD Generated Assets Manifest v0.1",
+  "type": "object",
+  "required": ["protocol", "operation", "scene", "assets"],
+  "properties": {
+    "protocol": { "const": "crdd-ir/assets-v0.1" },
+    "operation": { "type": "string", "minLength": 1 },
+    "scene": {
+      "type": "object",
+      "required": ["unrealLevel"],
+      "properties": {
+        "unrealLevel": { "type": "string", "pattern": "^/Game(?:/[A-Za-z][A-Za-z0-9_]*)+$" }
+      },
+      "additionalProperties": false
+    },
+    "assets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "source", "unrealDestination", "previewLevel", "dimensionsCm", "collision", "lod", "placement", "traces"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*$" },
+          "source": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*\\.generated\\.obj$" },
+          "unrealDestination": { "type": "string", "pattern": "^/Game(?:/[A-Za-z][A-Za-z0-9_]*)+$" },
+          "previewLevel": { "type": "string", "pattern": "^/Game(?:/[A-Za-z][A-Za-z0-9_]*)+$" },
+          "dimensionsCm": {
+            "type": "object",
+            "required": ["length", "width", "height"],
+            "properties": {
+              "length": { "type": "number", "exclusiveMinimum": 0 },
+              "width": { "type": "number", "exclusiveMinimum": 0 },
+              "height": { "type": "number", "exclusiveMinimum": 0 }
+            },
+            "additionalProperties": false
+          },
+          "collision": { "$ref": "#/$defs/collision" },
+          "lod": { "$ref": "#/$defs/lod" },
+          "placement": {
+            "type": "object",
+            "required": ["locationCm", "rotationDeg"],
+            "properties": {
+              "locationCm": { "$ref": "#/$defs/vector" },
+              "rotationDeg": { "$ref": "#/$defs/rotation" }
+            },
+            "additionalProperties": false
+          },
+          "traces": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1 }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "$defs": {
+    "collision": {
+      "type": "object",
+      "required": ["shape"],
+      "properties": {
+        "shape": { "enum": ["box", "capsule", "sphere", "ndop26"] }
+      },
+      "additionalProperties": false
+    },
+    "lod": {
+      "type": "object",
+      "required": ["group"],
+      "properties": {
+        "group": { "enum": ["None", "SmallProp", "LargeProp", "LevelArchitecture"] }
+      },
+      "additionalProperties": false
+    },
+    "vector": {
+      "type": "object",
+      "required": ["x", "y", "z"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "rotation": {
+      "type": "object",
+      "required": ["pitch", "yaw", "roll"],
+      "properties": {
+        "pitch": { "type": "number" },
+        "yaw": { "type": "number" },
+        "roll": { "type": "number" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

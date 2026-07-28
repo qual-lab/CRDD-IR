@@ -1,0 +1,25 @@
+{
+  "protocol": "crdd-ir/generation-v0.1",
+  "files": [
+    {
+      "path": "assets.manifest.json",
+      "sha256": "20005ccf92c91efddcf4dc62c3e6417f0039e35e9fc8c41b217089ff86b11f3a"
+    },
+    {
+      "path": "EntityPreview.generated.mtl",
+      "sha256": "75fd255dfafcf433ffe9555e602569be2dbed9dff76c90badd9d8dc492909792"
+    },
+    {
+      "path": "EntityPreview.generated.obj",
+      "sha256": "a8cbc7e791cef05227bae119f4e561af4747f8740f75586778871c7978718f7a"
+    },
+    {
+      "path": "SecondaryPreview.generated.mtl",
+      "sha256": "8ce01a862f958517dde3d50e4cb855cefad9fc75c1f23a31670746f4d493732f"
+    },
+    {
+      "path": "SecondaryPreview.generated.obj",
+      "sha256": "d186e821dffacccb1a1ca8db42c95faf20f1ce868d631ca2399d93af0b079023"
+    }
+  ]
+}

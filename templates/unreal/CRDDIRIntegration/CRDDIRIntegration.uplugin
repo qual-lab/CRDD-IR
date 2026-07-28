@@ -1,0 +1,22 @@
+{
+  "FileVersion": 3,
+  "Version": 1,
+  "VersionName": "0.1.0",
+  "FriendlyName": "CRDD IR Integration",
+  "Description": "Runs generated CRDD operations at runtime and provides editor-only asset integration.",
+  "Category": "CRDD",
+  "CanContainContent": false,
+  "EnabledByDefault": true,
+  "Modules": [
+    {
+      "Name": "CRDDIRRuntime",
+      "Type": "Runtime",
+      "LoadingPhase": "Default"
+    },
+    {
+      "Name": "CRDDIRIntegration",
+      "Type": "Editor",
+      "LoadingPhase": "Default"
+    }
+  ]
+}

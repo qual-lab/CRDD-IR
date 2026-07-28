@@ -1,0 +1,288 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://crdd.dev/schema/source-contract/v0.1.json",
+  "title": "CRDD Source Contract v0.1",
+  "type": "object",
+  "required": ["schema", "operation"],
+  "properties": {
+    "schema": { "const": "crdd-source-contract/v0.1" },
+    "operation": {
+      "type": "object",
+      "required": ["id", "traces", "input", "state", "requires", "effects", "errors", "transaction"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "traces": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/field" }
+        },
+        "state": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/field" }
+        },
+        "requires": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/requirement" }
+        },
+        "effects": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/effect" }
+        },
+        "errors": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/error" }
+        },
+        "assets": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/asset" }
+        },
+        "transaction": {
+          "type": "object",
+          "required": ["atomic", "rollback_on_failure"],
+          "properties": {
+            "atomic": { "type": "boolean" },
+            "rollback_on_failure": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        }
+      }
+    }
+  },
+  "$defs": {
+    "requirement": {
+      "type": "object",
+      "required": ["id", "condition", "error"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "condition": { "type": "string", "minLength": 1 },
+        "error": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "effect": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["target", "action", "expression"],
+          "properties": {
+            "target": { "type": "string", "minLength": 1 },
+            "action": { "enum": ["assign", "increment"] },
+            "expression": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["target", "action", "value"],
+          "properties": {
+            "target": { "type": "string", "minLength": 1 },
+            "action": { "const": "append" },
+            "value": {}
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["target", "action", "where"],
+          "properties": {
+            "target": { "type": "string", "minLength": 1 },
+            "action": { "const": "remove" },
+            "where": { "type": "object", "minProperties": 1 }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["target", "action", "where", "set"],
+          "properties": {
+            "target": { "type": "string", "minLength": 1 },
+            "action": { "const": "update" },
+            "where": { "type": "object", "minProperties": 1 },
+            "set": { "type": "object", "minProperties": 1 }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "error": {
+      "type": "object",
+      "required": ["code", "traces"],
+      "properties": {
+        "code": { "type": "string", "minLength": 1 },
+        "traces": { "$ref": "#/$defs/traces" }
+      },
+      "additionalProperties": false
+    },
+    "scalar": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["number", "string", "boolean"] },
+        "unit": { "type": "string", "minLength": 1 },
+        "minimum": { "type": "number" },
+        "enum": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "optional": { "type": "boolean" },
+        "default": { "type": ["number", "string", "boolean"] }
+      },
+      "additionalProperties": false
+    },
+    "object": {
+      "type": "object",
+      "required": ["type", "properties"],
+      "properties": {
+        "type": { "const": "object" },
+        "properties": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "$ref": "#/$defs/scalar" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "field": {
+      "oneOf": [
+        { "$ref": "#/$defs/scalar" },
+        { "$ref": "#/$defs/object" },
+        {
+          "type": "object",
+          "required": ["type", "items"],
+          "properties": {
+            "type": { "const": "array" },
+            "items": { "$ref": "#/$defs/object" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "asset": {
+      "type": "object",
+      "required": ["id", "type", "dimensions", "material", "collision", "lod", "placement", "traces"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*$" },
+        "type": { "enum": ["box", "cylinder"] },
+        "dimensions": { "$ref": "#/$defs/dimensions" },
+        "material": {
+          "type": "object",
+          "required": ["base_color"],
+          "properties": {
+            "base_color": { "$ref": "#/$defs/color" }
+          },
+          "additionalProperties": false
+        },
+        "collision": { "$ref": "#/$defs/collision" },
+        "lod": { "$ref": "#/$defs/lod" },
+        "placement": { "$ref": "#/$defs/placement" },
+        "traces": { "$ref": "#/$defs/traces" }
+      },
+      "additionalProperties": false
+    },
+    "dimensions": {
+      "type": "object",
+      "required": ["length", "width", "height"],
+      "properties": {
+        "length": { "$ref": "#/$defs/meter" },
+        "width": { "$ref": "#/$defs/meter" },
+        "height": { "$ref": "#/$defs/meter" }
+      },
+      "additionalProperties": false
+    },
+    "collision": {
+      "type": "object",
+      "required": ["shape"],
+      "properties": {
+        "shape": { "enum": ["box", "capsule", "sphere", "ndop26"] }
+      },
+      "additionalProperties": false
+    },
+    "lod": {
+      "type": "object",
+      "required": ["group"],
+      "properties": {
+        "group": { "enum": ["None", "SmallProp", "LargeProp", "LevelArchitecture"] }
+      },
+      "additionalProperties": false
+    },
+    "meter": {
+      "type": "object",
+      "required": ["value", "unit"],
+      "properties": {
+        "value": { "type": "number", "exclusiveMinimum": 0 },
+        "unit": { "const": "m" }
+      },
+      "additionalProperties": false
+    },
+    "placement": {
+      "type": "object",
+      "required": ["location", "rotation"],
+      "properties": {
+        "location": { "$ref": "#/$defs/location" },
+        "rotation": { "$ref": "#/$defs/rotation" }
+      },
+      "additionalProperties": false
+    },
+    "location": {
+      "type": "object",
+      "required": ["x", "y", "z"],
+      "properties": {
+        "x": { "$ref": "#/$defs/signedMeter" },
+        "y": { "$ref": "#/$defs/signedMeter" },
+        "z": { "$ref": "#/$defs/signedMeter" }
+      },
+      "additionalProperties": false
+    },
+    "signedMeter": {
+      "type": "object",
+      "required": ["value", "unit"],
+      "properties": {
+        "value": { "type": "number" },
+        "unit": { "const": "m" }
+      },
+      "additionalProperties": false
+    },
+    "rotation": {
+      "type": "object",
+      "required": ["pitch", "yaw", "roll"],
+      "properties": {
+        "pitch": { "$ref": "#/$defs/degrees" },
+        "yaw": { "$ref": "#/$defs/degrees" },
+        "roll": { "$ref": "#/$defs/degrees" }
+      },
+      "additionalProperties": false
+    },
+    "degrees": {
+      "type": "object",
+      "required": ["value", "unit"],
+      "properties": {
+        "value": { "type": "number" },
+        "unit": { "const": "deg" }
+      },
+      "additionalProperties": false
+    },
+    "color": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "type": "number", "minimum": 0, "maximum": 1 }
+    },
+    "traces": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    }
+  },
+  "additionalProperties": false
+}

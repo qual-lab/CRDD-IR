@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://crdd.dev/schema/generation/v0.1.json",
+  "title": "CRDD IR Generation Ownership Manifest v0.1",
+  "type": "object",
+  "required": ["protocol", "files"],
+  "properties": {
+    "protocol": { "const": "crdd-ir/generation-v0.1" },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "sha256"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

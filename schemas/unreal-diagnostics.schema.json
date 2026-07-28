@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://crdd.dev/schema/unreal-diagnostics/v0.1.json",
+  "title": "CRDD Unreal Diagnostics v0.1",
+  "type": "object",
+  "required": ["protocol", "diagnostics"],
+  "properties": {
+    "protocol": { "const": "crdd-ir/unreal-diagnostics-v0.1" },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "severity", "stage", "message"],
+        "properties": {
+          "code": { "type": "string" },
+          "severity": { "enum": ["error", "warning"] },
+          "stage": { "enum": ["Compiler", "UHT", "UBT", "Cook", "Automation"] },
+          "message": { "type": "string" },
+          "source": { "type": "string" },
+          "line": { "type": "integer", "minimum": 1 }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

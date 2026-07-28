@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://crdd.dev/schema/project-config/v0.1.json",
+  "title": "CRDD IR Project Configuration v0.1",
+  "type": "object",
+  "required": [
+    "protocol",
+    "toolRoot",
+    "source",
+    "generatedSource",
+    "generatedAssets",
+    "evidence",
+    "unreal"
+  ],
+  "properties": {
+    "protocol": { "const": "crdd-ir/project-config-v0.1" },
+    "toolRoot": { "$ref": "#/$defs/path" },
+    "source": {
+      "oneOf": [
+        { "$ref": "#/$defs/path" },
+        {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/path" }
+        }
+      ]
+    },
+    "assetSource": { "$ref": "#/$defs/path" },
+    "generatedSource": { "$ref": "#/$defs/path" },
+    "generatedAssets": { "$ref": "#/$defs/path" },
+    "evidence": { "$ref": "#/$defs/path" },
+    "unreal": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": [
+            "project",
+            "engineRoot",
+            "editorTarget",
+            "configuration",
+            "integrationPlugin",
+            "editorProfile",
+            "shippingProfile"
+          ],
+          "properties": {
+            "project": { "$ref": "#/$defs/path" },
+            "engineRoot": { "type": "string", "minLength": 1 },
+            "editorTarget": { "type": "string" },
+            "gameTarget": { "type": "string", "minLength": 1 },
+            "configuration": { "enum": ["Debug", "DebugGame", "Development", "Shipping", "Test"] },
+            "integrationPlugin": { "const": "CRDDIRIntegration" },
+            "editorProfile": { "$ref": "#/$defs/path" },
+            "shippingProfile": { "$ref": "#/$defs/path" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?![A-Za-z]:[\\\\/])(?![\\\\/])(?!.*(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$)).+$"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://crdd.dev/schema/mutation/v0.1.json",
+  "title": "CRDD IR Mutation Report v0.1",
+  "type": "object",
+  "required": ["protocol", "total", "killed", "survived", "score"],
+  "properties": {
+    "protocol": { "const": "crdd-ir/mutation-v0.1" },
+    "total": { "type": "integer", "minimum": 0 },
+    "killed": { "type": "integer", "minimum": 0 },
+    "survived": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "score": { "type": "number", "minimum": 0, "maximum": 100 }
+  },
+  "additionalProperties": false
+}

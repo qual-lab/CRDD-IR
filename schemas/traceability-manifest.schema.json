@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://crdd.dev/schema/traceability-manifest/v0.1.json",
+  "title": "CRDD IR Traceability Manifest v0.1",
+  "type": "object",
+  "required": ["protocol", "operation", "source", "generatedFiles", "requirements", "conformance", "coverage", "mutation"],
+  "properties": {
+    "protocol": { "const": "crdd-ir/traceability-v0.1" },
+    "operation": { "type": "string", "minLength": 1 },
+    "source": {
+      "type": "object",
+      "required": ["path", "irSha256"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "irSha256": { "$ref": "#/$defs/sha256" }
+      },
+      "additionalProperties": false
+    },
+    "generatedFiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "sha256", "traces"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "sha256": { "$ref": "#/$defs/sha256" },
+          "traces": { "$ref": "#/$defs/traces" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "requirements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "error", "traces", "testCases"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "error": { "type": "string", "minLength": 1 },
+          "traces": { "$ref": "#/$defs/traces" },
+          "testCases": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "conformance": {
+      "type": "object",
+      "required": ["protocol", "sha256", "cases"],
+      "properties": {
+        "protocol": { "const": "crdd-ir/conformance-v0.1" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "cases": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "traces"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "sourceRequirement": { "type": "string", "minLength": 1 },
+              "traces": { "$ref": "#/$defs/traces" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "coverage": {
+      "type": "object",
+      "required": ["requirements", "covered", "percentage", "uncovered"],
+      "properties": {
+        "requirements": { "type": "integer", "minimum": 0 },
+        "covered": { "type": "integer", "minimum": 0 },
+        "percentage": { "type": "number", "minimum": 0, "maximum": 100 },
+        "uncovered": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      },
+      "additionalProperties": false
+    },
+    "mutation": {
+      "type": "object",
+      "required": ["protocol", "total", "killed", "survived", "score"],
+      "properties": {
+        "protocol": { "const": "crdd-ir/mutation-v0.1" },
+        "total": { "type": "integer", "minimum": 0 },
+        "killed": { "type": "integer", "minimum": 0 },
+        "survived": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "score": { "type": "number", "minimum": 0, "maximum": 100 }
+      },
+      "additionalProperties": false
+    },
+    "execution": {
+      "type": "object",
+      "required": ["path", "sha256", "status", "tests"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "status": { "enum": ["passed", "failed"] },
+        "tests": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "traces": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": false
+}

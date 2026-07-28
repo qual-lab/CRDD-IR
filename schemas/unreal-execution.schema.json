@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://crdd.dev/schema/unreal-execution/v0.1.json",
+  "title": "CRDD IR Unreal Execution Evidence v0.1",
+  "type": "object",
+  "required": [
+    "protocol",
+    "operation",
+    "reportCreatedOn",
+    "sourceReportSha256",
+    "platforms",
+    "summary",
+    "tests"
+  ],
+  "properties": {
+    "protocol": { "const": "crdd-ir/unreal-execution-v0.1" },
+    "operation": { "type": "string", "minLength": 1 },
+    "reportCreatedOn": { "type": "string", "minLength": 1 },
+    "sourceReportSha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "platforms": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "summary": {
+      "type": "object",
+      "required": ["succeeded", "failed", "notRun"],
+      "properties": {
+        "succeeded": { "type": "integer", "minimum": 0 },
+        "failed": { "type": "integer", "minimum": 0 },
+        "notRun": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "tests": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["path", "state", "durationSeconds", "warnings", "errors"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "state": { "type": "string", "minLength": 1 },
+          "durationSeconds": { "type": "number", "minimum": 0 },
+          "warnings": { "type": "integer", "minimum": 0 },
+          "errors": { "type": "integer", "minimum": 0 }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

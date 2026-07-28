@@ -1,0 +1,113 @@
+{
+  "version": "0.1",
+  "operation": "CreateEntity",
+  "traces": [
+    "REQ-ENTITY-001",
+    "DEC-ENTITY-003"
+  ],
+  "cases": [
+    {
+      "id": "create-entity-success",
+      "description": "CreateEntity succeeds when every precondition is satisfied",
+      "arrange": {
+        "input": {
+          "length": 1,
+          "cost": 100
+        },
+        "state": {
+          "budget": {
+            "remaining": 1000000
+          },
+          "entities": []
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "minimum-entity-length-at-boundary",
+      "sourceRequirement": "minimum-entity-length",
+      "description": "length equal to 0.3 is accepted",
+      "arrange": {
+        "input": {
+          "length": 0.3,
+          "cost": 100
+        },
+        "state": {
+          "budget": {
+            "remaining": 1000000
+          },
+          "entities": []
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "minimum-entity-length-below-boundary",
+      "sourceRequirement": "minimum-entity-length",
+      "description": "length below 0.3 is rejected without state changes",
+      "arrange": {
+        "input": {
+          "length": 0.299,
+          "cost": 100
+        },
+        "state": {
+          "budget": {
+            "remaining": 1000000
+          },
+          "entities": []
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "ENTITY_TOO_SHORT",
+        "stateUnchanged": true
+      }
+    },
+    {
+      "id": "sufficient-budget-exact",
+      "sourceRequirement": "sufficient-budget",
+      "description": "budget.remaining equal to cost is accepted",
+      "arrange": {
+        "input": {
+          "length": 1,
+          "cost": 100
+        },
+        "state": {
+          "budget": {
+            "remaining": 100
+          },
+          "entities": []
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "sufficient-budget-insufficient",
+      "sourceRequirement": "sufficient-budget",
+      "description": "budget.remaining one unit below cost is rejected without state changes",
+      "arrange": {
+        "input": {
+          "length": 1,
+          "cost": 100
+        },
+        "state": {
+          "budget": {
+            "remaining": 99
+          },
+          "entities": []
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "INSUFFICIENT_BUDGET",
+        "stateUnchanged": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+name: Verify CRDD IR
+
+on:
+  push:
+    branches: [develop]
+  pull_request:
+
+jobs:
+  node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.18.0
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run check:source
+
+  unreal:
+    runs-on: [self-hosted, Windows, unreal-5.8]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.18.0
+          cache: npm
+      - run: npm ci
+      - run: npm run verify:unreal
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: crdd-unreal-evidence
+          path: |
+            examples/create-entity/07_Quality/CRDD_IR
+            .crdd-ir/reports

@@ -1,0 +1,73 @@
+{
+  "protocol": "crdd-ir/assets-v0.1",
+  "operation": "CreateEntity",
+  "scene": {
+    "unrealLevel": "/Game/CRDD/Generated/CreateEntityScene"
+  },
+  "assets": [
+    {
+      "id": "EntityPreview",
+      "source": "EntityPreview.generated.obj",
+      "unrealDestination": "/Game/CRDD/Generated",
+      "previewLevel": "/Game/CRDD/Generated/EntityPreviewLevel",
+      "dimensionsCm": {
+        "length": 100,
+        "width": 20,
+        "height": 240
+      },
+      "collision": {
+        "shape": "box"
+      },
+      "lod": {
+        "group": "LevelArchitecture"
+      },
+      "placement": {
+        "locationCm": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "rotationDeg": {
+          "pitch": 0,
+          "yaw": 0,
+          "roll": 0
+        }
+      },
+      "traces": [
+        "REQ-ENTITY-001"
+      ]
+    },
+    {
+      "id": "SecondaryPreview",
+      "source": "SecondaryPreview.generated.obj",
+      "unrealDestination": "/Game/CRDD/Generated",
+      "previewLevel": "/Game/CRDD/Generated/SecondaryPreviewLevel",
+      "dimensionsCm": {
+        "length": 90,
+        "width": 10,
+        "height": 200
+      },
+      "collision": {
+        "shape": "box"
+      },
+      "lod": {
+        "group": "LargeProp"
+      },
+      "placement": {
+        "locationCm": {
+          "x": 150,
+          "y": 25,
+          "z": 0
+        },
+        "rotationDeg": {
+          "pitch": 0,
+          "yaw": 90,
+          "roll": 0
+        }
+      },
+      "traces": [
+        "REQ-ENTITY-001"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "protocol": "crdd-ir/batch-v0.1",
+  "target": "unreal",
+  "layout": "flat",
+  "operations": [
+    {
+      "id": "CreateEntity",
+      "source": "examples/create-entity/05_SPEC/01_Behavior_Specification.md",
+      "digest": "958fe9983be73621981e4aada20961d69c42b7d79ed5d8e199338d819d181b26",
+      "outputDirectory": ".",
+      "files": [
+        {
+          "path": "CreateEntity.generated.cpp",
+          "sha256": "d293120ecac980bb8368b8aa6e99081d2e14bf1f740b0ef41447cc7d8bed3e9d"
+        },
+        {
+          "path": "CreateEntity.generated.h",
+          "sha256": "fe6c345d644a7e81ceaf170d8f65d8c943b4ec946c2494f5d3235c348f957123"
+        }
+      ]
+    },
+    {
+      "id": "UpdateEntity",
+      "source": "examples/update-entity/05_SPEC/01_Behavior_Specification.md",
+      "digest": "c01d756a4e911e9bf13ffe51b18ce82597359e20ac2543931aaf9721184074e4",
+      "outputDirectory": ".",
+      "files": [
+        {
+          "path": "UpdateEntity.generated.cpp",
+          "sha256": "6f74243d2488de2c2b30015b0a4e739e696bff527af8842729ed1a6f6d736708"
+        },
+        {
+          "path": "UpdateEntity.generated.h",
+          "sha256": "d3f504112349a2fa1abd7d9db186a3e7188afac9fc388e0137c4a80c80a1d1fd"
+        }
+      ]
+    }
+  ]
+}

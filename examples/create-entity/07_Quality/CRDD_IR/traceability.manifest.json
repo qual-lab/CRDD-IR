@@ -1,0 +1,149 @@
+{
+  "protocol": "crdd-ir/traceability-v0.1",
+  "operation": "CreateEntity",
+  "source": {
+    "path": "examples/create-entity/05_SPEC/01_Behavior_Specification.md",
+    "irSha256": "958fe9983be73621981e4aada20961d69c42b7d79ed5d8e199338d819d181b26"
+  },
+  "generatedFiles": [
+    {
+      "path": "unreal/CreateEntity.generated.h",
+      "sha256": "d1162f88d82efcb2f55dfd4308c5eca371e487b910267cc91cebf2cefbb1a290",
+      "traces": [
+        "REQ-ENTITY-001",
+        "DEC-ENTITY-003"
+      ]
+    },
+    {
+      "path": "unreal/CreateEntity.generated.cpp",
+      "sha256": "d293120ecac980bb8368b8aa6e99081d2e14bf1f740b0ef41447cc7d8bed3e9d",
+      "traces": [
+        "REQ-ENTITY-001",
+        "DEC-ENTITY-003"
+      ]
+    },
+    {
+      "path": "assets/EntityPreview.generated.obj",
+      "sha256": "a8cbc7e791cef05227bae119f4e561af4747f8740f75586778871c7978718f7a",
+      "traces": [
+        "REQ-ENTITY-001"
+      ]
+    },
+    {
+      "path": "assets/EntityPreview.generated.mtl",
+      "sha256": "75fd255dfafcf433ffe9555e602569be2dbed9dff76c90badd9d8dc492909792",
+      "traces": [
+        "REQ-ENTITY-001"
+      ]
+    },
+    {
+      "path": "assets/SecondaryPreview.generated.obj",
+      "sha256": "d186e821dffacccb1a1ca8db42c95faf20f1ce868d631ca2399d93af0b079023",
+      "traces": [
+        "REQ-ENTITY-001"
+      ]
+    },
+    {
+      "path": "assets/SecondaryPreview.generated.mtl",
+      "sha256": "8ce01a862f958517dde3d50e4cb855cefad9fc75c1f23a31670746f4d493732f",
+      "traces": [
+        "REQ-ENTITY-001"
+      ]
+    },
+    {
+      "path": "assets/assets.manifest.json",
+      "sha256": "20005ccf92c91efddcf4dc62c3e6417f0039e35e9fc8c41b217089ff86b11f3a",
+      "traces": []
+    }
+  ],
+  "requirements": [
+    {
+      "id": "minimum-entity-length",
+      "error": "ENTITY_TOO_SHORT",
+      "traces": [
+        "REQ-ENTITY-001"
+      ],
+      "testCases": [
+        "minimum-entity-length-at-boundary",
+        "minimum-entity-length-below-boundary"
+      ]
+    },
+    {
+      "id": "sufficient-budget",
+      "error": "INSUFFICIENT_BUDGET",
+      "traces": [
+        "DEC-ENTITY-003"
+      ],
+      "testCases": [
+        "sufficient-budget-exact",
+        "sufficient-budget-insufficient"
+      ]
+    }
+  ],
+  "conformance": {
+    "protocol": "crdd-ir/conformance-v0.1",
+    "sha256": "fae4e3882c30f88222e4c1976bff9d1920c7ad9a3063e1a1e68d34f7a529ee1c",
+    "cases": [
+      {
+        "id": "create-entity-success",
+        "traces": [
+          "REQ-ENTITY-001",
+          "DEC-ENTITY-003"
+        ]
+      },
+      {
+        "id": "minimum-entity-length-at-boundary",
+        "sourceRequirement": "minimum-entity-length",
+        "traces": [
+          "REQ-ENTITY-001"
+        ]
+      },
+      {
+        "id": "minimum-entity-length-below-boundary",
+        "sourceRequirement": "minimum-entity-length",
+        "traces": [
+          "REQ-ENTITY-001"
+        ]
+      },
+      {
+        "id": "sufficient-budget-exact",
+        "sourceRequirement": "sufficient-budget",
+        "traces": [
+          "DEC-ENTITY-003"
+        ]
+      },
+      {
+        "id": "sufficient-budget-insufficient",
+        "sourceRequirement": "sufficient-budget",
+        "traces": [
+          "DEC-ENTITY-003"
+        ]
+      }
+    ]
+  },
+  "coverage": {
+    "requirements": 2,
+    "covered": 2,
+    "uncovered": [],
+    "percentage": 100
+  },
+  "mutation": {
+    "protocol": "crdd-ir/mutation-v0.1",
+    "total": 6,
+    "killed": 6,
+    "survived": [],
+    "score": 100
+  },
+  "execution": {
+    "path": "unreal-execution.json",
+    "sha256": "a363611eb17ab9214813830be3c2873bdc1021ceb771e11dfaa3fe15f23d4539",
+    "status": "passed",
+    "tests": [
+      "CRDD.Assets.GeneratedMeshes",
+      "CRDD.Assets.GeneratedPreviewLevels",
+      "CRDD.Assets.GeneratedScene",
+      "CRDD.CreateEntity.Conformance",
+      "CRDD.Integration.GeneratedAssets"
+    ]
+  }
+}
