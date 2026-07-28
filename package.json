@@ -10,6 +10,7 @@
     "src",
     "schemas",
     "scripts",
+    "templates",
     "README.md"
   ],
   "scripts": {

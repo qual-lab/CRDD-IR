@@ -89,6 +89,10 @@ Visual Studio installed.
 CRDD repositoryへのsubmodule導入方法は
 [docs/crdd-integration.md](docs/crdd-integration.md)を参照する。
 
+適用先には`tools/CRDD-IR`として任意導入し、Codex、Claude Code、
+GitHub Copilotで共通の`tools/crdd-ir.ps1`を使用する。CRDD Coreには
+Compilerを組み込まない。
+
 ## Design boundaries
 
 - CRDD Markdownは人間向け記述と機械可読な構造化契約の正本
