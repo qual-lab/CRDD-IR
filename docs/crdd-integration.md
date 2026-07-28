@@ -1,5 +1,9 @@
 # CRDD Repository Integration
 
+`tools/crdd-ir.ps1` validates `crdd-ir.config.json` before generating files.
+It rejects missing or unknown fields, invalid enum values, and project paths
+that could escape the target repository.
+
 CRDD IR本体はCRDD適用先へコピーせず、repository rootの`tools/CRDD-IR`
 へGit submoduleとして配置する。
 

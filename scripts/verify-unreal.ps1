@@ -56,7 +56,7 @@ Assert-LastExitCode "Unreal fixture generation"
 Assert-LastExitCode "3D asset generation"
 
 Write-Host "[5/8] Build Unreal fixture"
-& $buildTool CrddCompilerFixtureEditor Win64 $Configuration $project -WaitMutex -NoHotReload
+& $buildTool CrddCompilerFixtureEditor Win64 $Configuration $project -WaitMutex -NoHotReload -NoUBA
 Assert-LastExitCode "Unreal build"
 
 Write-Host "[6/8] Import generated 3D assets"

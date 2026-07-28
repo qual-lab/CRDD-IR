@@ -69,7 +69,7 @@ if (Test-Path -LiteralPath $savedManifest) {
 }
 Copy-Item -LiteralPath $manifest -Destination $savedManifest -Force
 
-& $buildTool $editorTarget Win64 $configuration $project -WaitMutex -NoHotReload
+& $buildTool $editorTarget Win64 $configuration $project -WaitMutex -NoHotReload -NoUBA
 Assert-ExitCode "Unreal build"
 
 $env:CRDD_ASSET_MANIFEST = $manifest

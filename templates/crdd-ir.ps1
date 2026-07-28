@@ -11,10 +11,32 @@ if (-not (Test-Path -LiteralPath $configPath)) {
     throw "CRDD-IR config not found: $configPath"
 }
 
-$config = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
-if ($config.protocol -ne "crdd-ir/project-config-v0.1") {
-    throw "Unsupported CRDD-IR project config protocol: $($config.protocol)"
+$bootstrapConfig = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
+$bootstrapToolRootValue = [string]$bootstrapConfig.toolRoot
+if ([string]::IsNullOrWhiteSpace($bootstrapToolRootValue) -or
+    [System.IO.Path]::IsPathRooted($bootstrapToolRootValue) -or
+    ($bootstrapToolRootValue -split "[\\/]" -contains "..")) {
+    throw "config.toolRoot must be a safe project-relative path"
 }
+$bootstrapToolRoot = Join-Path $projectRoot $bootstrapConfig.toolRoot
+$resolvedBootstrapToolRoot = [System.IO.Path]::GetFullPath($bootstrapToolRoot)
+$resolvedProjectPrefix = [System.IO.Path]::GetFullPath($projectRoot).TrimEnd("\", "/") +
+    [System.IO.Path]::DirectorySeparatorChar
+if (-not $resolvedBootstrapToolRoot.StartsWith(
+    $resolvedProjectPrefix,
+    [System.StringComparison]::OrdinalIgnoreCase
+)) {
+    throw "config.toolRoot must stay within the project root"
+}
+$bootstrapCli = Join-Path $resolvedBootstrapToolRoot "src\cli.ts"
+if (-not (Test-Path -LiteralPath $bootstrapCli)) {
+    throw "CRDD-IR CLI not found: $bootstrapCli"
+}
+& node $bootstrapCli "project" "check" $configPath
+if ($LASTEXITCODE -ne 0) {
+    throw "Invalid CRDD-IR project config"
+}
+$config = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
 $toolRoot = Join-Path $projectRoot $config.toolRoot
 $cli = Join-Path $toolRoot "src\cli.ts"
 $source = Join-Path $projectRoot $config.source

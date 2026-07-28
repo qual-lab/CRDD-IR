@@ -46,7 +46,8 @@
   "$defs": {
     "path": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "pattern": "^(?![A-Za-z]:[\\\\/])(?![\\\\/])(?!.*(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$)).+$"
     }
   },
   "additionalProperties": false

@@ -107,9 +107,7 @@ if (-not [string]::IsNullOrWhiteSpace($UnrealProject)) {
     New-Item -ItemType Directory -Force -Path $pluginTarget | Out-Null
     Copy-Item -Path (Join-Path $pluginSource "*") -Destination $pluginTarget -Recurse -Force
 
-    $pythonSource = Join-Path $installerRoot (
-        "examples\unreal\CrddCompilerFixture\Scripts\import_generated_assets.py"
-    )
+    $pythonSource = Join-Path $installerRoot "templates\unreal\import_generated_assets.py"
     $pythonTarget = Join-Path $resolvedProjectRoot "tools\crdd-import-generated-assets.py"
     Write-Utf8File $pythonTarget (Get-Content -LiteralPath $pythonSource -Raw)
 }

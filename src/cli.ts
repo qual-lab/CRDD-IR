@@ -7,6 +7,7 @@ import { compileMarkdown } from "./compiler.ts";
 import { generateConformanceBundle } from "./conformance.ts";
 import { formatDiagnostics, loadIr, validateIr } from "./ir.ts";
 import { createProcessAdapter } from "./process-adapter.ts";
+import { loadProjectConfig } from "./project-config.ts";
 import { simulate } from "./simulator.ts";
 import { generateTestManifest } from "./test-manifest.ts";
 import { runTestManifest } from "./test-runner.ts";
@@ -69,6 +70,13 @@ async function main(argv: string[]): Promise<void> {
     const compilation = await compileMarkdown(sourcePath);
     console.log(`OK ${sourcePath}`);
     console.log(`IR SHA-256 ${compilation.digest}`);
+    return;
+  }
+
+  if (command === "project" && subcommand === "check") {
+    const configPath = required(argv[2], "project config file");
+    await loadProjectConfig(configPath);
+    console.log(`OK ${configPath}`);
     return;
   }
 
@@ -265,6 +273,7 @@ function printHelp(): void {
 Commands:
   compile <spec.md> [--out <debug-ir.json>]
   check <spec.md>
+  project check <crdd-ir.config.json>
   lint <ir.json>
   simulate <ir.json> --input <input.json>
   test generate <ir.json> [--out <file>]
