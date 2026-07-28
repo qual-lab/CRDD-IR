@@ -175,9 +175,40 @@ function validateAssets(value: unknown, diagnostics: Diagnostic[]): void {
     ) {
       diagnostics.push(error(`${path}.material.baseColor`, "must contain three numbers from 0 to 1"));
     }
+    validateAssetPlacement(asset.placement, `${path}.placement`, diagnostics);
     requireStringArray(asset, "traces", path, diagnostics);
   });
   reportDuplicateIds(ids, "$.operation.assets", "asset ID", diagnostics);
+}
+
+function validateAssetPlacement(
+  value: unknown,
+  path: string,
+  diagnostics: Diagnostic[],
+): void {
+  if (!isRecord(value)) {
+    diagnostics.push(error(path, "must be an object"));
+    return;
+  }
+  for (const [groupName, fields, unit] of [
+    ["location", ["x", "y", "z"], "m"],
+    ["rotation", ["pitch", "yaw", "roll"], "deg"],
+  ] as const) {
+    const group = value[groupName];
+    if (!isRecord(group)) {
+      diagnostics.push(error(`${path}.${groupName}`, "must be an object"));
+      continue;
+    }
+    for (const field of fields) {
+      const component = group[field];
+      if (!isRecord(component) || typeof component.value !== "number" || !Number.isFinite(component.value)) {
+        diagnostics.push(error(`${path}.${groupName}.${field}.value`, "must be a finite number"));
+      }
+      if (!isRecord(component) || component.unit !== unit) {
+        diagnostics.push(error(`${path}.${groupName}.${field}.unit`, `must equal "${unit}"`));
+      }
+    }
+  }
 }
 
 function validateSemantics(operation: Record<string, unknown>, diagnostics: Diagnostic[]): void {

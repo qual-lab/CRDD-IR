@@ -12,7 +12,7 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["id", "source", "unrealDestination", "previewLevel", "dimensionsCm", "traces"],
+        "required": ["id", "source", "unrealDestination", "previewLevel", "dimensionsCm", "placement", "traces"],
         "properties": {
           "id": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*$" },
           "source": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*\\.generated\\.obj$" },
@@ -28,6 +28,15 @@
             },
             "additionalProperties": false
           },
+          "placement": {
+            "type": "object",
+            "required": ["locationCm", "rotationDeg"],
+            "properties": {
+              "locationCm": { "$ref": "#/$defs/vector" },
+              "rotationDeg": { "$ref": "#/$defs/rotation" }
+            },
+            "additionalProperties": false
+          },
           "traces": {
             "type": "array",
             "minItems": 1,
@@ -37,6 +46,28 @@
         },
         "additionalProperties": false
       }
+    }
+  },
+  "$defs": {
+    "vector": {
+      "type": "object",
+      "required": ["x", "y", "z"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "rotation": {
+      "type": "object",
+      "required": ["pitch", "yaw", "roll"],
+      "properties": {
+        "pitch": { "type": "number" },
+        "yaw": { "type": "number" },
+        "roll": { "type": "number" }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false

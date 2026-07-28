@@ -86,6 +86,15 @@ operation:
         height: { value: 2.4, unit: m }
       material:
         base_color: [0.65, 0.68, 0.72]
+      placement:
+        location:
+          x: { value: 0, unit: m }
+          y: { value: 0, unit: m }
+          z: { value: 0, unit: m }
+        rotation:
+          pitch: { value: 0, unit: deg }
+          yaw: { value: 0, unit: deg }
+          roll: { value: 0, unit: deg }
       traces:
         - REQ-WALL-001
     - id: DoorPreview
@@ -96,6 +105,15 @@ operation:
         height: { value: 2.0, unit: m }
       material:
         base_color: [0.4, 0.2, 0.1]
+      placement:
+        location:
+          x: { value: 1.5, unit: m }
+          y: { value: 0.25, unit: m }
+          z: { value: 0, unit: m }
+        rotation:
+          pitch: { value: 0, unit: deg }
+          yaw: { value: 90, unit: deg }
+          roll: { value: 0, unit: deg }
       traces:
         - REQ-WALL-001
 ```

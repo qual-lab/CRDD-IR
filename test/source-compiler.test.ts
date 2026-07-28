@@ -229,6 +229,10 @@ test("generates deterministic Unreal-scale 3D assets from CRDD", async () => {
         unrealDestination: "/Game/CRDD/Generated",
         previewLevel: "/Game/CRDD/Generated/WallPreviewLevel",
         dimensionsCm: { length: 100, width: 20, height: 240 },
+        placement: {
+          locationCm: { x: 0, y: 0, z: 0 },
+          rotationDeg: { pitch: 0, yaw: 0, roll: 0 },
+        },
         traces: ["REQ-WALL-001"],
       },
       {
@@ -237,6 +241,10 @@ test("generates deterministic Unreal-scale 3D assets from CRDD", async () => {
         unrealDestination: "/Game/CRDD/Generated",
         previewLevel: "/Game/CRDD/Generated/DoorPreviewLevel",
         dimensionsCm: { length: 90, width: 10, height: 200 },
+        placement: {
+          locationCm: { x: 150, y: 25, z: 0 },
+          rotationDeg: { pitch: 0, yaw: 90, roll: 0 },
+        },
         traces: ["REQ-WALL-001"],
       },
     ],
@@ -254,6 +262,18 @@ test("generates one manifest entry for every declared 3D asset", async () => {
       height: { value: 2.0, unit: "m" },
     },
     material: { baseColor: [0.4, 0.2, 0.1] },
+    placement: {
+      location: {
+        x: { value: 2, unit: "m" },
+        y: { value: 0, unit: "m" },
+        z: { value: 0, unit: "m" },
+      },
+      rotation: {
+        pitch: { value: 0, unit: "deg" },
+        yaw: { value: 45, unit: "deg" },
+        roll: { value: 0, unit: "deg" },
+      },
+    },
     traces: ["REQ-WALL-001"],
   });
 

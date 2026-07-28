@@ -25,6 +25,9 @@ for asset_definition in manifest.get("assets", []):
     asset_path = f"{destination_path}/{asset_id}"
     level_path = asset_definition["previewLevel"]
     actor_label = f"CRDD_{asset_id}"
+    placement = asset_definition["placement"]
+    location = placement["locationCm"]
+    rotation = placement["rotationDeg"]
 
     if not os.path.isfile(source_path):
         raise RuntimeError(f"Generated asset source not found: {source_path}")
@@ -60,7 +63,10 @@ for asset_definition in manifest.get("assets", []):
 
     mesh = unreal.EditorAssetLibrary.load_asset(asset_path)
     actor = actor_subsystem.spawn_actor_from_object(
-        mesh, unreal.Vector(0.0, 0.0, 0.0), unreal.Rotator(), False
+        mesh,
+        unreal.Vector(location["x"], location["y"], location["z"]),
+        unreal.Rotator(rotation["roll"], rotation["pitch"], rotation["yaw"]),
+        False,
     )
     if actor is None:
         raise RuntimeError(f"Failed to place generated mesh in level: {asset_path}")

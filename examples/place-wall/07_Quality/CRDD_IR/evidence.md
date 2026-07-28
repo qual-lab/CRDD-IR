@@ -2,7 +2,7 @@
 
 - Protocol: `crdd-ir/traceability-v0.1`
 - Source: `examples/place-wall/05_SPEC/01_Behavior_Specification.md`
-- Internal IR SHA-256: `0f25e83029412fcfc1d87daa4ecdec5713f20994f7b5a1385a931d7b0cafeb85`
+- Internal IR SHA-256: `756eaa1f50d11d8a6293e35403399698b13b5e7015e56ee033aaab720c03852a`
 - Conformance Bundle SHA-256: `def53a693f5af925966c530a1d5684a34448bca0c5a19b1075af45060607e3c1`
 - Conformance Cases: 5
 
@@ -23,10 +23,10 @@
 | assets/WallPreview.generated.mtl | `1607240ad13b4560495b8b431245f3bdb8ff49a88f924a0cc1a9d94b623d9e30` | REQ-WALL-001 |
 | assets/DoorPreview.generated.obj | `dd2c06a1b7b6a474ad3e980f25bb546bfb2f18e2587c0c6673395daaef8eb783` | REQ-WALL-001 |
 | assets/DoorPreview.generated.mtl | `4fa40f4b4d053a8507b8e3c73b5b23301659db67124d36a72b776707e21c9cfa` | REQ-WALL-001 |
-| assets/assets.manifest.json | `85932c1f8d1c42ad56aca6742a7ed77e44b5d7848e161eee5b4800b7e32a56c1` |  |
+| assets/assets.manifest.json | `d542c1f1b53a8fcabfc99fb28db8901728632401ea00734ce428ada94fcf9cc2` |  |
 ## Unreal Execution
 
 - Status: **PASSED**
 - Evidence: `unreal-execution.json`
-- Evidence SHA-256: `d5b4d4ef4cfccf176c8192a13eca3e09ad8c83388601fdc9c85bc988689fd525`
+- Evidence SHA-256: `aa0c0281051b5642e274b0acb8ef4ac3ccd7359cb219b06f17a005884f2cfc88`
 - Tests: CRDD.Assets.GeneratedMeshes, CRDD.Assets.GeneratedPreviewLevels, CRDD.PlaceWall.Conformance

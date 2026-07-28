@@ -84,7 +84,7 @@
     },
     "asset": {
       "type": "object",
-      "required": ["id", "type", "dimensions", "material", "traces"],
+      "required": ["id", "type", "dimensions", "material", "placement", "traces"],
       "properties": {
         "id": { "type": "string", "minLength": 1 },
         "type": { "const": "box" },
@@ -97,6 +97,7 @@
           },
           "additionalProperties": false
         },
+        "placement": { "$ref": "#/$defs/placement" },
         "traces": { "$ref": "#/$defs/traces" }
       },
       "additionalProperties": false
@@ -117,6 +118,53 @@
       "properties": {
         "value": { "type": "number", "exclusiveMinimum": 0 },
         "unit": { "const": "m" }
+      },
+      "additionalProperties": false
+    },
+    "placement": {
+      "type": "object",
+      "required": ["location", "rotation"],
+      "properties": {
+        "location": { "$ref": "#/$defs/location" },
+        "rotation": { "$ref": "#/$defs/rotation" }
+      },
+      "additionalProperties": false
+    },
+    "location": {
+      "type": "object",
+      "required": ["x", "y", "z"],
+      "properties": {
+        "x": { "$ref": "#/$defs/signedMeter" },
+        "y": { "$ref": "#/$defs/signedMeter" },
+        "z": { "$ref": "#/$defs/signedMeter" }
+      },
+      "additionalProperties": false
+    },
+    "signedMeter": {
+      "type": "object",
+      "required": ["value", "unit"],
+      "properties": {
+        "value": { "type": "number" },
+        "unit": { "const": "m" }
+      },
+      "additionalProperties": false
+    },
+    "rotation": {
+      "type": "object",
+      "required": ["pitch", "yaw", "roll"],
+      "properties": {
+        "pitch": { "$ref": "#/$defs/degrees" },
+        "yaw": { "$ref": "#/$defs/degrees" },
+        "roll": { "$ref": "#/$defs/degrees" }
+      },
+      "additionalProperties": false
+    },
+    "degrees": {
+      "type": "object",
+      "required": ["value", "unit"],
+      "properties": {
+        "value": { "type": "number" },
+        "unit": { "const": "deg" }
       },
       "additionalProperties": false
     },

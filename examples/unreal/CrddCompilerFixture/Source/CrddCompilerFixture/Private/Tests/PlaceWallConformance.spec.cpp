@@ -41,6 +41,8 @@ struct FCrddAssetExpectation
     FString Destination;
     FString PreviewLevel;
     FVector DimensionsCm;
+    FVector LocationCm;
+    FRotator RotationDeg;
 };
 
 bool ReadBundle(
@@ -104,6 +106,9 @@ bool ReadAssetManifest(
     {
         const TSharedPtr<FJsonObject> Asset = Value->AsObject();
         const TSharedPtr<FJsonObject> Dimensions = Asset->GetObjectField(TEXT("dimensionsCm"));
+        const TSharedPtr<FJsonObject> Placement = Asset->GetObjectField(TEXT("placement"));
+        const TSharedPtr<FJsonObject> Location = Placement->GetObjectField(TEXT("locationCm"));
+        const TSharedPtr<FJsonObject> Rotation = Placement->GetObjectField(TEXT("rotationDeg"));
         OutAssets.Add({
             Asset->GetStringField(TEXT("id")),
             Asset->GetStringField(TEXT("unrealDestination")),
@@ -112,7 +117,17 @@ bool ReadAssetManifest(
                 Dimensions->GetNumberField(TEXT("length")),
                 Dimensions->GetNumberField(TEXT("width")),
                 Dimensions->GetNumberField(TEXT("height"))
-            )
+            ),
+            FVector(
+                Location->GetNumberField(TEXT("x")),
+                Location->GetNumberField(TEXT("y")),
+                Location->GetNumberField(TEXT("z"))
+            ),
+            FRotator(
+                Rotation->GetNumberField(TEXT("pitch")),
+                Rotation->GetNumberField(TEXT("yaw")),
+                Rotation->GetNumberField(TEXT("roll"))
+            ),
         });
     }
     return Test.TestTrue(TEXT("Asset manifest contains assets"), OutAssets.Num() > 0);
@@ -312,8 +327,12 @@ bool FCrddGeneratedPreviewLevelsTest::RunTest(const FString& Parameters)
                 Mesh && Mesh->GetPathName() == ExpectedMesh
             );
             TestTrue(
-                *FString::Printf(TEXT("%s actor is at the origin"), *Asset.Id),
-                Actor->GetActorLocation().Equals(FVector::ZeroVector, 0.01)
+                *FString::Printf(TEXT("%s actor location matches manifest"), *Asset.Id),
+                Actor->GetActorLocation().Equals(Asset.LocationCm, 0.01)
+            );
+            TestTrue(
+                *FString::Printf(TEXT("%s actor rotation matches manifest"), *Asset.Id),
+                Actor->GetActorRotation().Equals(Asset.RotationDeg, 0.01)
             );
             break;
         }

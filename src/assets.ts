@@ -23,6 +23,18 @@ export function generateAssets(ir: CrddIr): GeneratedFile[] {
               width: metersToCentimeters(asset.dimensions.width.value),
               height: metersToCentimeters(asset.dimensions.height.value),
             },
+            placement: {
+              locationCm: {
+                x: metersToCentimeters(asset.placement.location.x.value),
+                y: metersToCentimeters(asset.placement.location.y.value),
+                z: metersToCentimeters(asset.placement.location.z.value),
+              },
+              rotationDeg: {
+                pitch: asset.placement.rotation.pitch.value,
+                yaw: asset.placement.rotation.yaw.value,
+                roll: asset.placement.rotation.roll.value,
+              },
+            },
             traces: asset.traces,
           })),
         },

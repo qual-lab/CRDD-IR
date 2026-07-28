@@ -31,6 +31,18 @@ export type AssetDefinition = {
   material: {
     baseColor: [number, number, number];
   };
+  placement: {
+    location: {
+      x: { value: number; unit: "m" };
+      y: { value: number; unit: "m" };
+      z: { value: number; unit: "m" };
+    };
+    rotation: {
+      pitch: { value: number; unit: "deg" };
+      yaw: { value: number; unit: "deg" };
+      roll: { value: number; unit: "deg" };
+    };
+  };
   traces: string[];
 };
 
