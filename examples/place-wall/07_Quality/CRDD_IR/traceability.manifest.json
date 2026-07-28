@@ -1,0 +1,91 @@
+{
+  "protocol": "crdd-ir/traceability-v0.1",
+  "operation": "PlaceWall",
+  "source": {
+    "path": "examples/place-wall/05_SPEC/01_Behavior_Specification.md",
+    "irSha256": "4dce99c9b9432f95e1f9ca060f7026671744eb90eeec076488030448753e3a69"
+  },
+  "generatedFiles": [
+    {
+      "path": "unreal/PlaceWall.generated.h",
+      "sha256": "1758106f98246e1f645f829ff01d342fdf3c4961cddbfbb59971acb4efcad0d9",
+      "traces": [
+        "REQ-WALL-001",
+        "DEC-WALL-003"
+      ]
+    },
+    {
+      "path": "unreal/PlaceWall.generated.cpp",
+      "sha256": "d78e9c18758b43dc34e6d84b4105f33d109353d1eeb62ad77974603ba543a51f",
+      "traces": [
+        "REQ-WALL-001",
+        "DEC-WALL-003"
+      ]
+    }
+  ],
+  "requirements": [
+    {
+      "id": "minimum-wall-length",
+      "error": "WALL_TOO_SHORT",
+      "traces": [
+        "REQ-WALL-001"
+      ],
+      "testCases": [
+        "minimum-wall-length-at-boundary",
+        "minimum-wall-length-below-boundary"
+      ]
+    },
+    {
+      "id": "sufficient-budget",
+      "error": "INSUFFICIENT_BUDGET",
+      "traces": [
+        "DEC-WALL-003"
+      ],
+      "testCases": [
+        "sufficient-budget-exact",
+        "sufficient-budget-insufficient"
+      ]
+    }
+  ],
+  "conformance": {
+    "protocol": "crdd-ir/conformance-v0.1",
+    "sha256": "def53a693f5af925966c530a1d5684a34448bca0c5a19b1075af45060607e3c1",
+    "cases": [
+      {
+        "id": "place-wall-success",
+        "traces": [
+          "REQ-WALL-001",
+          "DEC-WALL-003"
+        ]
+      },
+      {
+        "id": "minimum-wall-length-at-boundary",
+        "sourceRequirement": "minimum-wall-length",
+        "traces": [
+          "REQ-WALL-001"
+        ]
+      },
+      {
+        "id": "minimum-wall-length-below-boundary",
+        "sourceRequirement": "minimum-wall-length",
+        "traces": [
+          "REQ-WALL-001"
+        ]
+      },
+      {
+        "id": "sufficient-budget-exact",
+        "sourceRequirement": "sufficient-budget",
+        "traces": [
+          "DEC-WALL-003"
+        ]
+      },
+      {
+        "id": "sufficient-budget-insufficient",
+        "sourceRequirement": "sufficient-budget",
+        "traces": [
+          "DEC-WALL-003"
+        ]
+      }
+    ]
+  }
+}

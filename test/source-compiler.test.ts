@@ -7,6 +7,10 @@ import { generateConformanceBundle } from "../src/conformance.ts";
 import { normalizeSourceExpression, parseSourceExpression } from "../src/source-expression.ts";
 import { extractContractFences } from "../src/source-contract.ts";
 import { generateTestManifest } from "../src/test-manifest.ts";
+import {
+  generateEvidenceMarkdown,
+  generateTraceabilityManifest,
+} from "../src/traceability.ts";
 import { generateUnreal } from "../src/unreal.ts";
 import type { CrddIr, FieldDefinition } from "../src/model.ts";
 
@@ -96,4 +100,37 @@ test("produces byte-identical Unreal C++ from the same CRDD source", async () =>
   const second = generateUnreal((await compileMarkdown(fileURLToPath(sourcePath))).ir);
   assert.deepEqual(first, second);
   assert.ok(first.some((file) => file.content.includes("Result.State.Walls.Add")));
+});
+
+test("produces deterministic traceability evidence from CRDD source", async () => {
+  const compiled = await compileMarkdown(fileURLToPath(sourcePath));
+  const tests = generateTestManifest(compiled.ir);
+  const bundle = generateConformanceBundle(compiled.ir, tests);
+  const unreal = generateUnreal(compiled.ir);
+  const first = generateTraceabilityManifest(
+    compiled.ir,
+    "05_SPEC/01_Behavior_Specification.md",
+    compiled.digest,
+    unreal,
+    tests,
+    bundle,
+  );
+  const second = generateTraceabilityManifest(
+    compiled.ir,
+    "05_SPEC/01_Behavior_Specification.md",
+    compiled.digest,
+    unreal,
+    tests,
+    bundle,
+  );
+
+  assert.deepEqual(first, second);
+  assert.match(first.source.irSha256, /^[a-f0-9]{64}$/);
+  assert.ok(first.generatedFiles.every((file) => /^[a-f0-9]{64}$/.test(file.sha256)));
+  assert.deepEqual(
+    first.requirements.find((requirement) => requirement.id === "minimum-wall-length")?.traces,
+    ["REQ-WALL-001"],
+  );
+  assert.match(generateEvidenceMarkdown(first), /REQ-WALL-001/);
+  assert.doesNotMatch(generateEvidenceMarkdown(first), /Generated at|timestamp/i);
 });

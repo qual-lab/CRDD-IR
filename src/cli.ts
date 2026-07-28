@@ -9,6 +9,7 @@ import { createProcessAdapter } from "./process-adapter.ts";
 import { simulate } from "./simulator.ts";
 import { generateTestManifest } from "./test-manifest.ts";
 import { runTestManifest } from "./test-runner.ts";
+import { generateEvidenceMarkdown, generateTraceabilityManifest } from "./traceability.ts";
 import { generateUnreal } from "./unreal.ts";
 import type { SimulationRequest, TestManifest } from "./model.ts";
 
@@ -149,6 +150,31 @@ async function main(argv: string[]): Promise<void> {
     return;
   }
 
+  if (command === "generate" && subcommand === "evidence") {
+    const sourcePath = required(argv[2], "CRDD Markdown file");
+    if (extname(sourcePath).toLowerCase() !== ".md") {
+      throw new Error("Evidence generation requires CRDD Markdown source");
+    }
+    const compilation = await compileMarkdown(sourcePath);
+    const testManifest = generateTestManifest(compilation.ir);
+    const bundle = generateConformanceBundle(compilation.ir, testManifest);
+    const generatedFiles = generateUnreal(compilation.ir);
+    const traceability = generateTraceabilityManifest(
+      compilation.ir,
+      sourcePath,
+      compilation.digest,
+      generatedFiles,
+      testManifest,
+      bundle,
+    );
+    const outDir = option(argv, "--out-dir") ?? "07_Quality/CRDD_IR";
+    await writeJson(resolve(outDir, "traceability.manifest.json"), traceability);
+    await writeText(resolve(outDir, "evidence.md"), generateEvidenceMarkdown(traceability));
+    console.log(`Generated ${resolve(outDir, "traceability.manifest.json")}`);
+    console.log(`Generated ${resolve(outDir, "evidence.md")}`);
+    return;
+  }
+
   if (command === "view" && subcommand === "trace") {
     const irPath = required(argv[2], "IR file");
     const ir = await loadInput(irPath);
@@ -217,5 +243,6 @@ Commands:
                                       [--command <executable> [--arg <value>...]]
                                       [--timeout-ms <milliseconds>]
   generate unreal <ir.json> [--out-dir <directory>]
+  generate evidence <spec.md> [--out-dir <directory>]
   view trace <ir.json>`);
 }

@@ -29,6 +29,7 @@ npm run test:adapter
 npm run test:process
 npm run test:bundle
 npm run generate:unreal
+npm run generate:evidence
 npm test
 ```
 
@@ -46,6 +47,7 @@ crdd-ir test bundle <ir.json> [--out <file>]
 crdd-ir test run <ir.json> [--adapter <module>]
 crdd-ir test run <ir.json> --command <executable> [--arg <value>...]
 crdd-ir generate unreal <ir.json> [--out-dir <directory>]
+crdd-ir generate evidence <spec.md> [--out-dir <directory>]
 crdd-ir view trace <ir.json>
 ```
 

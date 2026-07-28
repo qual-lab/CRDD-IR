@@ -18,6 +18,7 @@
     "test:bundle": "node src/cli.ts test bundle examples/place-wall/05_SPEC/01_Behavior_Specification.md",
     "test:bundle:source": "node src/cli.ts test bundle examples/place-wall/05_SPEC/01_Behavior_Specification.md --out generated/place-wall.conformance.json",
     "generate:unreal": "node src/cli.ts generate unreal examples/place-wall/05_SPEC/01_Behavior_Specification.md",
+    "generate:evidence": "node src/cli.ts generate evidence examples/place-wall/05_SPEC/01_Behavior_Specification.md --out-dir examples/place-wall/07_Quality/CRDD_IR",
     "test": "node --test test/*.test.ts"
   },
   "engines": {
