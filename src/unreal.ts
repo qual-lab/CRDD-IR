@@ -182,6 +182,13 @@ function cppEffect(effect: Effect, operation: Operation): string {
       "Result.State",
     )};`;
   }
+  if (effect.action === "increment") {
+    return `    ${cppReference(effect.target, operation, "Result.State")} += ${cppExpression(
+      effect.expression,
+      operation,
+      "Result.State",
+    )};`;
+  }
 
   if (!effect.target.startsWith("state.") || typeof effect.value !== "object" || effect.value === null) {
     throw new Error("Unreal MVP only supports object append to state arrays");

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type { ConformanceBundle, CrddIr, TestManifest } from "./model.ts";
 import type { GeneratedFile } from "./unreal.ts";
 import type { UnrealExecutionEvidence } from "./unreal-report.ts";
+import { analyzeTestCoverage } from "./test-manifest.ts";
 
 export type TraceabilityManifest = {
   protocol: "crdd-ir/traceability-v0.1";
@@ -30,6 +31,12 @@ export type TraceabilityManifest = {
       traces: string[];
     }>;
   };
+  coverage: {
+    requirements: number;
+    covered: number;
+    percentage: number;
+    uncovered: string[];
+  };
   execution?: {
     path: string;
     sha256: string;
@@ -55,6 +62,7 @@ export function generateTraceabilityManifest(
       errorTraces.get(requirement.error) ?? ir.operation.traces,
     ]),
   );
+  const coverage = analyzeTestCoverage(ir, testManifest);
 
   return {
     protocol: "crdd-ir/traceability-v0.1",
@@ -90,6 +98,10 @@ export function generateTraceabilityManifest(
           ? [...(requirementTraces.get(testCase.sourceRequirement) ?? [])]
           : [...ir.operation.traces],
       })),
+    },
+    coverage: {
+      ...coverage,
+      percentage: coverage.requirements === 0 ? 100 : coverage.covered / coverage.requirements * 100,
     },
     ...(execution
       ? {
@@ -132,6 +144,7 @@ export function generateEvidenceMarkdown(manifest: TraceabilityManifest): string
 - Internal IR SHA-256: \`${manifest.source.irSha256}\`
 - Conformance Bundle SHA-256: \`${manifest.conformance.sha256}\`
 - Conformance Cases: ${manifest.conformance.cases.length}
+- Requirement Failure Coverage: ${manifest.coverage.covered}/${manifest.coverage.requirements} (${manifest.coverage.percentage}%)
 
 ## Requirement Coverage
 

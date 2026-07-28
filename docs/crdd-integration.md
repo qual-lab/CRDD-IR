@@ -32,6 +32,13 @@ and never overwrites an edited generated file unless `--force` is explicit.
 Source diagnostics collect multiple structural problems in one pass and report
 their exact Markdown line and column in JSON and text formats.
 
+Numeric state supports the `increment` effect in the Source Contract,
+reference simulator, validation, and Unreal adapter. Conformance generation
+requires a deterministic failing case for every requirement, derives
+counterexamples for non-boundary expressions, and records requirement failure
+coverage in traceability evidence. `doctor` fails before generation when that
+coverage cannot be constructed.
+
 CRDD IR本体はCRDD適用先へコピーせず、repository rootの`tools/CRDD-IR`
 へGit submoduleとして配置する。
 

@@ -4,7 +4,7 @@ import { DiagnosticError, formatDiagnosticText } from "./diagnostics.ts";
 import type { CrddIr, Diagnostic, FieldDefinition } from "./model.ts";
 
 const allowedFieldTypes = new Set(["number", "string", "boolean", "array", "object"]);
-const allowedEffectActions = new Set(["assign", "append"]);
+const allowedEffectActions = new Set(["assign", "append", "increment"]);
 
 export async function loadIr(path: string): Promise<CrddIr> {
   const source = await readFile(path, "utf8");
@@ -75,8 +75,8 @@ export function validateIr(value: unknown): Diagnostic[] {
       }
       requireString(effect, "target", path, diagnostics);
       if (typeof effect.action !== "string" || !allowedEffectActions.has(effect.action)) {
-        diagnostics.push(error(`${path}.action`, 'must be "assign" or "append"'));
-      } else if (effect.action === "assign") {
+        diagnostics.push(error(`${path}.action`, 'must be "assign", "append", or "increment"'));
+      } else if (effect.action === "assign" || effect.action === "increment") {
         requireString(effect, "expression", path, diagnostics);
       } else if (!("value" in effect)) {
         diagnostics.push(error(`${path}.value`, "is required for append"));
@@ -256,7 +256,11 @@ function validateSemantics(operation: Record<string, unknown>, diagnostics: Diag
       if (effect.action === "append" && targetField.type !== "array") {
         diagnostics.push(error(`${path}.target`, `append requires an array target, got "${targetField.type}"`));
       }
-      if (effect.action === "assign" && typeof effect.expression === "string") {
+      if (effect.action === "increment" && targetField.type !== "number") {
+        diagnostics.push(error(`${path}.target`, `increment requires a number target, got "${targetField.type}"`));
+      }
+      if ((effect.action === "assign" || effect.action === "increment") &&
+          typeof effect.expression === "string") {
         validateExpressionReferences(effect.expression, `${path}.expression`, input, state, diagnostics);
         validateAssignmentUnits(effect.expression, targetField, `${path}.expression`, input, state, diagnostics);
       }

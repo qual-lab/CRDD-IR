@@ -5,6 +5,7 @@
 - Internal IR SHA-256: `756eaa1f50d11d8a6293e35403399698b13b5e7015e56ee033aaab720c03852a`
 - Conformance Bundle SHA-256: `def53a693f5af925966c530a1d5684a34448bca0c5a19b1075af45060607e3c1`
 - Conformance Cases: 5
+- Requirement Failure Coverage: 2/2 (100%)
 
 ## Requirement Coverage
 
@@ -28,5 +29,5 @@
 
 - Status: **PASSED**
 - Evidence: `unreal-execution.json`
-- Evidence SHA-256: `e4f9e6f066a2d6543eb6abb9f85e740d75e65b22d200b60d5a3de3411561e2fc`
+- Evidence SHA-256: `3ce0e157a6707262076dcc776207a1c44476ccb3dfab1f1d59f456ed6f32177c`
 - Tests: CRDD.Assets.GeneratedMeshes, CRDD.Assets.GeneratedPreviewLevels, CRDD.Assets.GeneratedScene, CRDD.PlaceWall.Conformance

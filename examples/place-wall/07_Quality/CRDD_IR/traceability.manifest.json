@@ -121,9 +121,15 @@
       }
     ]
   },
+  "coverage": {
+    "requirements": 2,
+    "covered": 2,
+    "uncovered": [],
+    "percentage": 100
+  },
   "execution": {
     "path": "unreal-execution.json",
-    "sha256": "e4f9e6f066a2d6543eb6abb9f85e740d75e65b22d200b60d5a3de3411561e2fc",
+    "sha256": "3ce0e157a6707262076dcc776207a1c44476ccb3dfab1f1d59f456ed6f32177c",
     "status": "passed",
     "tests": [
       "CRDD.Assets.GeneratedMeshes",

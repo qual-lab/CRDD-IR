@@ -170,6 +170,40 @@ function validateSourceContract(
       requireString(requirement.error, `${base}.error`, add);
     }
   }
+  if (Array.isArray(operation.effects)) {
+    for (const [index, effect] of operation.effects.entries()) {
+      const base = `$.operation.effects[${index}]`;
+      if (!isRecord(effect)) {
+        add("CRDD_SOURCE_TYPE", base, "must be an object");
+        continue;
+      }
+      const action = effect.action;
+      const allowed = action === "append"
+        ? ["target", "action", "value"]
+        : ["target", "action", "expression"];
+      rejectUnknown(effect, allowed, base, add);
+      requireString(effect.target, `${base}.target`, add);
+      if (!["assign", "append", "increment"].includes(String(action))) {
+        add("CRDD_SOURCE_EFFECT", `${base}.action`, 'must be "assign", "append", or "increment"');
+      } else if (action === "append") {
+        if (!Object.hasOwn(effect, "value")) add("CRDD_SOURCE_REQUIRED", `${base}.value`, "is required");
+      } else {
+        requireString(effect.expression, `${base}.expression`, add);
+      }
+    }
+  }
+  if (Array.isArray(operation.errors)) {
+    for (const [index, error] of operation.errors.entries()) {
+      const base = `$.operation.errors[${index}]`;
+      if (!isRecord(error)) {
+        add("CRDD_SOURCE_TYPE", base, "must be an object");
+        continue;
+      }
+      rejectUnknown(error, ["code", "traces"], base, add);
+      requireString(error.code, `${base}.code`, add);
+      requireStringArray(error.traces, `${base}.traces`, add);
+    }
+  }
   return diagnostics;
 }
 

@@ -4,6 +4,7 @@ import { constants } from "node:fs";
 import { dirname, isAbsolute, relative, resolve } from "node:path";
 import { compileMarkdown } from "./compiler.ts";
 import { loadProjectConfig } from "./project-config.ts";
+import { analyzeTestCoverage, generateTestManifest } from "./test-manifest.ts";
 
 export type DoctorCheck = {
   code: string;
@@ -53,6 +54,17 @@ export async function runDoctor(configPath: string): Promise<DoctorReport> {
       `Source compiles deterministically as ${compilation.ir.operation.id} (${compilation.digest})`,
       paths.source,
     ));
+    const manifest = generateTestManifest(compilation.ir);
+    const coverage = analyzeTestCoverage(compilation.ir, manifest);
+    checks.push(coverage.uncovered.length === 0
+      ? pass(
+        "CRDD_REQUIREMENTS_COVERED",
+        `All ${coverage.requirements} requirements have deterministic failure cases`,
+      )
+      : fail(
+        "CRDD_REQUIREMENTS_UNCOVERED",
+        `Requirements without failure cases: ${coverage.uncovered.join(", ")}`,
+      ));
   } catch (error) {
     checks.push(fail("CRDD_SOURCE_INVALID", (error as Error).message, paths.source));
   }

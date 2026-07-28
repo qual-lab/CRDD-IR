@@ -1,4 +1,5 @@
 import type { CrddIr, SimulationRequest, TestCase, TestManifest } from "./model.ts";
+import { evaluateExpression, extractReferences, getPath } from "./expression.ts";
 
 export function generateTestManifest(ir: CrddIr): TestManifest {
   const baseline = createBaseline(ir);
@@ -70,12 +71,77 @@ export function generateTestManifest(ir: CrddIr): TestManifest {
     }
   }
 
+  for (const requirement of ir.operation.requires) {
+    if (cases.some((testCase) =>
+      testCase.sourceRequirement === requirement.id && testCase.expect.ok === false
+    )) continue;
+    const falsified = falsifyRequirement(requirement.expression, baseline);
+    if (!falsified) {
+      throw new Error(
+        `Cannot derive a failing conformance case for requirement "${requirement.id}"`,
+      );
+    }
+    cases.push({
+      id: `${slug(requirement.id)}-falsified`,
+      sourceRequirement: requirement.id,
+      description: `${requirement.id} is rejected by a deterministic counterexample`,
+      arrange: falsified,
+      expect: { ok: false, error: requirement.error, stateUnchanged: true },
+    });
+  }
+
   return {
     version: "0.1",
     operation: ir.operation.id,
     traces: ir.operation.traces,
     cases,
   };
+}
+
+export function analyzeTestCoverage(ir: CrddIr, manifest: TestManifest): {
+  requirements: number;
+  covered: number;
+  uncovered: string[];
+} {
+  const uncovered = ir.operation.requires
+    .filter((requirement) => !manifest.cases.some((testCase) =>
+      testCase.sourceRequirement === requirement.id && testCase.expect.ok === false
+    ))
+    .map((requirement) => requirement.id);
+  return {
+    requirements: ir.operation.requires.length,
+    covered: ir.operation.requires.length - uncovered.length,
+    uncovered,
+  };
+}
+
+function falsifyRequirement(
+  expression: string,
+  baseline: SimulationRequest,
+): SimulationRequest | undefined {
+  for (const reference of extractReferences(expression)) {
+    const request = structuredClone(baseline);
+    const current = getPath(request, reference);
+    for (const candidate of mutationCandidates(current)) {
+      const mutated = structuredClone(request);
+      setPath(mutated as unknown as Record<string, unknown>, reference, candidate);
+      try {
+        if (evaluateExpression(expression, mutated as unknown as Record<string, unknown>) === false) {
+          return mutated;
+        }
+      } catch {
+        // A candidate that violates expression typing is not a valid counterexample.
+      }
+    }
+  }
+  return undefined;
+}
+
+function mutationCandidates(value: unknown): unknown[] {
+  if (typeof value === "number") return [0, -1, value - 1, value + 1];
+  if (typeof value === "boolean") return [!value];
+  if (typeof value === "string") return ["", "__crdd_counterexample__"];
+  return [];
 }
 
 function createBaseline(ir: CrddIr): SimulationRequest {

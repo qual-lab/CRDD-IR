@@ -32,7 +32,7 @@ export async function compileMarkdown(path: string): Promise<CompilationResult> 
         error: requirement.error,
       })),
       effects: contract.operation.effects.map((effect) =>
-        effect.action === "assign"
+        effect.action === "assign" || effect.action === "increment"
           ? {
               ...effect,
               expression: normalizeWithContext(effect.expression, fields, effect.target),

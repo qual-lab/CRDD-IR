@@ -10,7 +10,8 @@ import { generateAssets, removeStaleGeneratedAssets } from "../src/assets.ts";
 import { generateConformanceBundle } from "../src/conformance.ts";
 import { normalizeSourceExpression, parseSourceExpression } from "../src/source-expression.ts";
 import { extractContractFences } from "../src/source-contract.ts";
-import { generateTestManifest } from "../src/test-manifest.ts";
+import { analyzeTestCoverage, generateTestManifest } from "../src/test-manifest.ts";
+import { simulate } from "../src/simulator.ts";
 import {
   generateEvidenceMarkdown,
   generateTraceabilityManifest,
@@ -137,6 +138,41 @@ test("generates Unreal append values for references and typed literals", async (
   };
   const source = generateUnreal(ir).find((file) => file.name.endsWith(".cpp"))?.content ?? "";
   assert.match(source, /TEXT\("generated"\), true/);
+});
+
+test("validates and generates numeric increment effects end to end", async () => {
+  const ir = structuredClone((await compileMarkdown(fileURLToPath(sourcePath))).ir);
+  ir.operation.effects = [{
+    target: "state.budget.remaining",
+    action: "increment",
+    expression: "-input.cost",
+  }];
+  const result = simulate(ir, {
+    input: { length: 1, cost: 100 },
+    state: { walls: [], budget: { remaining: 1_000 } },
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.state, { walls: [], budget: { remaining: 900 } });
+  const source = generateUnreal(ir).find((file) => file.name.endsWith(".cpp"))?.content ?? "";
+  assert.match(source, /Result\.State\.BudgetRemainingJPY \+= -Input\.CostJPY/);
+});
+
+test("derives deterministic counterexamples for non-boundary requirements", async () => {
+  const ir = structuredClone((await compileMarkdown(fileURLToPath(sourcePath))).ir);
+  ir.operation.input.enabled = { type: "boolean" };
+  ir.operation.requires = [{
+    id: "must-be-enabled",
+    expression: "input.enabled == true",
+    error: "WALL_TOO_SHORT",
+  }];
+  const manifest = generateTestManifest(ir);
+  const counterexample = manifest.cases.find((item) => item.sourceRequirement === "must-be-enabled");
+  assert.equal(counterexample?.arrange.input.enabled, false);
+  assert.deepEqual(analyzeTestCoverage(ir, manifest), {
+    requirements: 1,
+    covered: 1,
+    uncovered: [],
+  });
 });
 
 test("produces deterministic traceability evidence from CRDD source", async () => {

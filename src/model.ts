@@ -62,6 +62,11 @@ export type Effect =
       target: string;
       action: "append";
       value: unknown;
+    }
+  | {
+      target: string;
+      action: "increment";
+      expression: string;
     };
 
 export type CrddError = {

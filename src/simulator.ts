@@ -26,6 +26,13 @@ export function simulate(ir: CrddIr, request: SimulationRequest): SimulationResu
       const target = stripStatePrefix(effect.target);
       if (effect.action === "assign") {
         setPath(workingState, target, evaluateExpression(effect.expression, context));
+      } else if (effect.action === "increment") {
+        const current = getPath(workingState, target);
+        const delta = evaluateExpression(effect.expression, context);
+        if (typeof current !== "number" || typeof delta !== "number") {
+          throw new Error(`Increment target and expression must be numbers: "${effect.target}"`);
+        }
+        setPath(workingState, target, current + delta);
       } else {
         const collection = getPath(workingState, target);
         if (!Array.isArray(collection)) throw new Error(`Append target "${effect.target}" is not an array`);
