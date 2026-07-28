@@ -87,5 +87,13 @@
         ]
       }
     ]
+  },
+  "execution": {
+    "path": "unreal-execution.json",
+    "sha256": "f6e0106439f7ef818b5a44b62d3fadc60d8ea23663d1dba578d376194dbe2625",
+    "status": "passed",
+    "tests": [
+      "CRDD.PlaceWall.Conformance"
+    ]
   }
 }

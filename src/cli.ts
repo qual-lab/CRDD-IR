@@ -11,6 +11,7 @@ import { generateTestManifest } from "./test-manifest.ts";
 import { runTestManifest } from "./test-runner.ts";
 import { generateEvidenceMarkdown, generateTraceabilityManifest } from "./traceability.ts";
 import { generateUnreal } from "./unreal.ts";
+import { parseUnrealAutomationReport } from "./unreal-report.ts";
 import type { SimulationRequest, TestManifest } from "./model.ts";
 
 const args = process.argv.slice(2);
@@ -159,6 +160,10 @@ async function main(argv: string[]): Promise<void> {
     const testManifest = generateTestManifest(compilation.ir);
     const bundle = generateConformanceBundle(compilation.ir, testManifest);
     const generatedFiles = generateUnreal(compilation.ir);
+    const unrealReportPath = option(argv, "--unreal-report");
+    const execution = unrealReportPath
+      ? parseUnrealAutomationReport(await readFile(unrealReportPath, "utf8"), compilation.ir.operation.id)
+      : undefined;
     const traceability = generateTraceabilityManifest(
       compilation.ir,
       sourcePath,
@@ -166,12 +171,18 @@ async function main(argv: string[]): Promise<void> {
       generatedFiles,
       testManifest,
       bundle,
+      execution,
     );
     const outDir = option(argv, "--out-dir") ?? "07_Quality/CRDD_IR";
+    if (execution) await writeJson(resolve(outDir, "unreal-execution.json"), execution);
     await writeJson(resolve(outDir, "traceability.manifest.json"), traceability);
     await writeText(resolve(outDir, "evidence.md"), generateEvidenceMarkdown(traceability));
     console.log(`Generated ${resolve(outDir, "traceability.manifest.json")}`);
     console.log(`Generated ${resolve(outDir, "evidence.md")}`);
+    if (execution) console.log(`Generated ${resolve(outDir, "unreal-execution.json")}`);
+    if (execution && (execution.summary.failed > 0 || execution.summary.notRun > 0)) {
+      process.exitCode = 1;
+    }
     return;
   }
 
@@ -243,6 +254,6 @@ Commands:
                                       [--command <executable> [--arg <value>...]]
                                       [--timeout-ms <milliseconds>]
   generate unreal <ir.json> [--out-dir <directory>]
-  generate evidence <spec.md> [--out-dir <directory>]
+  generate evidence <spec.md> [--out-dir <directory>] [--unreal-report <index.json>]
   view trace <ir.json>`);
 }

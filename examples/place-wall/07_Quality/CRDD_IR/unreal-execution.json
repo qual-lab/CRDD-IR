@@ -1,0 +1,23 @@
+{
+  "protocol": "crdd-ir/unreal-execution-v0.1",
+  "operation": "PlaceWall",
+  "reportCreatedOn": "2026.07.28-09.30.36",
+  "sourceReportSha256": "ae28c89cd389700b194cc823a84274202f3c06e3b9ea9f6a95dc89905a7c2bcf",
+  "platforms": [
+    "WindowsEditor"
+  ],
+  "summary": {
+    "succeeded": 1,
+    "failed": 0,
+    "notRun": 0
+  },
+  "tests": [
+    {
+      "path": "CRDD.PlaceWall.Conformance",
+      "state": "Success",
+      "durationSeconds": 0.025951702147722244,
+      "warnings": 0,
+      "errors": 0
+    }
+  ]
+}

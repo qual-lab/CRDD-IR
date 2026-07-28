@@ -47,7 +47,7 @@ crdd-ir test bundle <ir.json> [--out <file>]
 crdd-ir test run <ir.json> [--adapter <module>]
 crdd-ir test run <ir.json> --command <executable> [--arg <value>...]
 crdd-ir generate unreal <ir.json> [--out-dir <directory>]
-crdd-ir generate evidence <spec.md> [--out-dir <directory>]
+crdd-ir generate evidence <spec.md> [--out-dir <directory>] [--unreal-report <index.json>]
 crdd-ir view trace <ir.json>
 ```
 

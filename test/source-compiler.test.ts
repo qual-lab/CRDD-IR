@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
@@ -12,6 +13,7 @@ import {
   generateTraceabilityManifest,
 } from "../src/traceability.ts";
 import { generateUnreal } from "../src/unreal.ts";
+import { parseUnrealAutomationReport } from "../src/unreal-report.ts";
 import type { CrddIr, FieldDefinition } from "../src/model.ts";
 
 const sourcePath = new URL(
@@ -133,4 +135,49 @@ test("produces deterministic traceability evidence from CRDD source", async () =
   );
   assert.match(generateEvidenceMarkdown(first), /REQ-WALL-001/);
   assert.doesNotMatch(generateEvidenceMarkdown(first), /Generated at|timestamp/i);
+});
+
+test("normalizes Unreal Automation results without device identity", async () => {
+  const raw = JSON.stringify({
+    devices: [
+      {
+        deviceName: "developer-machine",
+        instance: "private-instance-id",
+        platform: "WindowsEditor",
+      },
+    ],
+    reportCreatedOn: "2026.07.28-09.23.02",
+    tests: [
+      {
+        fullTestPath: "CRDD.PlaceWall.Conformance",
+        state: "Success",
+        duration: 0.016,
+        warnings: 0,
+        errors: 0,
+      },
+    ],
+  });
+  const execution = parseUnrealAutomationReport(`\uFEFF${raw}`, "PlaceWall");
+  assert.deepEqual(execution.summary, { succeeded: 1, failed: 0, notRun: 0 });
+  assert.deepEqual(execution.platforms, ["WindowsEditor"]);
+  assert.doesNotMatch(JSON.stringify(execution), /developer-machine|private-instance-id/);
+
+  const compiled = await compileMarkdown(fileURLToPath(sourcePath));
+  const tests = generateTestManifest(compiled.ir);
+  const bundle = generateConformanceBundle(compiled.ir, tests);
+  const traceability = generateTraceabilityManifest(
+    compiled.ir,
+    "05_SPEC/01_Behavior_Specification.md",
+    compiled.digest,
+    generateUnreal(compiled.ir),
+    tests,
+    bundle,
+    execution,
+  );
+  assert.equal(traceability.execution?.status, "passed");
+  assert.equal(
+    traceability.execution?.sha256,
+    createHash("sha256").update(`${JSON.stringify(execution, null, 2)}\n`).digest("hex"),
+  );
+  assert.match(generateEvidenceMarkdown(traceability), /Unreal Execution[\s\S]*PASSED/);
 });

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { ConformanceBundle, CrddIr, TestManifest } from "./model.ts";
 import type { GeneratedFile } from "./unreal.ts";
+import type { UnrealExecutionEvidence } from "./unreal-report.ts";
 
 export type TraceabilityManifest = {
   protocol: "crdd-ir/traceability-v0.1";
@@ -29,6 +30,12 @@ export type TraceabilityManifest = {
       traces: string[];
     }>;
   };
+  execution?: {
+    path: string;
+    sha256: string;
+    status: "passed" | "failed";
+    tests: string[];
+  };
 };
 
 export function generateTraceabilityManifest(
@@ -38,6 +45,7 @@ export function generateTraceabilityManifest(
   generatedFiles: GeneratedFile[],
   testManifest: TestManifest,
   bundle: ConformanceBundle,
+  execution?: UnrealExecutionEvidence,
 ): TraceabilityManifest {
   const errorTraces = new Map(ir.operation.errors.map((error) => [error.code, error.traces]));
   const requirementTraces = new Map(
@@ -75,6 +83,16 @@ export function generateTraceabilityManifest(
           : [...ir.operation.traces],
       })),
     },
+    ...(execution
+      ? {
+          execution: {
+            path: "unreal-execution.json",
+            sha256: sha256(`${JSON.stringify(execution, null, 2)}\n`),
+            status: execution.summary.failed === 0 && execution.summary.notRun === 0 ? "passed" : "failed",
+            tests: execution.tests.map((test) => test.path),
+          } as const,
+        }
+      : {}),
   };
 }
 
@@ -88,6 +106,16 @@ export function generateEvidenceMarkdown(manifest: TraceabilityManifest): string
   const artifactRows = manifest.generatedFiles
     .map((file) => `| ${file.path} | \`${file.sha256}\` | ${file.traces.join(", ")} |`)
     .join("\n");
+  const execution = manifest.execution
+    ? `
+## Unreal Execution
+
+- Status: **${manifest.execution.status.toUpperCase()}**
+- Evidence: \`${manifest.execution.path}\`
+- Evidence SHA-256: \`${manifest.execution.sha256}\`
+- Tests: ${manifest.execution.tests.join(", ")}
+`
+    : "";
 
   return `# CRDD IR Conformance Evidence: ${manifest.operation}
 
@@ -107,8 +135,7 @@ ${requirementRows}
 
 | Artifact | SHA-256 | CRDD IDs |
 | --- | --- | --- |
-${artifactRows}
-`;
+${artifactRows}${execution}`;
 }
 
 export function canonicalJson(value: unknown): string {
