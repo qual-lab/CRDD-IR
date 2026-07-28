@@ -15,6 +15,12 @@
         "width": 20,
         "height": 240
       },
+      "collision": {
+        "shape": "box"
+      },
+      "lod": {
+        "group": "LevelArchitecture"
+      },
       "placement": {
         "locationCm": {
           "x": 0,
@@ -40,6 +46,12 @@
         "length": 90,
         "width": 10,
         "height": 200
+      },
+      "collision": {
+        "shape": "box"
+      },
+      "lod": {
+        "group": "LargeProp"
       },
       "placement": {
         "locationCm": {

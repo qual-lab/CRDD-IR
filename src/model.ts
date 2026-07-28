@@ -31,6 +31,12 @@ export type AssetDefinition = {
   material: {
     baseColor: [number, number, number];
   };
+  collision: {
+    shape: "box" | "capsule" | "sphere" | "ndop26";
+  };
+  lod: {
+    group: "None" | "SmallProp" | "LargeProp" | "LevelArchitecture";
+  };
   placement: {
     location: {
       x: { value: number; unit: "m" };

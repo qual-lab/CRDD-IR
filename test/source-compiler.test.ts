@@ -374,6 +374,8 @@ test("generates deterministic Unreal-scale 3D assets from CRDD", async () => {
         unrealDestination: "/Game/CRDD/Generated",
         previewLevel: "/Game/CRDD/Generated/WallPreviewLevel",
         dimensionsCm: { length: 100, width: 20, height: 240 },
+        collision: { shape: "box" },
+        lod: { group: "LevelArchitecture" },
         placement: {
           locationCm: { x: 0, y: 0, z: 0 },
           rotationDeg: { pitch: 0, yaw: 0, roll: 0 },
@@ -386,6 +388,8 @@ test("generates deterministic Unreal-scale 3D assets from CRDD", async () => {
         unrealDestination: "/Game/CRDD/Generated",
         previewLevel: "/Game/CRDD/Generated/DoorPreviewLevel",
         dimensionsCm: { length: 90, width: 10, height: 200 },
+        collision: { shape: "box" },
+        lod: { group: "LargeProp" },
         placement: {
           locationCm: { x: 150, y: 25, z: 0 },
           rotationDeg: { pitch: 0, yaw: 90, roll: 0 },
@@ -394,6 +398,18 @@ test("generates deterministic Unreal-scale 3D assets from CRDD", async () => {
       },
     ],
   });
+});
+
+test("rejects unsupported collision shapes and LOD groups", async () => {
+  const ir = structuredClone((await compileMarkdown(fileURLToPath(sourcePath))).ir);
+  const asset = ir.operation.assets?.[0];
+  assert.ok(asset);
+  if (!asset) return;
+  asset.collision.shape = "triangle-mesh" as typeof asset.collision.shape;
+  asset.lod.group = "Cinematic" as typeof asset.lod.group;
+  const diagnostics = validateIr(ir);
+  assert.ok(diagnostics.some((item) => item.path.endsWith(".collision.shape")));
+  assert.ok(diagnostics.some((item) => item.path.endsWith(".lod.group")));
 });
 
 test("generates one manifest entry for every declared 3D asset", async () => {
@@ -407,6 +423,8 @@ test("generates one manifest entry for every declared 3D asset", async () => {
       height: { value: 2.0, unit: "m" },
     },
     material: { baseColor: [0.4, 0.2, 0.1] },
+    collision: { shape: "box" },
+    lod: { group: "LargeProp" },
     placement: {
       location: {
         x: { value: 2, unit: "m" },

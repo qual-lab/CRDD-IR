@@ -160,7 +160,7 @@
     },
     "asset": {
       "type": "object",
-      "required": ["id", "type", "dimensions", "material", "placement", "traces"],
+      "required": ["id", "type", "dimensions", "material", "collision", "lod", "placement", "traces"],
       "properties": {
         "id": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*$" },
         "type": { "enum": ["box", "cylinder"] },
@@ -173,6 +173,8 @@
           },
           "additionalProperties": false
         },
+        "collision": { "$ref": "#/$defs/collision" },
+        "lod": { "$ref": "#/$defs/lod" },
         "placement": { "$ref": "#/$defs/placement" },
         "traces": { "$ref": "#/$defs/traces" }
       },
@@ -185,6 +187,22 @@
         "length": { "$ref": "#/$defs/meter" },
         "width": { "$ref": "#/$defs/meter" },
         "height": { "$ref": "#/$defs/meter" }
+      },
+      "additionalProperties": false
+    },
+    "collision": {
+      "type": "object",
+      "required": ["shape"],
+      "properties": {
+        "shape": { "enum": ["box", "capsule", "sphere", "ndop26"] }
+      },
+      "additionalProperties": false
+    },
+    "lod": {
+      "type": "object",
+      "required": ["group"],
+      "properties": {
+        "group": { "enum": ["None", "SmallProp", "LargeProp", "LevelArchitecture"] }
       },
       "additionalProperties": false
     },

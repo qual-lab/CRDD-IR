@@ -19,6 +19,7 @@ if manifest.get("protocol") != "crdd-ir/assets-v0.1":
 
 level_subsystem = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
 actor_subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+static_mesh_subsystem = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
 imported_assets = []
 asset_definitions = manifest.get("assets", [])
 generated_owner_tag = unreal.Name("CRDD_GENERATED")
@@ -62,6 +63,14 @@ def tag_generated_actor(actor, asset_id):
         [generated_owner_tag, unreal.Name(f"CRDD_ASSET_{asset_id}")],
     )
 
+
+collision_shapes = {
+    "box": unreal.ScriptCollisionShapeType.BOX,
+    "capsule": unreal.ScriptCollisionShapeType.CAPSULE,
+    "sphere": unreal.ScriptCollisionShapeType.SPHERE,
+    "ndop26": unreal.ScriptCollisionShapeType.NDOP26,
+}
+
 for asset_definition in asset_definitions:
     asset_id = asset_definition["id"]
     destination_path = asset_definition["unrealDestination"]
@@ -88,7 +97,33 @@ for asset_definition in asset_definitions:
 
     if not unreal.EditorAssetLibrary.does_asset_exist(asset_path):
         raise RuntimeError(f"Unreal asset import failed: {asset_path}")
+    mesh = unreal.EditorAssetLibrary.load_asset(asset_path)
+    collision_shape = asset_definition["collision"]["shape"]
+    if collision_shape not in collision_shapes:
+        raise RuntimeError(f"Unsupported collision shape: {collision_shape}")
+    if not static_mesh_subsystem.remove_collisions(mesh):
+        raise RuntimeError(f"Failed to reset collision for {asset_path}")
+    collision_index = static_mesh_subsystem.add_simple_collisions(
+        mesh, collision_shapes[collision_shape]
+    )
+    if collision_index < 0:
+        raise RuntimeError(f"Failed to add {collision_shape} collision to {asset_path}")
+
+    lod_group = asset_definition["lod"]["group"]
+    if not static_mesh_subsystem.set_lod_group(mesh, unreal.Name(lod_group), True):
+        raise RuntimeError(f"Failed to set LOD group {lod_group} on {asset_path}")
     unreal.EditorAssetLibrary.save_asset(asset_path, only_if_is_dirty=False)
+
+    # Automation runs in a separate Editor process and proves package reload.
+    collision_count = static_mesh_subsystem.get_simple_collision_count(mesh)
+    persisted_lod_group = str(static_mesh_subsystem.get_lod_group(mesh))
+    if collision_count < 1:
+        raise RuntimeError(f"Collision did not persist after reload: {asset_path}")
+    if persisted_lod_group != lod_group:
+        raise RuntimeError(
+            f"LOD group did not persist after reload: {asset_path}; "
+            f"expected={lod_group}, actual={persisted_lod_group}"
+        )
 
     if unreal.EditorAssetLibrary.does_asset_exist(level_path):
         if not level_subsystem.load_level(level_path):
@@ -105,7 +140,6 @@ for asset_definition in asset_definitions:
                     f"Failed to remove previous generated actor: {existing_actor.get_path_name()}"
                 )
 
-    mesh = unreal.EditorAssetLibrary.load_asset(asset_path)
     actor = actor_subsystem.spawn_actor_from_object(
         mesh,
         unreal.Vector(location["x"], location["y"], location["z"]),
@@ -120,7 +154,14 @@ for asset_definition in asset_definitions:
         raise RuntimeError(f"Failed to save generated level: {level_path}")
 
     imported_assets.append(
-        {"asset": asset_path, "level": level_path, "actor": actor_label}
+        {
+            "asset": asset_path,
+            "level": level_path,
+            "actor": actor_label,
+            "collisionShape": collision_shape,
+            "simpleCollisionCount": collision_count,
+            "lodGroup": persisted_lod_group,
+        }
     )
     unreal.log(
         f"CRDD generated preview level: {level_path}; "

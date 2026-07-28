@@ -186,6 +186,20 @@ function validateAssets(value: unknown, diagnostics: Diagnostic[]): void {
     ) {
       diagnostics.push(error(`${path}.material.baseColor`, "must contain three numbers from 0 to 1"));
     }
+    if (!isRecord(asset.collision) ||
+        !["box", "capsule", "sphere", "ndop26"].includes(String(asset.collision.shape))) {
+      diagnostics.push(error(
+        `${path}.collision.shape`,
+        'must equal "box", "capsule", "sphere", or "ndop26"',
+      ));
+    }
+    if (!isRecord(asset.lod) ||
+        !["None", "SmallProp", "LargeProp", "LevelArchitecture"].includes(String(asset.lod.group))) {
+      diagnostics.push(error(
+        `${path}.lod.group`,
+        'must equal "None", "SmallProp", "LargeProp", or "LevelArchitecture"',
+      ));
+    }
     validateAssetPlacement(asset.placement, `${path}.placement`, diagnostics);
     requireStringArray(asset, "traces", path, diagnostics);
   });

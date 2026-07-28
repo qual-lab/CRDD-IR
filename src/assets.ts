@@ -30,6 +30,8 @@ export function generateAssets(ir: CrddIr): GeneratedFile[] {
               width: metersToCentimeters(asset.dimensions.width.value),
               height: metersToCentimeters(asset.dimensions.height.value),
             },
+            collision: structuredClone(asset.collision),
+            lod: structuredClone(asset.lod),
             placement: {
               locationCm: {
                 x: metersToCentimeters(asset.placement.location.x.value),

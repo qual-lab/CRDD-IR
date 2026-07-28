@@ -20,7 +20,7 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["id", "source", "unrealDestination", "previewLevel", "dimensionsCm", "placement", "traces"],
+        "required": ["id", "source", "unrealDestination", "previewLevel", "dimensionsCm", "collision", "lod", "placement", "traces"],
         "properties": {
           "id": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*$" },
           "source": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*\\.generated\\.obj$" },
@@ -36,6 +36,8 @@
             },
             "additionalProperties": false
           },
+          "collision": { "$ref": "#/$defs/collision" },
+          "lod": { "$ref": "#/$defs/lod" },
           "placement": {
             "type": "object",
             "required": ["locationCm", "rotationDeg"],
@@ -57,6 +59,22 @@
     }
   },
   "$defs": {
+    "collision": {
+      "type": "object",
+      "required": ["shape"],
+      "properties": {
+        "shape": { "enum": ["box", "capsule", "sphere", "ndop26"] }
+      },
+      "additionalProperties": false
+    },
+    "lod": {
+      "type": "object",
+      "required": ["group"],
+      "properties": {
+        "group": { "enum": ["None", "SmallProp", "LargeProp", "LevelArchitecture"] }
+      },
+      "additionalProperties": false
+    },
     "vector": {
       "type": "object",
       "required": ["x", "y", "z"],

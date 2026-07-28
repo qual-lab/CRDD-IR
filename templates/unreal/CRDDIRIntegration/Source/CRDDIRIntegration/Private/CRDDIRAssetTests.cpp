@@ -8,6 +8,7 @@
 #include "Misc/AutomationTest.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
+#include "PhysicsEngine/BodySetup.h"
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
 #include "Tests/AutomationEditorCommon.h"
@@ -27,6 +28,7 @@ struct FAssetExpectation
     FVector DimensionsCm;
     FVector LocationCm;
     FRotator RotationDeg;
+    FString LodGroup;
 };
 
 bool ReadManifest(
@@ -83,7 +85,8 @@ bool ReadManifest(
                 Rotation->GetNumberField(TEXT("pitch")),
                 Rotation->GetNumberField(TEXT("yaw")),
                 Rotation->GetNumberField(TEXT("roll"))
-            )
+            ),
+            Asset->GetObjectField(TEXT("lod"))->GetStringField(TEXT("group"))
         });
     }
     return Test.TestTrue(TEXT("Manifest declares assets"), OutAssets.Num() > 0);
@@ -110,6 +113,16 @@ bool FCrddInstalledAssetTest::RunTest(const FString& Parameters)
             TestTrue(
                 *FString::Printf(TEXT("%s dimensions match"), *Asset.Id),
                 Mesh->GetBoundingBox().GetSize().Equals(Asset.DimensionsCm, 0.1)
+            );
+            const UBodySetup* BodySetup = Mesh->GetBodySetup();
+            TestTrue(
+                *FString::Printf(TEXT("%s collision persisted"), *Asset.Id),
+                BodySetup && BodySetup->AggGeom.GetElementCount() > 0
+            );
+            TestEqual(
+                *FString::Printf(TEXT("%s LOD group persisted"), *Asset.Id),
+                Mesh->GetLODGroup(),
+                FName(*Asset.LodGroup)
             );
         }
     }

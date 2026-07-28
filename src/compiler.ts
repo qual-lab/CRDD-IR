@@ -51,6 +51,8 @@ export async function compileMarkdown(path: string): Promise<CompilationResult> 
               type: asset.type,
               dimensions: structuredClone(asset.dimensions),
               material: { baseColor: [...asset.material.base_color] as [number, number, number] },
+              collision: structuredClone(asset.collision),
+              lod: structuredClone(asset.lod),
               placement: structuredClone(asset.placement),
               traces: [...asset.traces],
             })),

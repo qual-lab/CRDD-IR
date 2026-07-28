@@ -64,6 +64,10 @@ preserved. Modified owned content is backed up and requires explicit
 3D source contracts support deterministic `box` and `cylinder` assets.
 Cylinders use 24 fixed segments and include side/cap faces, UV coordinates,
 vertex normals, material output, placement metadata, and CRDD trace comments.
+Every asset also declares a simple Collision shape (`box`, `capsule`, `sphere`,
+or `ndop26`) and an Unreal LOD Group. The importer replaces stale collision,
+applies both settings, saves the mesh package, and a separate UE Automation
+process proves that Collision and the LOD Group survive package reload.
 
 Evidence also records deterministic mutation coverage. The compiler removes
 requirements and effects and flips supported boundary operators, then proves
