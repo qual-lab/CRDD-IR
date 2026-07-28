@@ -5,15 +5,25 @@
 #include "Dom/JsonObject.h"
 #include "HAL/FileManager.h"
 #include "Engine/StaticMesh.h"
+#include "Components/StaticMeshComponent.h"
+#include "EngineUtils.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
+#include "Tests/AutomationEditorCommon.h"
+#include "Editor.h"
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FCrddPlaceWallConformanceTest,
     "CRDD.PlaceWall.Conformance",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter
+)
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FCrddWallPreviewLevelTest,
+    "CRDD.Assets.WallPreviewLevel",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter
 )
 
@@ -196,6 +206,43 @@ bool FCrddWallPreviewAssetTest::RunTest(const FString& Parameters)
     TestTrue(TEXT("WallPreview length is 100cm"), FMath::IsNearlyEqual(Size.X, 100.0, 0.1));
     TestTrue(TEXT("WallPreview width is 20cm"), FMath::IsNearlyEqual(Size.Y, 20.0, 0.1));
     TestTrue(TEXT("WallPreview height is 240cm"), FMath::IsNearlyEqual(Size.Z, 240.0, 0.1));
+    return true;
+}
+
+bool FCrddWallPreviewLevelTest::RunTest(const FString& Parameters)
+{
+    FAutomationEditorCommonUtils::LoadMap(TEXT("/Game/CRDD/Generated/WallPreviewLevel"));
+    UWorld* World = GEditor ? GEditor->GetEditorWorldContext().World() : nullptr;
+    if (!TestNotNull(TEXT("Generated WallPreview level loads"), World))
+    {
+        return false;
+    }
+
+    bool bFoundPlacedWall = false;
+    for (TActorIterator<AActor> It(World); It; ++It)
+    {
+        const AActor* Actor = *It;
+        if (!Actor || Actor->GetActorLabel() != TEXT("CRDD_WallPreview"))
+        {
+            continue;
+        }
+
+        const UStaticMeshComponent* Component =
+            Actor->FindComponentByClass<UStaticMeshComponent>();
+        const UStaticMesh* Mesh = Component ? Component->GetStaticMesh() : nullptr;
+        bFoundPlacedWall = true;
+        TestTrue(
+            TEXT("Placed actor references generated WallPreview"),
+            Mesh && Mesh->GetPathName() == TEXT("/Game/CRDD/Generated/WallPreview.WallPreview")
+        );
+        TestTrue(
+            TEXT("Placed actor is at the origin"),
+            Actor->GetActorLocation().Equals(FVector::ZeroVector, 0.01)
+        );
+        break;
+    }
+
+    TestTrue(TEXT("Generated level contains CRDD_WallPreview"), bFoundPlacedWall);
     return true;
 }
 

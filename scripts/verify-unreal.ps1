@@ -21,6 +21,7 @@ $evidenceDir = "examples/place-wall/07_Quality/CRDD_IR"
 $runId = [Guid]::NewGuid().ToString("N")
 $reportDir = Join-Path $repoRoot ".crdd-ir\reports\$runId"
 $reportPath = Join-Path $reportDir "index.json"
+$assetImportMarker = Join-Path $reportDir "asset-import-success.json"
 
 foreach ($requiredPath in @($buildTool, $editorCmd, $project, $assetImportScript)) {
     if (-not (Test-Path -LiteralPath $requiredPath)) {
@@ -59,18 +60,27 @@ Write-Host "[5/8] Build Unreal fixture"
 Assert-LastExitCode "Unreal build"
 
 Write-Host "[6/8] Import generated 3D assets"
-& $editorCmd `
-    $project `
-    "-ExecutePythonScript=$assetImportScript" `
-    -unattended `
-    -nop4 `
-    -NullRHI `
-    -nosplash `
-    -NoSound
+New-Item -ItemType Directory -Force -Path $reportDir | Out-Null
+$env:CRDD_ASSET_IMPORT_MARKER = $assetImportMarker
+try {
+    & $editorCmd `
+        $project `
+        "-ExecutePythonScript=$assetImportScript" `
+        -unattended `
+        -nop4 `
+        -NullRHI `
+        -nosplash `
+        -NoSound
+}
+finally {
+    Remove-Item Env:CRDD_ASSET_IMPORT_MARKER -ErrorAction SilentlyContinue
+}
 Assert-LastExitCode "Generated 3D asset import"
+if (-not (Test-Path -LiteralPath $assetImportMarker)) {
+    throw "Generated 3D asset import did not produce its success marker: $assetImportMarker"
+}
 
 Write-Host "[7/8] Run Unreal Automation Tests"
-New-Item -ItemType Directory -Force -Path $reportDir | Out-Null
 & $editorCmd `
     $project `
     "-ExecCmds=Automation RunTests CRDD." `

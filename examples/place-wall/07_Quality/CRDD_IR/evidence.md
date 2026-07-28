@@ -25,5 +25,5 @@
 
 - Status: **PASSED**
 - Evidence: `unreal-execution.json`
-- Evidence SHA-256: `cbbac63b6e81ace6496ff3b42f2c4a89aef6d2a377903309c293f7cb873b7a89`
-- Tests: CRDD.Assets.WallPreview, CRDD.PlaceWall.Conformance
+- Evidence SHA-256: `505808c8cd74739687128f906ff939c154d2491b03daa1f17f7d8a64e8800537`
+- Tests: CRDD.Assets.WallPreview, CRDD.Assets.WallPreviewLevel, CRDD.PlaceWall.Conformance

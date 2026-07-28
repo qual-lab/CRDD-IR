@@ -16,5 +16,10 @@ public class CrddCompilerFixture : ModuleRules
                 "Json"
             }
         );
+
+        if (Target.bBuildEditor)
+        {
+            PrivateDependencyModuleNames.Add("UnrealEd");
+        }
     }
 }

@@ -20,7 +20,8 @@ node src/cli.ts generate unreal `
 
 Repository rootで`npm run verify:unreal`を実行すると、生成、Build、
 OBJから`/Game/CRDD/Generated/WallPreview`へのStaticMesh Import、
-Automation Test、`07_Quality/CRDD_IR`のEvidence更新までを一括実行する。
+`/Game/CRDD/Generated/WallPreviewLevel`への永続配置、Automation Test、
+`07_Quality/CRDD_IR`のEvidence更新までを一括実行する。
 
 ```powershell
 & 'C:\Program Files\Epic Games\UE_5.8\Engine\Build\BatchFiles\Build.bat' `
