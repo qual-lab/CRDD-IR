@@ -222,6 +222,9 @@ test("generates deterministic Unreal-scale 3D assets from CRDD", async () => {
   assert.deepEqual(manifest, {
     protocol: "crdd-ir/assets-v0.1",
     operation: "PlaceWall",
+    scene: {
+      unrealLevel: "/Game/CRDD/Generated/PlaceWallScene",
+    },
     assets: [
       {
         id: "WallPreview",

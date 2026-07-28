@@ -17,8 +17,9 @@ if manifest.get("protocol") != "crdd-ir/assets-v0.1":
 level_subsystem = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
 actor_subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
 imported_assets = []
+asset_definitions = manifest.get("assets", [])
 
-for asset_definition in manifest.get("assets", []):
+for asset_definition in asset_definitions:
     asset_id = asset_definition["id"]
     destination_path = asset_definition["unrealDestination"]
     source_path = os.path.normpath(os.path.join(source_dir, asset_definition["source"]))
@@ -82,13 +83,55 @@ for asset_definition in manifest.get("assets", []):
         f"actor={actor.get_path_name()}; level={actor.get_level().get_path_name()}"
     )
 
+scene_path = manifest["scene"]["unrealLevel"]
+if unreal.EditorAssetLibrary.does_asset_exist(scene_path):
+    if not level_subsystem.load_level(scene_path):
+        raise RuntimeError(f"Failed to load generated scene: {scene_path}")
+elif not level_subsystem.new_level(scene_path, False):
+    raise RuntimeError(f"Failed to create generated scene: {scene_path}")
+
+generated_labels = {f"CRDD_{asset['id']}" for asset in asset_definitions}
+for existing_actor in actor_subsystem.get_all_level_actors():
+    if existing_actor.get_actor_label() in generated_labels:
+        if not actor_subsystem.destroy_actor(existing_actor):
+            raise RuntimeError(
+                f"Failed to remove previous scene actor: {existing_actor.get_path_name()}"
+            )
+
+for asset_definition in asset_definitions:
+    asset_id = asset_definition["id"]
+    destination_path = asset_definition["unrealDestination"]
+    asset_path = f"{destination_path}/{asset_id}"
+    placement = asset_definition["placement"]
+    location = placement["locationCm"]
+    rotation = placement["rotationDeg"]
+    actor = actor_subsystem.spawn_actor_from_object(
+        unreal.EditorAssetLibrary.load_asset(asset_path),
+        unreal.Vector(location["x"], location["y"], location["z"]),
+        unreal.Rotator(rotation["roll"], rotation["pitch"], rotation["yaw"]),
+        False,
+    )
+    if actor is None:
+        raise RuntimeError(f"Failed to place generated scene mesh: {asset_path}")
+    actor.set_actor_label(f"CRDD_{asset_id}")
+
+if not level_subsystem.save_current_level():
+    raise RuntimeError(f"Failed to save generated scene: {scene_path}")
+unreal.log(
+    f"CRDD generated scene: {scene_path}; actors={len(asset_definitions)}"
+)
+
 marker_path = os.environ.get("CRDD_ASSET_IMPORT_MARKER")
 if not marker_path:
     raise RuntimeError("CRDD_ASSET_IMPORT_MARKER is not set")
 
 with open(marker_path, "w", encoding="utf-8") as marker:
     json.dump(
-        {"protocol": "crdd-ir/unreal-asset-import-v0.1", "assets": imported_assets},
+        {
+            "protocol": "crdd-ir/unreal-asset-import-v0.1",
+            "scene": scene_path,
+            "assets": imported_assets,
+        },
         marker,
         ensure_ascii=False,
         indent=2,

@@ -33,6 +33,12 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter
 )
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FCrddGeneratedSceneTest,
+    "CRDD.Assets.GeneratedScene",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter
+)
+
 namespace
 {
 struct FCrddAssetExpectation
@@ -76,7 +82,8 @@ bool ReadBundle(
 
 bool ReadAssetManifest(
     FAutomationTestBase& Test,
-    TArray<FCrddAssetExpectation>& OutAssets
+    TArray<FCrddAssetExpectation>& OutAssets,
+    FString* OutScene = nullptr
 )
 {
     const FString ManifestPath = FPaths::ConvertRelativePathToFull(
@@ -100,6 +107,10 @@ bool ReadAssetManifest(
     {
         Test.AddError(TEXT("Unsupported asset manifest protocol"));
         return false;
+    }
+    if (OutScene)
+    {
+        *OutScene = Manifest->GetObjectField(TEXT("scene"))->GetStringField(TEXT("unrealLevel"));
     }
 
     for (const TSharedPtr<FJsonValue>& Value : Manifest->GetArrayField(TEXT("assets")))
@@ -339,6 +350,52 @@ bool FCrddGeneratedPreviewLevelsTest::RunTest(const FString& Parameters)
         TestTrue(
             *FString::Printf(TEXT("%s level contains generated actor"), *Asset.Id),
             bFoundPlacedAsset
+        );
+    }
+    return true;
+}
+
+bool FCrddGeneratedSceneTest::RunTest(const FString& Parameters)
+{
+    TArray<FCrddAssetExpectation> Assets;
+    FString ScenePath;
+    if (!ReadAssetManifest(*this, Assets, &ScenePath))
+    {
+        return false;
+    }
+
+    FAutomationEditorCommonUtils::LoadMap(ScenePath);
+    UWorld* World = GEditor ? GEditor->GetEditorWorldContext().World() : nullptr;
+    if (!TestNotNull(TEXT("Generated scene loads"), World))
+    {
+        return false;
+    }
+
+    for (const FCrddAssetExpectation& Asset : Assets)
+    {
+        const FString ExpectedLabel = FString::Printf(TEXT("CRDD_%s"), *Asset.Id);
+        bool bFoundActor = false;
+        for (TActorIterator<AActor> It(World); It; ++It)
+        {
+            const AActor* Actor = *It;
+            if (!Actor || Actor->GetActorLabel() != ExpectedLabel)
+            {
+                continue;
+            }
+            bFoundActor = true;
+            TestTrue(
+                *FString::Printf(TEXT("%s scene location matches manifest"), *Asset.Id),
+                Actor->GetActorLocation().Equals(Asset.LocationCm, 0.01)
+            );
+            TestTrue(
+                *FString::Printf(TEXT("%s scene rotation matches manifest"), *Asset.Id),
+                Actor->GetActorRotation().Equals(Asset.RotationDeg, 0.01)
+            );
+            break;
+        }
+        TestTrue(
+            *FString::Printf(TEXT("Scene contains %s"), *Asset.Id),
+            bFoundActor
         );
     }
     return true;

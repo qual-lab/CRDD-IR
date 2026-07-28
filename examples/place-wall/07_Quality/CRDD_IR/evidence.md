@@ -23,10 +23,10 @@
 | assets/WallPreview.generated.mtl | `1607240ad13b4560495b8b431245f3bdb8ff49a88f924a0cc1a9d94b623d9e30` | REQ-WALL-001 |
 | assets/DoorPreview.generated.obj | `dd2c06a1b7b6a474ad3e980f25bb546bfb2f18e2587c0c6673395daaef8eb783` | REQ-WALL-001 |
 | assets/DoorPreview.generated.mtl | `4fa40f4b4d053a8507b8e3c73b5b23301659db67124d36a72b776707e21c9cfa` | REQ-WALL-001 |
-| assets/assets.manifest.json | `d542c1f1b53a8fcabfc99fb28db8901728632401ea00734ce428ada94fcf9cc2` |  |
+| assets/assets.manifest.json | `2028eb491bfaeaec08eef9e36d5e5aa50567319194b6a75b291fe353484ca5ec` |  |
 ## Unreal Execution
 
 - Status: **PASSED**
 - Evidence: `unreal-execution.json`
-- Evidence SHA-256: `aa0c0281051b5642e274b0acb8ef4ac3ccd7359cb219b06f17a005884f2cfc88`
-- Tests: CRDD.Assets.GeneratedMeshes, CRDD.Assets.GeneratedPreviewLevels, CRDD.PlaceWall.Conformance
+- Evidence SHA-256: `5f2bb1e507a7eb097a2230ccd1bccd30eecb68cffc6d48bc9e9c561e6162f2ff`
+- Tests: CRDD.Assets.GeneratedMeshes, CRDD.Assets.GeneratedPreviewLevels, CRDD.Assets.GeneratedScene, CRDD.PlaceWall.Conformance

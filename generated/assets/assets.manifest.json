@@ -1,6 +1,9 @@
 {
   "protocol": "crdd-ir/assets-v0.1",
   "operation": "PlaceWall",
+  "scene": {
+    "unrealLevel": "/Game/CRDD/Generated/PlaceWallScene"
+  },
   "assets": [
     {
       "id": "WallPreview",

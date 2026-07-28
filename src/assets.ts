@@ -13,6 +13,9 @@ export function generateAssets(ir: CrddIr): GeneratedFile[] {
         {
           protocol: "crdd-ir/assets-v0.1",
           operation: ir.operation.id,
+          scene: {
+            unrealLevel: `/Game/CRDD/Generated/${ir.operation.id}Scene`,
+          },
           assets: assets.map((asset) => ({
             id: asset.id,
             source: `${asset.id}.generated.obj`,

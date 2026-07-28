@@ -24,6 +24,8 @@ OBJから`/Game/CRDD/Generated/WallPreview`へのStaticMesh Import、
 `07_Quality/CRDD_IR`のEvidence更新までを一括実行する。
 Import対象は`generated/assets/assets.manifest.json`から読み取るため、
 CRDD ContractへAssetを追加してもPython Scriptの固定名変更は不要。
+また、全AssetをContract指定のTransformで
+`/Game/CRDD/Generated/PlaceWallScene`へまとめて配置する。
 
 ```powershell
 & 'C:\Program Files\Epic Games\UE_5.8\Engine\Build\BatchFiles\Build.bat' `

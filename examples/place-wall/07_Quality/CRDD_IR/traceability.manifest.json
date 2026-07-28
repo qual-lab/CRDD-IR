@@ -52,7 +52,7 @@
     },
     {
       "path": "assets/assets.manifest.json",
-      "sha256": "d542c1f1b53a8fcabfc99fb28db8901728632401ea00734ce428ada94fcf9cc2",
+      "sha256": "2028eb491bfaeaec08eef9e36d5e5aa50567319194b6a75b291fe353484ca5ec",
       "traces": []
     }
   ],
@@ -123,11 +123,12 @@
   },
   "execution": {
     "path": "unreal-execution.json",
-    "sha256": "aa0c0281051b5642e274b0acb8ef4ac3ccd7359cb219b06f17a005884f2cfc88",
+    "sha256": "5f2bb1e507a7eb097a2230ccd1bccd30eecb68cffc6d48bc9e9c561e6162f2ff",
     "status": "passed",
     "tests": [
       "CRDD.Assets.GeneratedMeshes",
       "CRDD.Assets.GeneratedPreviewLevels",
+      "CRDD.Assets.GeneratedScene",
       "CRDD.PlaceWall.Conformance"
     ]
   }
