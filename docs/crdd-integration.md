@@ -4,6 +4,12 @@
 It rejects missing or unknown fields, invalid enum values, and project paths
 that could escape the target repository.
 
+The installer records owned files, tool version, and SHA-256 values in
+`.crdd-ir.install.json`. Reinstalling is idempotent. If an owned file or
+managed guidance block was edited, the installer backs it up under
+`.crdd-ir/backups/` and stops. Review the difference before explicitly using
+`-ForceManagedUpdate`.
+
 CRDD IR本体はCRDD適用先へコピーせず、repository rootの`tools/CRDD-IR`
 へGit submoduleとして配置する。
 

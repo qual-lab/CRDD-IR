@@ -8,7 +8,8 @@ param(
     [string]$ToolRoot = "tools/CRDD-IR",
     [string]$UnrealProject = "",
     [string]$UnrealEngineRoot = "C:/Program Files/Epic Games/UE_5.8",
-    [string]$UnrealEditorTarget = ""
+    [string]$UnrealEditorTarget = "",
+    [switch]$ForceManagedUpdate
 )
 
 $ErrorActionPreference = "Stop"
@@ -16,6 +17,76 @@ $installerRoot = Split-Path -Parent $PSScriptRoot
 $resolvedProjectRoot = [System.IO.Path]::GetFullPath($ProjectRoot)
 if (-not (Test-Path -LiteralPath $resolvedProjectRoot -PathType Container)) {
     throw "Project root not found: $resolvedProjectRoot"
+}
+$manifestPath = Join-Path $resolvedProjectRoot ".crdd-ir.install.json"
+$backupRoot = Join-Path $resolvedProjectRoot (
+    ".crdd-ir\backups\" + [DateTime]::UtcNow.ToString("yyyyMMddTHHmmssZ")
+)
+$toolVersion = (Get-Content -LiteralPath (Join-Path $installerRoot "package.json") -Raw |
+    ConvertFrom-Json).version
+$previousManifest = if (Test-Path -LiteralPath $manifestPath) {
+    Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+}
+else {
+    $null
+}
+$installedEntries = [System.Collections.Generic.List[object]]::new()
+
+function Get-ContentHash([string]$Content) {
+    $bytes = [System.Text.UTF8Encoding]::new($false).GetBytes($Content)
+    $algorithm = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $hash = $algorithm.ComputeHash($bytes)
+        return ([BitConverter]::ToString($hash) -replace "-", "").ToLowerInvariant()
+    }
+    finally {
+        $algorithm.Dispose()
+    }
+}
+
+function Get-FileHashValue([string]$Path) {
+    return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+}
+
+function Get-ManagedRelativePath([string]$Path) {
+    $fullPath = [System.IO.Path]::GetFullPath($Path)
+    $prefix = $resolvedProjectRoot.TrimEnd("\", "/") + [System.IO.Path]::DirectorySeparatorChar
+    if (-not $fullPath.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Managed path escapes project root: $fullPath"
+    }
+    return $fullPath.Substring($prefix.Length).Replace("\", "/")
+}
+
+function Backup-ManagedConflict([string]$Path, [string]$RelativePath) {
+    $backup = Join-Path $backupRoot $RelativePath
+    $parent = Split-Path -Parent $backup
+    New-Item -ItemType Directory -Force -Path $parent | Out-Null
+    Copy-Item -LiteralPath $Path -Destination $backup -Force
+    Write-Warning "Backed up modified managed file to $backup"
+}
+
+function Install-ManagedFile([string]$Path, [string]$Content, [string]$Kind = "file") {
+    $relative = Get-ManagedRelativePath $Path
+    $desiredHash = Get-ContentHash $Content
+    $previous = @($previousManifest.files | Where-Object { $_.path -eq $relative }) |
+        Select-Object -First 1
+
+    if (Test-Path -LiteralPath $Path -PathType Leaf) {
+        $currentHash = Get-FileHashValue $Path
+        $expectedHash = if ($null -ne $previous) { [string]$previous.sha256 } else { "" }
+        if ($currentHash -ne $desiredHash -and $currentHash -ne $expectedHash) {
+            Backup-ManagedConflict $Path $relative
+            if (-not $ForceManagedUpdate) {
+                throw "Managed file was modified: $relative. Review the backup and rerun with -ForceManagedUpdate."
+            }
+        }
+    }
+    Write-Utf8File $Path $Content
+    $installedEntries.Add([ordered]@{
+        path = $relative
+        kind = $Kind
+        sha256 = $desiredHash
+    })
 }
 
 function Write-Utf8File([string]$Path, [string]$Content) {
@@ -45,6 +116,9 @@ function Install-ManagedBlock([string]$RelativePath, [string]$TemplateName) {
     $begin = "<!-- CRDD-IR:BEGIN -->"
     $end = "<!-- CRDD-IR:END -->"
     $block = $shared.Trim()
+    $relative = $RelativePath.Replace("\", "/")
+    $previous = @($previousManifest.files | Where-Object { $_.path -eq $relative }) |
+        Select-Object -First 1
 
     if (Test-Path -LiteralPath $target) {
         $current = Get-Content -LiteralPath $target -Raw
@@ -52,6 +126,15 @@ function Install-ManagedBlock([string]$RelativePath, [string]$TemplateName) {
         $finish = $current.IndexOf($end, [System.StringComparison]::Ordinal)
         if ($start -ge 0 -and $finish -ge $start) {
             $finish += $end.Length
+            $currentBlock = $current.Substring($start, $finish - $start)
+            $expectedHash = if ($null -ne $previous) { [string]$previous.sha256 } else { "" }
+            if ((Get-ContentHash $currentBlock) -ne (Get-ContentHash $block) -and
+                (Get-ContentHash $currentBlock) -ne $expectedHash) {
+                Backup-ManagedConflict $target $relative
+                if (-not $ForceManagedUpdate) {
+                    throw "Managed guidance block was modified: $relative. Review the backup and rerun with -ForceManagedUpdate."
+                }
+            }
             $updated = $current.Substring(0, $start) + $block + $current.Substring($finish)
         }
         else {
@@ -62,11 +145,16 @@ function Install-ManagedBlock([string]$RelativePath, [string]$TemplateName) {
         $updated = $rendered.TrimEnd() + [Environment]::NewLine
     }
     Write-Utf8File $target $updated
+    $installedEntries.Add([ordered]@{
+        path = $relative
+        kind = "managed-block"
+        sha256 = Get-ContentHash $block
+    })
 }
 
 $wrapperSource = Join-Path $installerRoot "templates\crdd-ir.ps1"
 $wrapperTarget = Join-Path $resolvedProjectRoot "tools\crdd-ir.ps1"
-Write-Utf8File $wrapperTarget (Get-Content -LiteralPath $wrapperSource -Raw)
+Install-ManagedFile $wrapperTarget (Get-Content -LiteralPath $wrapperSource -Raw)
 
 $config = [ordered]@{
     protocol = "crdd-ir/project-config-v0.1"
@@ -88,7 +176,7 @@ $config = [ordered]@{
         }
     }
 }
-Write-Utf8File (
+Install-ManagedFile (
     Join-Path $resolvedProjectRoot "crdd-ir.config.json"
 ) (($config | ConvertTo-Json) + [Environment]::NewLine)
 
@@ -104,12 +192,18 @@ if (-not [string]::IsNullOrWhiteSpace($UnrealProject)) {
     $unrealRoot = Split-Path -Parent $unrealProjectPath
     $pluginSource = Join-Path $installerRoot "templates\unreal\CRDDIRIntegration"
     $pluginTarget = Join-Path $unrealRoot "Plugins\CRDDIRIntegration"
-    New-Item -ItemType Directory -Force -Path $pluginTarget | Out-Null
-    Copy-Item -Path (Join-Path $pluginSource "*") -Destination $pluginTarget -Recurse -Force
+    Get-ChildItem -LiteralPath $pluginSource -File -Recurse | ForEach-Object {
+        $pluginPrefix = [System.IO.Path]::GetFullPath($pluginSource).TrimEnd("\", "/") +
+            [System.IO.Path]::DirectorySeparatorChar
+        $pluginRelative = $_.FullName.Substring($pluginPrefix.Length)
+        Install-ManagedFile (
+            Join-Path $pluginTarget $pluginRelative
+        ) (Get-Content -LiteralPath $_.FullName -Raw)
+    }
 
     $pythonSource = Join-Path $installerRoot "templates\unreal\import_generated_assets.py"
     $pythonTarget = Join-Path $resolvedProjectRoot "tools\crdd-import-generated-assets.py"
-    Write-Utf8File $pythonTarget (Get-Content -LiteralPath $pythonSource -Raw)
+    Install-ManagedFile $pythonTarget (Get-Content -LiteralPath $pythonSource -Raw)
 }
 
 $gitignorePath = Join-Path $resolvedProjectRoot ".gitignore"
@@ -123,6 +217,14 @@ if ($gitignore -notmatch "(?m)^/\.crdd-ir/$") {
     $gitignore = $gitignore.TrimEnd() + [Environment]::NewLine + "/.crdd-ir/" + [Environment]::NewLine
     Write-Utf8File $gitignorePath $gitignore
 }
+
+$installManifest = [ordered]@{
+    protocol = "crdd-ir/install-manifest-v0.1"
+    toolVersion = $toolVersion
+    installedAtUtc = [DateTime]::UtcNow.ToString("o")
+    files = @($installedEntries | Sort-Object path)
+}
+Write-Utf8File $manifestPath (($installManifest | ConvertTo-Json -Depth 5) + [Environment]::NewLine)
 
 Write-Host "Installed CRDD-IR project integration into $resolvedProjectRoot"
 Write-Host "Next: git submodule add <CRDD-IR repository URL> $ToolRoot"
