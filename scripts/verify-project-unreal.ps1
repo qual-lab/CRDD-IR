@@ -32,7 +32,7 @@ $editorCmd = Join-Path $engineRoot "Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
 $manifest = Resolve-ProjectPath (
     Join-Path $config.generatedAssets "assets.manifest.json"
 )
-$source = Resolve-ProjectPath $config.source
+$sources = @($config.source | ForEach-Object { Resolve-ProjectPath ([string]$_) })
 $evidence = Resolve-ProjectPath $config.evidence
 $pythonScript = Join-Path $resolvedProjectRoot "tools\crdd-import-generated-assets.py"
 $projectName = [System.IO.Path]::GetFileNameWithoutExtension($project)
@@ -137,9 +137,15 @@ if (-not (Test-Path -LiteralPath $reportPath)) {
     throw "Unreal Automation Test did not produce a report: $reportPath"
 }
 
-& node (Join-Path $toolRoot "src\cli.ts") generate evidence `
-    $source --out-dir $evidence --unreal-report $reportPath
-Assert-ExitCode "CRDD evidence generation"
+$cli = Join-Path $toolRoot "src\cli.ts"
+foreach ($source in $sources) {
+    $json = (& node $cli compile $source 2>$null) -join [Environment]::NewLine
+    Assert-ExitCode "CRDD operation inspection"
+    $operationId = [string](($json | ConvertFrom-Json).operation.id)
+    & node $cli generate evidence `
+        $source --out-dir (Join-Path $evidence $operationId) --unreal-report $reportPath
+    Assert-ExitCode "CRDD evidence generation for $operationId"
+}
 
 Write-Host "CRDD Unreal project verification succeeded."
 Write-Host "Report: $reportPath"

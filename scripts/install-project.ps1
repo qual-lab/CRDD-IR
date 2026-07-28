@@ -1,7 +1,8 @@
 param(
     [Parameter(Mandatory = $true)]
     [string]$ProjectRoot,
-    [string]$Source = "05_SPEC/01_Behavior_Specification.md",
+    [string[]]$Source = @("05_SPEC/01_Behavior_Specification.md"),
+    [string]$AssetSource = "",
     [string]$GeneratedSource = "40_Develop/Generated/Source",
     [string]$GeneratedAssets = "40_Develop/Generated/Assets",
     [string]$Evidence = "07_Quality/CRDD_IR",
@@ -156,10 +157,11 @@ $wrapperSource = Join-Path $installerRoot "templates\crdd-ir.ps1"
 $wrapperTarget = Join-Path $resolvedProjectRoot "tools\crdd-ir.ps1"
 Install-ManagedFile $wrapperTarget (Get-Content -LiteralPath $wrapperSource -Raw)
 
+$normalizedSources = @($Source | ForEach-Object { $_.Replace("\", "/") })
 $config = [ordered]@{
     protocol = "crdd-ir/project-config-v0.1"
     toolRoot = $ToolRoot.Replace("\", "/")
-    source = $Source.Replace("\", "/")
+    source = if ($normalizedSources.Count -eq 1) { $normalizedSources[0] } else { $normalizedSources }
     generatedSource = $GeneratedSource.Replace("\", "/")
     generatedAssets = $GeneratedAssets.Replace("\", "/")
     evidence = $Evidence.Replace("\", "/")
@@ -175,6 +177,9 @@ $config = [ordered]@{
             integrationPlugin = "CRDDIRIntegration"
         }
     }
+}
+if (-not [string]::IsNullOrWhiteSpace($AssetSource)) {
+    $config["assetSource"] = $AssetSource.Replace("\", "/")
 }
 Install-ManagedFile (
     Join-Path $resolvedProjectRoot "crdd-ir.config.json"

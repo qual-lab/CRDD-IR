@@ -15,7 +15,18 @@
   "properties": {
     "protocol": { "const": "crdd-ir/project-config-v0.1" },
     "toolRoot": { "$ref": "#/$defs/path" },
-    "source": { "$ref": "#/$defs/path" },
+    "source": {
+      "oneOf": [
+        { "$ref": "#/$defs/path" },
+        {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/path" }
+        }
+      ]
+    },
+    "assetSource": { "$ref": "#/$defs/path" },
     "generatedSource": { "$ref": "#/$defs/path" },
     "generatedAssets": { "$ref": "#/$defs/path" },
     "evidence": { "$ref": "#/$defs/path" },

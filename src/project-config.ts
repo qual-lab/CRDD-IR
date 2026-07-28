@@ -6,6 +6,7 @@ const rootKeys = new Set([
   "protocol",
   "toolRoot",
   "source",
+  "assetSource",
   "generatedSource",
   "generatedAssets",
   "evidence",
@@ -23,7 +24,8 @@ const configurations = new Set(["Debug", "DebugGame", "Development", "Shipping",
 export interface ProjectConfig {
   protocol: typeof PROJECT_CONFIG_PROTOCOL;
   toolRoot: string;
-  source: string;
+  source: string | string[];
+  assetSource?: string;
   generatedSource: string;
   generatedAssets: string;
   evidence: string;
@@ -53,8 +55,24 @@ export function validateProjectConfig(value: unknown): ProjectConfig {
     throw new Error(`config.protocol must be "${PROJECT_CONFIG_PROTOCOL}"`);
   }
 
-  for (const key of ["toolRoot", "source", "generatedSource", "generatedAssets", "evidence"]) {
+  for (const key of ["toolRoot", "generatedSource", "generatedAssets", "evidence"]) {
     projectPath(config[key], `config.${key}`);
+  }
+  if (Array.isArray(config.source)) {
+    if (config.source.length === 0) throw new Error("config.source must not be empty");
+    config.source.forEach((source, index) => projectPath(source, `config.source[${index}]`));
+    if (new Set(config.source).size !== config.source.length) {
+      throw new Error("config.source must not contain duplicates");
+    }
+  } else {
+    projectPath(config.source, "config.source");
+  }
+  if (config.assetSource !== undefined) {
+    projectPath(config.assetSource, "config.assetSource");
+    const sources = Array.isArray(config.source) ? config.source : [config.source];
+    if (!sources.includes(config.assetSource as string)) {
+      throw new Error("config.assetSource must also be listed in config.source");
+    }
   }
   if (!Object.hasOwn(config, "unreal")) throw new Error("config.unreal is required");
 

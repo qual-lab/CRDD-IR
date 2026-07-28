@@ -17,6 +17,32 @@ manifest. Duplicate operation IDs stop generation. Verified unchanged outputs
 are reused; a corrupt cache manifest is preserved with a `.corrupt.*` suffix
 before regeneration.
 
+Project integration accepts either one source path or an ordered source array.
+When more than one source is configured, `assetSource` explicitly selects the
+contract that owns the generated 3D asset set:
+
+```json
+{
+  "protocol": "crdd-ir/project-config-v0.1",
+  "toolRoot": "tools/CRDD-IR",
+  "source": [
+    "05_SPEC/operations/create.md",
+    "05_SPEC/operations/update.md"
+  ],
+  "assetSource": "05_SPEC/operations/create.md",
+  "generatedSource": "40_Develop/Generated/Source",
+  "generatedAssets": "40_Develop/Generated/Assets",
+  "evidence": "07_Quality/CRDD_IR",
+  "unreal": null
+}
+```
+
+The project wrapper uses flat Unreal batch generation for a source array, so
+all generated translation units are written directly into the configured
+module directory. Filename collisions are checked case-insensitively before
+any output is written. Removed operations clean up only files owned by the
+previous batch manifest. Evidence remains separated by operation ID.
+
 Use `--format json` with validation commands to receive the versioned
 `crdd-ir/diagnostics-v0.1` envelope and stable `CRDD_*` diagnostic codes.
 The expression language and Unreal adapter support numeric, boolean, and string
@@ -44,8 +70,7 @@ and `remove` use an exact-match `where` object whose values may be typed
 literals or input/state references; `update` additionally requires a typed
 `set` object. The compiler validates every referenced item field, simulates the
 mutation deterministically, seeds an observable matching item in generated
-conformance cases, and emits equivalent Unreal C++. The `UpdateEntity` example is
-compiled beside `CreateEntity` by the UE 5.8 verification fixture.
+conformance cases, and emits equivalent Unreal C++.
 
 Scalar fields may declare a closed string `enum`. Optional scalar fields must
 also declare a type-correct `default`; omission deterministically materializes

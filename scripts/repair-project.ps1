@@ -13,12 +13,15 @@ $config = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
 $installer = Join-Path $PSScriptRoot "install-project.ps1"
 $arguments = @{
     ProjectRoot = $root
-    Source = [string]$config.source
+    Source = @($config.source)
     GeneratedSource = [string]$config.generatedSource
     GeneratedAssets = [string]$config.generatedAssets
     Evidence = [string]$config.evidence
     ToolRoot = [string]$config.toolRoot
     ForceManagedUpdate = $true
+}
+if (-not [string]::IsNullOrWhiteSpace([string]$config.assetSource)) {
+    $arguments.AssetSource = [string]$config.assetSource
 }
 if ($null -ne $config.unreal) {
     $arguments.UnrealProject = [string]$config.unreal.project

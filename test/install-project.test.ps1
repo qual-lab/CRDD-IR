@@ -12,6 +12,18 @@ try {
     & $installer -ProjectRoot $target
     & $installer -ProjectRoot $target
 
+    & $installer -ProjectRoot $target `
+        -Source @("05_SPEC/create.md", "05_SPEC/update.md") `
+        -AssetSource "05_SPEC/create.md" `
+        -ForceManagedUpdate
+    $config = Get-Content -LiteralPath (
+        Join-Path $target "crdd-ir.config.json"
+    ) -Raw | ConvertFrom-Json
+    if (@($config.source).Count -ne 2 -or
+        $config.assetSource -ne "05_SPEC/create.md") {
+        throw "Installer did not preserve multiple sources and assetSource"
+    }
+
     $manifest = Get-Content -LiteralPath (
         Join-Path $target ".crdd-ir.install.json"
     ) -Raw | ConvertFrom-Json

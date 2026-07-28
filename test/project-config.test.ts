@@ -21,6 +21,33 @@ test("accepts a complete project configuration", () => {
   assert.deepEqual(validateProjectConfig(validConfig()), validConfig());
 });
 
+test("accepts multiple sources with an explicit asset source", () => {
+  const config = {
+    ...validConfig(),
+    source: ["05_SPEC/create.md", "05_SPEC/update.md"],
+    assetSource: "05_SPEC/create.md",
+  };
+  assert.deepEqual(validateProjectConfig(config), config);
+});
+
+test("rejects duplicate sources and an asset source outside the source set", () => {
+  assert.throws(
+    () => validateProjectConfig({
+      ...validConfig(),
+      source: ["05_SPEC/spec.md", "05_SPEC/spec.md"],
+    }),
+    /must not contain duplicates/,
+  );
+  assert.throws(
+    () => validateProjectConfig({
+      ...validConfig(),
+      source: ["05_SPEC/create.md", "05_SPEC/update.md"],
+      assetSource: "05_SPEC/assets.md",
+    }),
+    /must also be listed/,
+  );
+});
+
 test("rejects unknown project configuration fields", () => {
   assert.throws(
     () => validateProjectConfig({ ...validConfig(), typo: true }),

@@ -6,6 +6,7 @@ import { compileMarkdown } from "./compiler.ts";
 import { loadProjectConfig } from "./project-config.ts";
 import { analyzeTestCoverage, generateTestManifest } from "./test-manifest.ts";
 import { analyzeMutationCoverage } from "./mutation.ts";
+import { generateUnreal } from "./unreal.ts";
 
 export type DoctorCheck = {
   code: string;
@@ -39,45 +40,71 @@ export async function runDoctor(configPath: string): Promise<DoctorReport> {
 
   const paths = {
     toolRoot: inside(root, config.toolRoot),
-    source: inside(root, config.source),
+    sources: (Array.isArray(config.source) ? config.source : [config.source])
+      .map((source) => inside(root, source)),
     generatedSource: inside(root, config.generatedSource),
     generatedAssets: inside(root, config.generatedAssets),
     evidence: inside(root, config.evidence),
   };
-  await checkFile(paths.source, "CRDD_SOURCE_PRESENT", "CRDD source exists", checks);
+  for (const source of paths.sources) {
+    await checkFile(source, "CRDD_SOURCE_PRESENT", "CRDD source exists", checks);
+  }
   await checkFile(resolve(paths.toolRoot, "src/cli.ts"), "CRDD_TOOL_PRESENT", "Compiler CLI exists", checks);
   checkOutputSeparation(paths, checks);
 
   try {
-    const compilation = await compileMarkdown(paths.source);
+    const compilations = await Promise.all(paths.sources.map((source) => compileMarkdown(source)));
+    const duplicates = compilations
+      .map((item) => item.ir.operation.id)
+      .filter((id, index, ids) => ids.indexOf(id) !== index);
+    if (duplicates.length > 0) throw new Error(`Duplicate operation ID(s): ${[...new Set(duplicates)].join(", ")}`);
+    const generatedNames = new Map<string, string[]>();
+    for (const compilation of compilations) {
+      for (const file of generateUnreal(compilation.ir)) {
+        const key = file.name.toLowerCase();
+        generatedNames.set(key, [...(generatedNames.get(key) ?? []), compilation.ir.operation.id]);
+      }
+    }
+    const collisions = [...generatedNames]
+      .filter(([, operations]) => operations.length > 1)
+      .map(([name, operations]) => `${name} (${operations.join(", ")})`);
+    if (collisions.length > 0) {
+      throw new Error(`Generated Unreal file collision(s): ${collisions.join("; ")}`);
+    }
     checks.push(pass(
-      "CRDD_SOURCE_COMPILES",
-      `Source compiles deterministically as ${compilation.ir.operation.id} (${compilation.digest})`,
-      paths.source,
+      "CRDD_GENERATED_NAMES_UNIQUE",
+      `Generated Unreal filenames are unique across ${compilations.length} operation(s)`,
     ));
-    const manifest = generateTestManifest(compilation.ir);
-    const coverage = analyzeTestCoverage(compilation.ir, manifest);
-    checks.push(coverage.uncovered.length === 0
-      ? pass(
-        "CRDD_REQUIREMENTS_COVERED",
-        `All ${coverage.requirements} requirements have deterministic failure cases`,
-      )
-      : fail(
-        "CRDD_REQUIREMENTS_UNCOVERED",
-        `Requirements without failure cases: ${coverage.uncovered.join(", ")}`,
+    for (const [index, compilation] of compilations.entries()) {
+      checks.push(pass(
+        "CRDD_SOURCE_COMPILES",
+        `Source compiles deterministically as ${compilation.ir.operation.id} (${compilation.digest})`,
+        paths.sources[index],
       ));
-    const mutation = analyzeMutationCoverage(compilation.ir, manifest);
-    checks.push(mutation.survived.length === 0
-      ? pass(
-        "CRDD_MUTATIONS_KILLED",
-        `Conformance tests killed all ${mutation.total} deterministic mutants`,
-      )
-      : fail(
-        "CRDD_MUTATIONS_SURVIVED",
-        `Surviving mutants: ${mutation.survived.join(", ")}`,
-      ));
+      const manifest = generateTestManifest(compilation.ir);
+      const coverage = analyzeTestCoverage(compilation.ir, manifest);
+      checks.push(coverage.uncovered.length === 0
+        ? pass(
+          "CRDD_REQUIREMENTS_COVERED",
+          `${compilation.ir.operation.id}: all ${coverage.requirements} requirements have failure cases`,
+        )
+        : fail(
+          "CRDD_REQUIREMENTS_UNCOVERED",
+          `${compilation.ir.operation.id}: uncovered ${coverage.uncovered.join(", ")}`,
+        ));
+      const mutation = analyzeMutationCoverage(compilation.ir, manifest);
+      checks.push(mutation.survived.length === 0
+        ? pass(
+          "CRDD_MUTATIONS_KILLED",
+          `${compilation.ir.operation.id}: killed all ${mutation.total} deterministic mutants`,
+        )
+        : fail(
+          "CRDD_MUTATIONS_SURVIVED",
+          `${compilation.ir.operation.id}: surviving ${mutation.survived.join(", ")}`,
+        ));
+    }
   } catch (error) {
-    checks.push(fail("CRDD_SOURCE_INVALID", (error as Error).message, paths.source));
+    checks.push(fail("CRDD_SOURCE_INVALID", (error as Error).message));
   }
 
   for (const output of [paths.generatedSource, paths.generatedAssets, paths.evidence]) {
@@ -112,7 +139,13 @@ function inside(root: string, value: string): string {
 }
 
 function checkOutputSeparation(
-  paths: Record<"toolRoot" | "source" | "generatedSource" | "generatedAssets" | "evidence", string>,
+  paths: {
+    toolRoot: string;
+    sources: string[];
+    generatedSource: string;
+    generatedAssets: string;
+    evidence: string;
+  },
   checks: DoctorCheck[],
 ): void {
   const outputs = [paths.generatedSource, paths.generatedAssets, paths.evidence];
@@ -125,8 +158,7 @@ function checkOutputSeparation(
   for (const output of outputs) {
     if (
       overlaps(output, paths.toolRoot) ||
-      overlaps(output, paths.source) ||
-      overlaps(output, dirname(paths.source))
+      paths.sources.some((source) => overlaps(output, source) || overlaps(output, dirname(source)))
     ) {
       checks.push(fail("CRDD_OUTPUT_OVERLAP", "Output path overlaps compiler or source", output));
     }

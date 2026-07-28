@@ -94,7 +94,10 @@ async function main(argv: string[]): Promise<void> {
     }
     const outDir = option(argv, "--out-dir") ?? `generated/batch/${target}`;
     const sources = operandsAfter(argv, 2);
-    const manifest = await generateBatch(sources, outDir, target);
+    const manifest = await generateBatch(sources, outDir, target, {
+      layout: argv.includes("--flat") ? "flat" : "operation-directories",
+      force: argv.includes("--force"),
+    });
     console.log(`Generated ${manifest.operations.length} operation(s) in ${resolve(outDir)}`);
     return;
   }
@@ -336,7 +339,7 @@ function operandsAfter(argv: string[], start: number): string[] {
   const result: string[] = [];
   for (let index = start; index < argv.length; index += 1) {
     if (argv[index].startsWith("--")) {
-      index += 1;
+      if (!["--flat", "--force"].includes(argv[index])) index += 1;
       continue;
     }
     result.push(argv[index]);
@@ -364,7 +367,7 @@ function printHelp(): void {
 
 Commands:
   compile <spec.md> [--out <debug-ir.json>]
-  batch <ir|unreal|assets> <spec.md>... [--out-dir <directory>]
+  batch <ir|unreal|assets> <spec.md>... [--out-dir <directory>] [--flat] [--force]
   check <spec.md> [--format json]
   project check <crdd-ir.config.json>
   project doctor <crdd-ir.config.json> [--format json]
