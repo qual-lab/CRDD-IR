@@ -241,6 +241,12 @@ async function checkUnreal(
     checks,
   );
   await checkFile(
+    resolve(engineRoot, "Engine/Build/BatchFiles/RunUAT.bat"),
+    "CRDD_UNREAL_UAT_PRESENT",
+    "Unreal Automation Tool exists",
+    checks,
+  );
+  await checkFile(
     resolve(engineRoot, "Engine/Binaries/Win64/UnrealEditor-Cmd.exe"),
     "CRDD_UNREAL_EDITOR_PRESENT",
     "Unreal headless editor exists",
@@ -251,6 +257,15 @@ async function checkUnreal(
     resolve(unrealRoot, `Plugins/${unreal.integrationPlugin}/${unreal.integrationPlugin}.uplugin`),
     "CRDD_UNREAL_PLUGIN_PRESENT",
     "CRDD Unreal integration plugin exists",
+    checks,
+  );
+  await checkFile(
+    resolve(
+      unrealRoot,
+      `Plugins/${unreal.integrationPlugin}/Source/CRDDIRRuntime/CRDDIRRuntime.Build.cs`,
+    ),
+    "CRDD_UNREAL_RUNTIME_MODULE_PRESENT",
+    "CRDD Unreal runtime module exists",
     checks,
   );
   await checkFile(

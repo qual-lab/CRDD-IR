@@ -46,6 +46,7 @@
             "project": { "$ref": "#/$defs/path" },
             "engineRoot": { "type": "string", "minLength": 1 },
             "editorTarget": { "type": "string" },
+            "gameTarget": { "type": "string", "minLength": 1 },
             "configuration": { "enum": ["Debug", "DebugGame", "Development", "Shipping", "Test"] },
             "integrationPlugin": { "const": "CRDDIRIntegration" }
           },

@@ -28,6 +28,7 @@ function Assert-ExitCode([string]$Step) {
 $project = Resolve-ProjectPath $config.unreal.project
 $engineRoot = [System.IO.Path]::GetFullPath($config.unreal.engineRoot)
 $buildTool = Join-Path $engineRoot "Engine\Build\BatchFiles\Build.bat"
+$runUat = Join-Path $engineRoot "Engine\Build\BatchFiles\RunUAT.bat"
 $editorCmd = Join-Path $engineRoot "Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
 $manifest = Resolve-ProjectPath (
     Join-Path $config.generatedAssets "assets.manifest.json"
@@ -39,6 +40,12 @@ $projectName = [System.IO.Path]::GetFileNameWithoutExtension($project)
 $editorTarget = if ([string]::IsNullOrWhiteSpace($config.unreal.editorTarget)) {
     "${projectName}Editor"
 }
+$gameTarget = if ([string]::IsNullOrWhiteSpace($config.unreal.gameTarget)) {
+    $projectName
+}
+else {
+    $config.unreal.gameTarget
+}
 else {
     $config.unreal.editorTarget
 }
@@ -49,7 +56,9 @@ else {
     $config.unreal.configuration
 }
 
-foreach ($requiredPath in @($project, $buildTool, $editorCmd, $manifest, $pythonScript)) {
+foreach ($requiredPath in @(
+    $project, $buildTool, $runUat, $editorCmd, $manifest, $pythonScript
+)) {
     if (-not (Test-Path -LiteralPath $requiredPath)) {
         throw "Required Unreal verification path not found: $requiredPath"
     }
@@ -59,6 +68,7 @@ $runId = [Guid]::NewGuid().ToString("N")
 $runDir = Join-Path $resolvedProjectRoot ".crdd-ir\reports\$runId"
 $reportPath = Join-Path $runDir "index.json"
 $markerPath = Join-Path $runDir "asset-import-success.json"
+$packageDir = Join-Path $resolvedProjectRoot ".crdd-ir\packages\$runId"
 $savedManifestDir = Join-Path (Split-Path -Parent $project) "Saved\CRDDIR"
 $savedManifest = Join-Path $savedManifestDir "assets.manifest.json"
 $previousManifest = Join-Path $savedManifestDir "previous-assets.manifest.json"
@@ -137,6 +147,30 @@ if (-not (Test-Path -LiteralPath $reportPath)) {
     throw "Unreal Automation Test did not produce a report: $reportPath"
 }
 
+& $buildTool $gameTarget Win64 Shipping $project -WaitMutex -NoHotReload -NoUBA
+Assert-ExitCode "CRDD Unreal Shipping build"
+
+$assetManifest = Get-Content -LiteralPath $manifest -Raw | ConvertFrom-Json
+$runtimeMap = [string]$assetManifest.scene.unrealLevel
+if ([string]::IsNullOrWhiteSpace($runtimeMap) -or
+    -not $runtimeMap.StartsWith("/Game/", [System.StringComparison]::Ordinal)) {
+    throw "Generated asset manifest must declare a /Game/ runtime scene"
+}
+& $runUat BuildCookRun `
+    "-project=$project" `
+    -noP4 `
+    -platform=Win64 `
+    -clientconfig=Shipping `
+    -skipbuild `
+    -cook `
+    -stage `
+    -pak `
+    -archive `
+    "-archivedirectory=$packageDir" `
+    "-map=$runtimeMap" `
+    -utf8output
+Assert-ExitCode "CRDD Unreal Shipping cook and package"
+
 $cli = Join-Path $toolRoot "src\cli.ts"
 foreach ($source in $sources) {
     $json = (& node $cli compile $source 2>$null) -join [Environment]::NewLine
@@ -149,3 +183,4 @@ foreach ($source in $sources) {
 
 Write-Host "CRDD Unreal project verification succeeded."
 Write-Host "Report: $reportPath"
+Write-Host "Shipping package: $packageDir"

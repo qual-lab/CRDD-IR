@@ -16,6 +16,7 @@ const unrealKeys = new Set([
   "project",
   "engineRoot",
   "editorTarget",
+  "gameTarget",
   "configuration",
   "integrationPlugin",
 ]);
@@ -33,6 +34,7 @@ export interface ProjectConfig {
     project: string;
     engineRoot: string;
     editorTarget: string;
+    gameTarget?: string;
     configuration: string;
     integrationPlugin: "CRDDIRIntegration";
   };
@@ -82,6 +84,9 @@ export function validateProjectConfig(value: unknown): ProjectConfig {
     projectPath(unreal.project, "config.unreal.project");
     nonEmpty(unreal.engineRoot, "config.unreal.engineRoot");
     string(unreal.editorTarget, "config.unreal.editorTarget");
+    if (unreal.gameTarget !== undefined) {
+      nonEmpty(unreal.gameTarget, "config.unreal.gameTarget");
+    }
     if (!configurations.has(string(unreal.configuration, "config.unreal.configuration"))) {
       throw new Error("config.unreal.configuration is not supported");
     }

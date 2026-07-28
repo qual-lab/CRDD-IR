@@ -136,13 +136,14 @@
   },
   "execution": {
     "path": "unreal-execution.json",
-    "sha256": "ecc9e9cf2577932e836447f28e8decd9b74297a7088cd880fdd1e1460fe6c67d",
+    "sha256": "40157a703d1c1622ebc02b143105236c9887239c037fdd2d042919ee963c4937",
     "status": "passed",
     "tests": [
       "CRDD.Assets.GeneratedMeshes",
       "CRDD.Assets.GeneratedPreviewLevels",
       "CRDD.Assets.GeneratedScene",
-      "CRDD.CreateEntity.Conformance"
+      "CRDD.CreateEntity.Conformance",
+      "CRDD.Integration.GeneratedAssets"
     ]
   }
 }

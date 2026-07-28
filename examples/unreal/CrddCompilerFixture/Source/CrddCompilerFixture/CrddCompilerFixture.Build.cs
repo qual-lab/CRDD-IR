@@ -16,6 +16,7 @@ public class CrddCompilerFixture : ModuleRules
                 "Json"
             }
         );
+        PrivateDependencyModuleNames.Add("CRDDIRRuntime");
 
         if (Target.bBuildEditor)
         {

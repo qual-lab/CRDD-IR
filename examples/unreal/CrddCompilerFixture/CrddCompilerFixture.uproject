@@ -12,6 +12,10 @@
   ],
   "Plugins": [
     {
+      "Name": "CRDDIRIntegration",
+      "Enabled": true
+    },
+    {
       "Name": "PythonScriptPlugin",
       "Enabled": true
     },

@@ -43,6 +43,25 @@ module directory. Filename collisions are checked case-insensitively before
 any output is written. Removed operations clean up only files owned by the
 previous batch manifest. Evidence remains separated by operation ID.
 
+The Unreal integration plugin has a strict module boundary:
+
+- `CRDDIRRuntime` is a Runtime module depending only on `Core`, `CoreUObject`,
+  and `Engine`. Generated operations remain plain C++ and are valid in Game and
+  Shipping targets.
+- `CRDDIRIntegration` is an Editor module containing import and Automation
+  support. `UnrealEd` never enters the Runtime dependency graph.
+- `UCRDDIRRuntimeSubsystem` is the game-instance lifetime boundary.
+  `FCRDDIRRuntime::RunAsync` executes pure operation work on the thread pool,
+  keeps only a weak UObject owner, supports cooperative cancellation, and
+  applies results only on the Game Thread.
+
+`verify` builds both the configured Editor target and the `gameTarget` Shipping
+target. It then cooks the generated runtime scene from `assets.manifest.json`,
+stages it, and produces a Pak/IoStore package under `.crdd-ir/packages/`.
+The fixture also registers `/Game/CRDD/Generated` with Asset Manager using an
+`AlwaysCook` rule. This proves that generated code and referenced assets survive
+the actual Shipping dependency graph rather than only an Editor build.
+
 Use `--format json` with validation commands to receive the versioned
 `crdd-ir/diagnostics-v0.1` envelope and stable `CRDD_*` diagnostic codes.
 The expression language and Unreal adapter support numeric, boolean, and string

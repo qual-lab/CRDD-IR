@@ -30,5 +30,5 @@
 
 - Status: **PASSED**
 - Evidence: `unreal-execution.json`
-- Evidence SHA-256: `ecc9e9cf2577932e836447f28e8decd9b74297a7088cd880fdd1e1460fe6c67d`
-- Tests: CRDD.Assets.GeneratedMeshes, CRDD.Assets.GeneratedPreviewLevels, CRDD.Assets.GeneratedScene, CRDD.CreateEntity.Conformance
+- Evidence SHA-256: `40157a703d1c1622ebc02b143105236c9887239c037fdd2d042919ee963c4937`
+- Tests: CRDD.Assets.GeneratedMeshes, CRDD.Assets.GeneratedPreviewLevels, CRDD.Assets.GeneratedScene, CRDD.CreateEntity.Conformance, CRDD.Integration.GeneratedAssets

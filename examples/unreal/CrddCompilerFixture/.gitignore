@@ -1,6 +1,10 @@
 /.vs/
 /Binaries/
 /Config/
+!/Config/
+/Config/*
+!/Config/DefaultGame.ini
+/Build/
 /DerivedDataCache/
 /Intermediate/
 /Saved/

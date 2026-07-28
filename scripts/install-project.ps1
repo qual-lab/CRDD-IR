@@ -10,6 +10,7 @@ param(
     [string]$UnrealProject = "",
     [string]$UnrealEngineRoot = "C:/Program Files/Epic Games/UE_5.8",
     [string]$UnrealEditorTarget = "",
+    [string]$UnrealGameTarget = "",
     [switch]$ForceManagedUpdate
 )
 
@@ -173,6 +174,12 @@ $config = [ordered]@{
             project = $UnrealProject.Replace("\", "/")
             engineRoot = $UnrealEngineRoot.Replace("\", "/")
             editorTarget = $UnrealEditorTarget
+            gameTarget = if ([string]::IsNullOrWhiteSpace($UnrealGameTarget)) {
+                [System.IO.Path]::GetFileNameWithoutExtension($UnrealProject)
+            }
+            else {
+                $UnrealGameTarget
+            }
             configuration = "Development"
             integrationPlugin = "CRDDIRIntegration"
         }

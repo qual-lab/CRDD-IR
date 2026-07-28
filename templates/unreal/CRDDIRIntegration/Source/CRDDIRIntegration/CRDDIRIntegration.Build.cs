@@ -6,7 +6,7 @@ public class CRDDIRIntegration : ModuleRules
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         PrivateDependencyModuleNames.AddRange(
-            new[] { "Core", "CoreUObject", "Engine", "Json", "UnrealEd" }
+            new[] { "Core", "CoreUObject", "Engine", "Json", "UnrealEd", "CRDDIRRuntime" }
         );
     }
 }

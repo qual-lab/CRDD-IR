@@ -27,6 +27,9 @@ if ($null -ne $config.unreal) {
     $arguments.UnrealProject = [string]$config.unreal.project
     $arguments.UnrealEngineRoot = [string]$config.unreal.engineRoot
     $arguments.UnrealEditorTarget = [string]$config.unreal.editorTarget
+    if (-not [string]::IsNullOrWhiteSpace([string]$config.unreal.gameTarget)) {
+        $arguments.UnrealGameTarget = [string]$config.unreal.gameTarget
+    }
 }
 & $installer @arguments
 Write-Host "Repaired CRDD-IR managed integration in $root"

@@ -74,6 +74,7 @@ test("validates Unreal configuration fields", () => {
         project: "Game/Game.uproject",
         engineRoot: "C:/Program Files/Epic Games/UE_5.8",
         editorTarget: "GameEditor",
+        gameTarget: "Game",
         configuration: "Fast",
         integrationPlugin: "CRDDIRIntegration",
       },
