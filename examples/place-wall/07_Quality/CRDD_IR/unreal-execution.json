@@ -1,8 +1,8 @@
 {
   "protocol": "crdd-ir/unreal-execution-v0.1",
   "operation": "PlaceWall",
-  "reportCreatedOn": "2026.07.28-12.49.02",
-  "sourceReportSha256": "9fe9ba53a2055e7b50521d03f800f22505b1ee6dbe3e04cd036cf1c721063fff",
+  "reportCreatedOn": "2026.07.28-12.52.59",
+  "sourceReportSha256": "e375834eb9be76ac93929615d57a0c1f95b4c82eaf5aae7d11fc89c5ba5731ce",
   "platforms": [
     "WindowsEditor"
   ],
@@ -15,28 +15,28 @@
     {
       "path": "CRDD.Assets.GeneratedMeshes",
       "state": "Success",
-      "durationSeconds": 0.028016403317451477,
+      "durationSeconds": 0.020047001540660858,
       "warnings": 0,
       "errors": 0
     },
     {
       "path": "CRDD.Assets.GeneratedPreviewLevels",
       "state": "Success",
-      "durationSeconds": 0.5273519158363342,
+      "durationSeconds": 0.33434349298477173,
       "warnings": 0,
       "errors": 0
     },
     {
       "path": "CRDD.Assets.GeneratedScene",
       "state": "Success",
-      "durationSeconds": 0.20009011030197144,
+      "durationSeconds": 0.13644900918006897,
       "warnings": 0,
       "errors": 0
     },
     {
       "path": "CRDD.PlaceWall.Conformance",
       "state": "Success",
-      "durationSeconds": 0.011044003069400787,
+      "durationSeconds": 0.013493500649929047,
       "warnings": 0,
       "errors": 0
     }

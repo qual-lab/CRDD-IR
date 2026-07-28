@@ -100,7 +100,15 @@
       "properties": {
         "type": { "enum": ["number", "string", "boolean"] },
         "unit": { "type": "string", "minLength": 1 },
-        "minimum": { "type": "number" }
+        "minimum": { "type": "number" },
+        "enum": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "optional": { "type": "boolean" },
+        "default": { "type": ["number", "string", "boolean"] }
       },
       "additionalProperties": false
     },

@@ -527,6 +527,42 @@ function validateField(rawField: Record<string, unknown>, path: string, diagnost
   if (rawField.minimum !== undefined && typeof rawField.minimum !== "number") {
     diagnostics.push(error(`${path}.minimum`, "must be a number"));
   }
+  if (rawField.enum !== undefined) {
+    if (rawField.type !== "string") {
+      diagnostics.push(error(`${path}.enum`, "is supported only for string fields"));
+    } else if (!Array.isArray(rawField.enum) || rawField.enum.length === 0 ||
+        rawField.enum.some((item) => typeof item !== "string" || item.length === 0) ||
+        new Set(rawField.enum).size !== rawField.enum.length) {
+      diagnostics.push(error(`${path}.enum`, "must be a non-empty array of unique non-empty strings"));
+    }
+  }
+  if (rawField.optional !== undefined && typeof rawField.optional !== "boolean") {
+    diagnostics.push(error(`${path}.optional`, "must be a boolean"));
+  }
+  if (rawField.optional === true && rawField.default === undefined) {
+    diagnostics.push(error(`${path}.default`, "is required when optional is true"));
+  }
+  if (rawField.optional !== true && rawField.default !== undefined) {
+    diagnostics.push(error(`${path}.default`, "requires optional to be true"));
+  }
+  if (rawField.default !== undefined) {
+    const expected = rawField.type;
+    if (
+      (expected === "number" && typeof rawField.default !== "number") ||
+      (expected === "string" && typeof rawField.default !== "string") ||
+      (expected === "boolean" && typeof rawField.default !== "boolean")
+    ) {
+      diagnostics.push(error(`${path}.default`, `must have type "${expected}"`));
+    }
+    if (rawField.type === "string" && Array.isArray(rawField.enum) &&
+        !rawField.enum.includes(rawField.default)) {
+      diagnostics.push(error(`${path}.default`, "must be one of the declared enum values"));
+    }
+    if (rawField.type === "number" && typeof rawField.default === "number" &&
+        typeof rawField.minimum === "number" && rawField.default < rawField.minimum) {
+      diagnostics.push(error(`${path}.default`, `must be >= ${rawField.minimum}`));
+    }
+  }
   if (rawField.type === "array") {
     if (!isRecord(rawField.items) || rawField.items.type !== "object") {
       diagnostics.push(error(`${path}.items`, 'must define an object item schema'));

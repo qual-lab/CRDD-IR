@@ -47,6 +47,12 @@ mutation deterministically, seeds an observable matching item in generated
 conformance cases, and emits equivalent Unreal C++. The `UpdateWall` example is
 compiled beside `PlaceWall` by the UE 5.8 verification fixture.
 
+Scalar fields may declare a closed string `enum`. Optional scalar fields must
+also declare a type-correct `default`; omission deterministically materializes
+that value in the reference simulator, conformance baseline, and generated
+Unreal struct. Defaults outside the enum or below a numeric minimum are compile
+errors. This deliberately avoids target-specific null/undefined behavior.
+
 Operational recovery is ownership-aware:
 
 ```powershell

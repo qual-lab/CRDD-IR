@@ -2,6 +2,9 @@ export type ScalarFieldDefinition = {
   type: "number" | "string" | "boolean";
   unit?: string;
   minimum?: number;
+  enum?: string[];
+  optional?: boolean;
+  default?: number | string | boolean;
 };
 
 export type ObjectFieldDefinition = {

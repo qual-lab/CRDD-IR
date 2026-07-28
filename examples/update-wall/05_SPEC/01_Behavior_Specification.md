@@ -16,6 +16,11 @@ operation:
       type: number
       unit: m
       minimum: 0
+    update_mode:
+      type: string
+      enum: [replace, preserve_metadata]
+      optional: true
+      default: replace
 
   state:
     walls:

@@ -2,10 +2,10 @@ import { evaluateExpression, getPath } from "./expression.ts";
 import type { CrddIr, SimulationRequest, SimulationResult } from "./model.ts";
 
 export function simulate(ir: CrddIr, request: SimulationRequest): SimulationResult {
-  validateRequest(ir, request);
+  const input = validateRequest(ir, request);
   const originalState = structuredClone(request.state);
   const workingState = structuredClone(request.state);
-  const context = { input: request.input, state: workingState };
+  const context = { input, state: workingState };
 
   for (const requirement of ir.operation.requires) {
     const satisfied = evaluateExpression(requirement.expression, context);
@@ -74,17 +74,32 @@ function matches(value: unknown, where: Record<string, unknown>): boolean {
   );
 }
 
-function validateRequest(ir: CrddIr, request: SimulationRequest): void {
+function validateRequest(ir: CrddIr, request: SimulationRequest): Record<string, unknown> {
+  const input = structuredClone(request.input);
   for (const [name, definition] of Object.entries(ir.operation.input)) {
-    const value = request.input[name];
+    let value = input[name];
+    if (value === undefined && definition.type !== "array" && definition.optional) {
+      value = structuredClone(definition.default);
+      input[name] = value;
+    }
     if (value === undefined) throw new Error(`Missing input "${name}"`);
     if (definition.type === "number" && typeof value !== "number") {
       throw new Error(`Input "${name}" must be a number`);
+    }
+    if (definition.type === "string" && typeof value !== "string") {
+      throw new Error(`Input "${name}" must be a string`);
+    }
+    if (definition.type === "boolean" && typeof value !== "boolean") {
+      throw new Error(`Input "${name}" must be a boolean`);
+    }
+    if (definition.type === "string" && definition.enum && !definition.enum.includes(value as string)) {
+      throw new Error(`Input "${name}" must be one of: ${definition.enum.join(", ")}`);
     }
     if (definition.minimum !== undefined && typeof value === "number" && value < definition.minimum) {
       throw new Error(`Input "${name}" must be >= ${definition.minimum}`);
     }
   }
+  return input;
 }
 
 function resolveValue(value: unknown, context: Record<string, unknown>): unknown {

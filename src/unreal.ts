@@ -306,6 +306,11 @@ function cppType(field: FieldDefinition): string {
 }
 
 function cppDefault(field: FieldDefinition): string {
+  if (field.type !== "array" && field.default !== undefined) {
+    if (typeof field.default === "string") return `TEXT(${JSON.stringify(field.default)})`;
+    if (typeof field.default === "boolean") return field.default ? "true" : "false";
+    return field.default.toString();
+  }
   if (field.type === "number" && field.unit === "JPY") return "0";
   if (field.type === "number") return "0.0";
   if (field.type === "boolean") return "false";

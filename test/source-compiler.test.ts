@@ -240,6 +240,39 @@ test("compiles the UpdateWall source contract and exercises its generated case",
   assert.equal(mutation.score, 100);
 });
 
+test("materializes optional enum defaults and rejects unknown values", async () => {
+  const compiled = await compileMarkdown(fileURLToPath(updateWallSourcePath));
+  const request = {
+    input: { wall_id: "wall-1", new_length: 2 },
+    state: { walls: [{ wall_id: "wall-1", length: 1 }] },
+  };
+  const result = simulate(compiled.ir, request);
+  assert.equal(result.ok, true);
+  assert.equal(Object.hasOwn(request.input, "update_mode"), false);
+  assert.throws(
+    () => simulate(compiled.ir, {
+      input: { ...request.input, update_mode: "invent" },
+      state: request.state,
+    }),
+    /must be one of: replace, preserve_metadata/,
+  );
+  const header = generateUnreal(compiled.ir).find((file) => file.name.endsWith(".h"))?.content ?? "";
+  assert.match(header, /FString UpdateMode = TEXT\("replace"\);/);
+});
+
+test("rejects invalid optional defaults and enums", async () => {
+  const compiled = await compileMarkdown(fileURLToPath(updateWallSourcePath));
+  const ir = structuredClone(compiled.ir);
+  const mode = ir.operation.input.update_mode;
+  assert.equal(mode.type, "string");
+  if (mode.type !== "string") return;
+  mode.default = "invent";
+  mode.enum = ["replace", "replace"];
+  const diagnostics = validateIr(ir);
+  assert.ok(diagnostics.some((item) => item.path.endsWith(".enum")));
+  assert.ok(diagnostics.some((item) => item.path.endsWith(".default")));
+});
+
 test("produces deterministic traceability evidence from CRDD source", async () => {
   const compiled = await compileMarkdown(fileURLToPath(sourcePath));
   const tests = generateTestManifest(compiled.ir);

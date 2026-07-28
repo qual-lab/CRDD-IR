@@ -14,6 +14,7 @@ struct FCrddUpdateWallInput
 {
     FString WallId = TEXT("");
     double NewLengthMeters = 0.0;
+    FString UpdateMode = TEXT("replace");
 };
 
 struct FCrddUpdateWallState

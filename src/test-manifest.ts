@@ -147,8 +147,9 @@ function mutationCandidates(value: unknown): unknown[] {
 function createBaseline(ir: CrddIr): SimulationRequest {
   const input: Record<string, unknown> = {};
   for (const [name, field] of Object.entries(ir.operation.input)) {
-    if (field.type === "number") input[name] = Math.max(field.minimum ?? 0, name === "cost" ? 100 : 1);
-    else if (field.type === "string") input[name] = "sample";
+    if (field.type !== "array" && field.default !== undefined) input[name] = structuredClone(field.default);
+    else if (field.type === "number") input[name] = Math.max(field.minimum ?? 0, name === "cost" ? 100 : 1);
+    else if (field.type === "string") input[name] = field.enum?.[0] ?? "sample";
     else if (field.type === "boolean") input[name] = true;
     else input[name] = [];
   }
