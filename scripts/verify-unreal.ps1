@@ -61,8 +61,7 @@ Assert-LastExitCode "Unreal build"
 Write-Host "[6/8] Import generated 3D assets"
 & $editorCmd `
     $project `
-    -run=pythonscript `
-    "-script=$assetImportScript" `
+    "-ExecutePythonScript=$assetImportScript" `
     -unattended `
     -nop4 `
     -NullRHI `
