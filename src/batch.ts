@@ -6,6 +6,7 @@ import { compileMarkdown, type CompilationResult } from "./compiler.ts";
 import { generateUnreal } from "./unreal.ts";
 import { buildUnrealTargetPlan, type UnrealTargetProfile } from "./unreal-target.ts";
 import { generateUnrealReflection } from "./unreal-uht.ts";
+import { withInterprocessLock } from "./interprocess-lock.ts";
 
 export type BatchTarget = "ir" | "unreal" | "assets";
 export type BatchLayout = "operation-directories" | "flat";
@@ -24,6 +25,17 @@ export type BatchManifest = {
 };
 
 export async function generateBatch(
+  sources: string[],
+  outDir: string,
+  target: BatchTarget,
+  options: { layout?: BatchLayout; force?: boolean; unrealProfile?: UnrealTargetProfile } = {},
+): Promise<BatchManifest> {
+  return withInterprocessLock(resolve(outDir), () =>
+    generateBatchLocked(sources, outDir, target, options)
+  );
+}
+
+async function generateBatchLocked(
   sources: string[],
   outDir: string,
   target: BatchTarget,
@@ -59,6 +71,7 @@ export async function generateBatch(
             ...generateUnreal(compilation.ir, options.unrealProfile ? {
               irSha256: compilation.digest,
               generatorVersion: "0.1.0",
+              numericProjection: options.unrealProfile.numericProjection,
             } : undefined),
             ...(options.unrealProfile && compilationIndex === 0
               ? generateUnrealReflection(buildUnrealTargetPlan(

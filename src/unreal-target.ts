@@ -24,7 +24,15 @@ export type UnrealTargetProfile = {
   };
   modules?: UnrealModule[];
   plugins?: UnrealPlugin[];
+  numericProjection?: Record<string, UnrealNumericProjection>;
   adapter?: UnrealAdapterContract;
+};
+
+export type UnrealNumericProjection = {
+  cppType: "double" | "float" | "int32" | "int64";
+  jsonRepresentation: "number" | "decimal-string";
+  rounding: "reject-lossy" | "nearest" | "floor" | "ceil";
+  overflow: "error" | "clamp";
 };
 
 export type UnrealAdapterContract = {
@@ -250,6 +258,12 @@ export type UnrealTargetPlan = {
     cook: boolean;
     package: boolean;
     automationContexts: Array<"Editor" | "Client" | "Server">;
+    numericBoundaryTests: Array<{
+      unit: string;
+      cppType: UnrealNumericProjection["cppType"];
+      jsonRepresentation: UnrealNumericProjection["jsonRepresentation"];
+      cases: Array<"minimum" | "maximum" | "overflow" | "lossy-input" | "json-round-trip">;
+    }>;
   };
 };
 
@@ -260,6 +274,7 @@ export function buildUnrealTargetPlan(
 ): UnrealTargetPlan {
   const profile = validateUnrealTargetProfile(profileValue);
   resolveUnrealDialect(profile);
+  validateNumericProjectionForIr(profile, ir);
   const adapter = profile.adapter ?? defaultAdapterContract();
   const modules = profile.modules ?? modulesForValidation(profile.withEditor);
   const plugins = profile.plugins ?? defaultPlugins(modules, profile.platform);
@@ -291,6 +306,16 @@ export function buildUnrealTargetPlan(
       cook: profile.targetType !== "Editor",
       package: profile.configuration === "Shipping",
       automationContexts: profile.targetType === "Editor" ? ["Editor"] : ["Client"],
+      numericBoundaryTests: Object.entries(profile.numericProjection ?? {})
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([unit, projection]) => ({
+          unit,
+          cppType: projection.cppType,
+          jsonRepresentation: projection.jsonRepresentation,
+          cases: [
+            "minimum", "maximum", "overflow", "lossy-input", "json-round-trip",
+          ],
+        })),
     },
   };
 }
@@ -299,7 +324,7 @@ export function validateUnrealTargetProfile(value: unknown): UnrealTargetProfile
   const profile = record(value, "profile");
   rejectUnknown(profile, [
     "engine", "platform", "targetType", "configuration", "linkType",
-    "withEditor", "buildId", "toolchain", "modules", "plugins", "adapter",
+    "withEditor", "buildId", "toolchain", "modules", "plugins", "numericProjection", "adapter",
   ], "profile");
   const engine = record(profile.engine, "profile.engine");
   rejectUnknown(engine, ["major", "minor", "patch", "dialect"], "profile.engine");
@@ -330,6 +355,26 @@ export function validateUnrealTargetProfile(value: unknown): UnrealTargetProfile
     rejectUnknown(toolchain, ["compiler", "compilerVersion", "sdk"], "profile.toolchain");
     for (const key of Object.keys(toolchain)) nonEmpty(toolchain[key], `profile.toolchain.${key}`);
   }
+  if (profile.numericProjection !== undefined) {
+    const projections = record(profile.numericProjection, "profile.numericProjection");
+    for (const [unit, projectionValue] of Object.entries(projections)) {
+      nonEmpty(unit, "profile.numericProjection unit");
+      const projection = record(projectionValue, `profile.numericProjection.${unit}`);
+      rejectUnknown(
+        projection,
+        ["cppType", "jsonRepresentation", "rounding", "overflow"],
+        `profile.numericProjection.${unit}`,
+      );
+      oneOf(projection.cppType, ["double", "float", "int32", "int64"], `profile.numericProjection.${unit}.cppType`);
+      oneOf(projection.jsonRepresentation, ["number", "decimal-string"], `profile.numericProjection.${unit}.jsonRepresentation`);
+      oneOf(projection.rounding, ["reject-lossy", "nearest", "floor", "ceil"], `profile.numericProjection.${unit}.rounding`);
+      oneOf(projection.overflow, ["error", "clamp"], `profile.numericProjection.${unit}.overflow`);
+      if (["int32", "int64"].includes(String(projection.cppType)) &&
+          projection.rounding !== "reject-lossy") {
+        throw new Error(`profile.numericProjection.${unit}: integer projection must reject lossy values`);
+      }
+    }
+  }
   const modules = (profile.modules as UnrealModule[] | undefined) ??
     modulesForValidation(profile.withEditor as boolean);
   validateModuleGraph(modules, value as UnrealTargetProfile);
@@ -347,6 +392,30 @@ export function validateUnrealTargetProfile(value: unknown): UnrealTargetProfile
     );
   }
   return value as UnrealTargetProfile;
+}
+
+function validateNumericProjectionForIr(profile: UnrealTargetProfile, ir: CrddIr): void {
+  for (const [unit, projection] of Object.entries(profile.numericProjection ?? {})) {
+    if (!["int32", "int64"].includes(projection.cppType)) continue;
+    const fields = [
+      ...Object.values(ir.operation.input),
+      ...Object.values(ir.operation.state),
+    ];
+    const visit = (field: import("./model.ts").FieldDefinition, path: string) => {
+      if (field.type === "object") {
+        for (const [name, child] of Object.entries(field.properties)) visit(child, `${path}.${name}`);
+      } else if (field.type === "array") {
+        visit(field.items, `${path}[]`);
+      } else if (field.type === "number" && field.unit === unit) {
+        for (const [label, value] of [["minimum", field.minimum], ["default", field.default]] as const) {
+          if (typeof value === "number" && !Number.isInteger(value)) {
+            throw new Error(`${path}.${label}=${value} is lossy for ${projection.cppType} ${unit}`);
+          }
+        }
+      }
+    };
+    fields.forEach((field, index) => visit(field, `operation.field[${index}]`));
+  }
 }
 
 export function validateAdapterContract(

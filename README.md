@@ -143,5 +143,8 @@ Cook、Pak/IoStore、Evidence生成まで実行します。既定以外へUEを�
 - CRDD Markdownが人間向け記述と機械可読契約の正本
 - CRDD IRはCompiler内部のVersion付き一時表現
 - Target ProfileがEngine、Module、UHT、GC、Thread、Cook、Shipping条件を固定
+- Conformance基準入力は全Requiresを満たし、各反例は対象Requiresだけを破る
+- 任意の生成先で成立する相対includeと、出力／Project単位のプロセス間lockを使用
+- Target Profileで`mm`などのC++型、JSON表現、丸め、overflow方針を固定
 - 生成は一方向で、製品固有の操作感・描画・最適化はTarget側が所有
 - AIは候補作成を支援できるが、未確定情報をCompilerが推測して補完しない

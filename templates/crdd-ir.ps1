@@ -98,6 +98,46 @@ function Invoke-Generate {
     Invoke-CrddIr @("generate", "assets", $assetSource, "--out-dir", $generatedAssets)
 }
 
+$projectMutex = $null
+$projectLockPath = Join-Path $projectRoot ".crdd-ir\project.lock.json"
+if ($Command -in @("generate", "verify")) {
+    $scopeBytes = [System.Text.Encoding]::UTF8.GetBytes(
+        [System.IO.Path]::GetFullPath($projectRoot).ToLowerInvariant()
+    )
+    $scopeAlgorithm = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $scopeHash = ([BitConverter]::ToString(
+            $scopeAlgorithm.ComputeHash($scopeBytes)
+        ) -replace "-", "").ToLowerInvariant()
+    }
+    finally {
+        $scopeAlgorithm.Dispose()
+    }
+    $projectMutex = [System.Threading.Mutex]::new($false, "Local\CRDDIR-$scopeHash")
+    if (-not $projectMutex.WaitOne([TimeSpan]::FromSeconds(30))) {
+        $owner = if (Test-Path -LiteralPath $projectLockPath) {
+            Get-Content -LiteralPath $projectLockPath -Raw
+        }
+        else {
+            "owner metadata unavailable"
+        }
+        throw "CRDD_LOCK_TIMEOUT: project is locked: $owner"
+    }
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $projectLockPath) | Out-Null
+    [System.IO.File]::WriteAllText(
+        $projectLockPath,
+        (([ordered]@{
+            protocol = "crdd-ir/lock-v0.1"
+            pid = $PID
+            startedAt = [DateTime]::UtcNow.ToString("o")
+            scope = [System.IO.Path]::GetFullPath($projectRoot).Replace("\", "/")
+            command = $Command
+        } | ConvertTo-Json) + [Environment]::NewLine),
+        [System.Text.UTF8Encoding]::new($false)
+    )
+}
+
+try {
 switch ($Command) {
     "doctor" {
         Invoke-CrddIr @("project", "doctor", $configPath)
@@ -130,5 +170,13 @@ switch ($Command) {
                 ))
             }
         }
+    }
+}
+}
+finally {
+    if ($null -ne $projectMutex) {
+        Remove-Item -LiteralPath $projectLockPath -Force -ErrorAction SilentlyContinue
+        $projectMutex.ReleaseMutex()
+        $projectMutex.Dispose()
     }
 }

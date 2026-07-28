@@ -273,6 +273,7 @@ async function main(argv: string[]): Promise<void> {
       ...generateUnreal(compilation.ir, {
         irSha256: compilation.digest,
         generatorVersion: "0.1.0",
+        numericProjection: plan.profile.numericProjection,
       }),
       ...generateUnrealReflection(plan),
     ];

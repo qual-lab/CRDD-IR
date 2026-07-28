@@ -17,6 +17,7 @@ import {
   resolveUnrealDialect,
   semanticUnrealPlanDiff,
 } from "../src/unreal-dialect.ts";
+import { generateUnreal } from "../src/unreal.ts";
 
 const source = fileURLToPath(new URL(
   "../examples/create-entity/05_SPEC/01_Behavior_Specification.md",
@@ -315,4 +316,29 @@ test("resolves an engine dialect and reports semantic target changes", async () 
   });
   assert.match(semanticUnrealPlanDiff(game, editor).join("\n"), /targetType/);
   assert.match(semanticUnrealPlanDiff(game, editor).join("\n"), /verification\.package/);
+});
+
+test("projects a unit to an explicit integer C++ and JSON representation", async () => {
+  const compilation = await compileMarkdown("test/fixtures/create-wall.md");
+  const profile: UnrealTargetProfile = {
+    ...shipping,
+    numericProjection: {
+      mm: {
+        cppType: "int64",
+        jsonRepresentation: "decimal-string",
+        rounding: "reject-lossy",
+        overflow: "error",
+      },
+    },
+  };
+  const plan = buildUnrealTargetPlan(compilation.ir, compilation.digest, profile);
+  assert.equal(plan.profile.numericProjection?.mm.cppType, "int64");
+  assert.deepEqual(plan.verification.numericBoundaryTests[0].cases, [
+    "minimum", "maximum", "overflow", "lossy-input", "json-round-trip",
+  ]);
+  const header = generateUnreal(compilation.ir, {
+    numericProjection: profile.numericProjection,
+  }).find((file) => file.name.endsWith(".h"))!.content;
+  assert.match(header, /CRDD-IR Numeric Projection: mm -> int64/);
+  assert.match(header, /int64 Length = 0;/);
 });

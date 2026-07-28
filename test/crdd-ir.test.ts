@@ -154,6 +154,12 @@ test("Unreal implementation carries contracts, effects, and CRDD trace IDs", () 
   assert.ok(generated.every((file) => /^[a-f0-9]{64}$/.test(file.sha256)));
 });
 
+test("generated Unreal include is independent of the output directory name", () => {
+  const source = generateUnreal(ir).find((file) => file.name.endsWith(".cpp"))!.content;
+  assert.match(source, /#include "CreateEntity\.generated\.h"/);
+  assert.doesNotMatch(source, /#include "Generated\//);
+});
+
 test("generates Unreal code for a second operation without CreateEntity names", () => {
   const purchaseItem: CrddIr = {
     irVersion: "0.1",

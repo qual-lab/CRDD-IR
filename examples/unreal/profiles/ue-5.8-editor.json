@@ -9,5 +9,13 @@
   "targetType": "Editor",
   "configuration": "Development",
   "linkType": "modular",
-  "withEditor": true
+  "withEditor": true,
+  "numericProjection": {
+    "mm": {
+      "cppType": "int64",
+      "jsonRepresentation": "decimal-string",
+      "rounding": "reject-lossy",
+      "overflow": "error"
+    }
+  }
 }
