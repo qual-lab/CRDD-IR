@@ -62,6 +62,17 @@ test("normalizes compatible unit literals", () => {
   assert.equal(normalizeSourceExpression("input.length >= 30cm", fields), "input.length >= 0.3");
 });
 
+test("supports string and boolean literals in deterministic expressions", () => {
+  const fields: Record<string, FieldDefinition> = {
+    "input.label": { type: "string" },
+    "input.enabled": { type: "boolean" },
+  };
+  assert.equal(
+    normalizeSourceExpression('input.label == "wall" && input.enabled == true', fields),
+    'input.label == "wall" && input.enabled == true',
+  );
+});
+
 test("rejects incompatible units", () => {
   const fields: Record<string, FieldDefinition> = {
     "input.length": { type: "number", unit: "m" },
@@ -105,6 +116,27 @@ test("produces byte-identical Unreal C++ from the same CRDD source", async () =>
   const second = generateUnreal((await compileMarkdown(fileURLToPath(sourcePath))).ir);
   assert.deepEqual(first, second);
   assert.ok(first.some((file) => file.content.includes("Result.State.Walls.Add")));
+});
+
+test("generates Unreal append values for references and typed literals", async () => {
+  const ir = structuredClone((await compileMarkdown(fileURLToPath(sourcePath))).ir);
+  const walls = ir.operation.state.walls;
+  assert.equal(walls.type, "array");
+  if (walls.type !== "array") return;
+  walls.items.properties.label = { type: "string" };
+  walls.items.properties.enabled = { type: "boolean" };
+  ir.operation.effects[0] = {
+    target: "state.walls",
+    action: "append",
+    value: {
+      length: "$input.length",
+      cost: "$input.cost",
+      label: "generated",
+      enabled: true,
+    },
+  };
+  const source = generateUnreal(ir).find((file) => file.name.endsWith(".cpp"))?.content ?? "";
+  assert.match(source, /TEXT\("generated"\), true/);
 });
 
 test("produces deterministic traceability evidence from CRDD source", async () => {

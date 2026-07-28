@@ -90,6 +90,7 @@ export type CrddIr = {
 };
 
 export type Diagnostic = {
+  code: string;
   severity: "error" | "warning";
   path: string;
   message: string;

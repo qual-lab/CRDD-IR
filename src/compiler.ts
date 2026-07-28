@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { DiagnosticError } from "./diagnostics.ts";
 import { normalizeSourceExpression } from "./source-expression.ts";
 import { loadSourceContract } from "./source-contract.ts";
 import { validateIr } from "./ir.ts";
@@ -60,7 +61,7 @@ export async function compileMarkdown(path: string): Promise<CompilationResult> 
 
   const diagnostics = validateIr(ir);
   const errors = diagnostics.filter((item) => item.severity === "error");
-  if (errors.length > 0) throw new Error(formatCompilationDiagnostics(path, errors));
+  if (errors.length > 0) throw new DiagnosticError(errors, path);
 
   const canonicalJson = `${stableStringify(ir)}\n`;
   return {
@@ -106,8 +107,4 @@ function stableStringify(value: unknown): string {
       .join(",")}}`;
   }
   return JSON.stringify(value);
-}
-
-function formatCompilationDiagnostics(path: string, diagnostics: Diagnostic[]): string {
-  return diagnostics.map((item) => `${path} ${item.path}: ${item.message}`).join("\n");
 }

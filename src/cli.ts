@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, extname, resolve } from "node:path";
+import { DiagnosticError, diagnosticEnvelope, unexpectedDiagnostic } from "./diagnostics.ts";
 import { loadAdapter } from "./adapter.ts";
 import { generateAssets, removeStaleGeneratedAssets } from "./assets.ts";
+import { generateBatch, type BatchTarget } from "./batch.ts";
 import { compileMarkdown } from "./compiler.ts";
 import { generateConformanceBundle } from "./conformance.ts";
 import { formatDiagnostics, loadIr, validateIr } from "./ir.ts";
@@ -21,7 +23,15 @@ const args = process.argv.slice(2);
 try {
   await main(args);
 } catch (error) {
-  console.error((error as Error).message);
+  if (args.includes("--format") && option(args, "--format") === "json") {
+    const diagnostics = error instanceof DiagnosticError
+      ? error.diagnostics
+      : [unexpectedDiagnostic(error)];
+    const source = error instanceof DiagnosticError ? error.source : undefined;
+    console.log(JSON.stringify(diagnosticEnvelope(diagnostics, source), null, 2));
+  } else {
+    console.error((error as Error).message);
+  }
   process.exitCode = 1;
 }
 
@@ -42,6 +52,16 @@ async function main(argv: string[]): Promise<void> {
     }
     const raw = JSON.parse(await readFile(path, "utf8"));
     const diagnostics = validateIr(raw);
+    if (option(argv, "--format") === "json") {
+      console.log(JSON.stringify({
+        protocol: "crdd-ir/diagnostics-v0.1",
+        ok: !diagnostics.some((item) => item.severity === "error"),
+        source: path,
+        diagnostics,
+      }, null, 2));
+      if (diagnostics.some((item) => item.severity === "error")) process.exitCode = 1;
+      return;
+    }
     if (diagnostics.length === 0) {
       console.log(`OK ${path}`);
       return;
@@ -65,9 +85,31 @@ async function main(argv: string[]): Promise<void> {
     return;
   }
 
+  if (command === "batch") {
+    const target = required(argv[1], "batch target") as BatchTarget;
+    if (!["ir", "unreal", "assets"].includes(target)) {
+      throw new Error(`Unsupported batch target: ${target}`);
+    }
+    const outDir = option(argv, "--out-dir") ?? `generated/batch/${target}`;
+    const sources = operandsAfter(argv, 2);
+    const manifest = await generateBatch(sources, outDir, target);
+    console.log(`Generated ${manifest.operations.length} operation(s) in ${resolve(outDir)}`);
+    return;
+  }
+
   if (command === "check") {
     const sourcePath = required(argv[1], "CRDD Markdown file");
     const compilation = await compileMarkdown(sourcePath);
+    if (option(argv, "--format") === "json") {
+      console.log(JSON.stringify({
+        protocol: "crdd-ir/diagnostics-v0.1",
+        ok: true,
+        source: sourcePath,
+        diagnostics: [],
+        digest: compilation.digest,
+      }, null, 2));
+      return;
+    }
     console.log(`OK ${sourcePath}`);
     console.log(`IR SHA-256 ${compilation.digest}`);
     return;
@@ -262,6 +304,18 @@ function numberOption(argv: string[], name: string): number | undefined {
   return parsed;
 }
 
+function operandsAfter(argv: string[], start: number): string[] {
+  const result: string[] = [];
+  for (let index = start; index < argv.length; index += 1) {
+    if (argv[index].startsWith("--")) {
+      index += 1;
+      continue;
+    }
+    result.push(argv[index]);
+  }
+  return result;
+}
+
 function required(value: string | undefined, label: string): string {
   if (!value) throw new Error(`Missing ${label}`);
   return value;
@@ -272,9 +326,10 @@ function printHelp(): void {
 
 Commands:
   compile <spec.md> [--out <debug-ir.json>]
-  check <spec.md>
+  batch <ir|unreal|assets> <spec.md>... [--out-dir <directory>]
+  check <spec.md> [--format json]
   project check <crdd-ir.config.json>
-  lint <ir.json>
+  lint <ir.json> [--format json]
   simulate <ir.json> --input <input.json>
   test generate <ir.json> [--out <file>]
   test bundle <ir.json> [--manifest <file>] [--out <file>]

@@ -3,12 +3,14 @@ import type { FieldDefinition } from "./model.ts";
 type Token =
   | { kind: "reference"; value: string; offset: number }
   | { kind: "number"; value: number; unit?: string; offset: number }
+  | { kind: "string"; value: string; offset: number }
+  | { kind: "boolean"; value: boolean; offset: number }
   | { kind: "operator"; value: string; offset: number }
   | { kind: "paren"; value: "(" | ")"; offset: number };
 
 type ExpressionNode =
   | { kind: "reference"; path: string }
-  | { kind: "literal"; value: number; unit?: string }
+  | { kind: "literal"; value: number | string | boolean; unit?: string }
   | { kind: "unary"; operator: "!" | "-"; operand: ExpressionNode }
   | { kind: "binary"; operator: string; left: ExpressionNode; right: ExpressionNode };
 
@@ -88,6 +90,9 @@ export function parseSourceExpression(expression: string): ExpressionNode {
     if (!token) throw syntaxError(expression, expression.length, "unexpected end of expression");
     if (token.kind === "reference") return { kind: "reference", path: token.value };
     if (token.kind === "number") return { kind: "literal", value: token.value, unit: token.unit };
+    if (token.kind === "string" || token.kind === "boolean") {
+      return { kind: "literal", value: token.value };
+    }
     if (token.kind === "paren" && token.value === "(") {
       const nested = parseOr();
       const closing = tokens[cursor++];
@@ -133,6 +138,18 @@ function tokenize(expression: string): Token[] {
       offset += numeric[0].length;
       continue;
     }
+    const stringLiteral = rest.match(/^"(?:[^"\\]|\\.)*"/);
+    if (stringLiteral) {
+      tokens.push({ kind: "string", value: JSON.parse(stringLiteral[0]), offset });
+      offset += stringLiteral[0].length;
+      continue;
+    }
+    const booleanLiteral = rest.match(/^(true|false)\b/);
+    if (booleanLiteral) {
+      tokens.push({ kind: "boolean", value: booleanLiteral[1] === "true", offset });
+      offset += booleanLiteral[0].length;
+      continue;
+    }
     const reference = rest.match(/^(?:input|state)\.[A-Za-z_][A-Za-z0-9_.]*/);
     if (reference) {
       tokens.push({ kind: "reference", value: reference[0], offset });
@@ -160,7 +177,7 @@ function inferAndNormalize(
   }
   if (node.kind === "literal") {
     if (node.unit && !units[node.unit]) throw new Error(`uses unsupported unit "${node.unit}"`);
-    return { kind: "number", unit: node.unit };
+    return { kind: typeof node.value as ValueType["kind"], unit: node.unit };
   }
   if (node.kind === "unary") {
     const operand = inferAndNormalize(node.operand, fields);
@@ -179,6 +196,9 @@ function inferAndNormalize(
   }
   if (["==", "!=", ">", ">=", "<", "<="].includes(node.operator)) {
     normalizePair(node.left, left, node.right, right);
+    if ([">", ">=", "<", "<="].includes(node.operator) && left.kind !== "number") {
+      throw new Error(`operator ${node.operator} requires numeric operands`);
+    }
     return { kind: "boolean" };
   }
   if (node.operator === "+" || node.operator === "-") {
@@ -216,6 +236,7 @@ function normalizePair(
 }
 
 function convertLiteral(node: Extract<ExpressionNode, { kind: "literal" }>, targetUnit: string): void {
+  if (typeof node.value !== "number") throw new Error("only numeric literals can carry units");
   if (!node.unit) {
     node.unit = targetUnit;
     return;
@@ -233,7 +254,10 @@ function assertCompatibleUnits(left: string, right: string): void {
 
 function printExpression(node: ExpressionNode, parentPrecedence = 0): string {
   if (node.kind === "reference") return node.path;
-  if (node.kind === "literal") return canonicalNumber(node.value);
+  if (node.kind === "literal") {
+    if (typeof node.value === "number") return canonicalNumber(node.value);
+    return JSON.stringify(node.value);
+  }
   if (node.kind === "unary") return `${node.operator}${printExpression(node.operand, 5)}`;
 
   const precedence = operatorPrecedence(node.operator);

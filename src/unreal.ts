@@ -191,13 +191,10 @@ function cppEffect(effect: Effect, operation: Operation): string {
     throw new Error(`Unreal append target "${effect.target}" is not an array`);
   }
   const value = effect.value as Record<string, unknown>;
-  const values = Object.values(value)
-    .map((entry) => {
-      if (typeof entry !== "string" || !entry.startsWith("$")) {
-        throw new Error(`Unreal append to "${effect.target}" requires reference values`);
-      }
-      return cppReference(entry.slice(1), operation, "Result.State");
-    })
+  const arrayField = operation.state[stateName];
+  if (arrayField.type !== "array") throw new Error(`Unreal append target "${effect.target}" is not an array`);
+  const values = Object.keys(arrayField.items.properties)
+    .map((name) => cppEffectValue(value[name], operation))
     .join(", ");
   return `    Result.State.${cppField(stateName, operation.state[stateName])}.Add({${values}});`;
 }
@@ -218,9 +215,21 @@ ${fields}
 }
 
 function cppExpression(expression: string, operation: Operation, stateRoot: string): string {
-  return expression.replace(/\b(?:input|state)\.[A-Za-z_][A-Za-z0-9_.]*/g, (reference) =>
-    cppReference(reference, operation, stateRoot),
-  );
+  return expression
+    .replace(/"(?:[^"\\]|\\.)*"/g, (literal) => `TEXT(${literal})`)
+    .replace(/\b(?:input|state)\.[A-Za-z_][A-Za-z0-9_.]*/g, (reference) =>
+      cppReference(reference, operation, stateRoot),
+    );
+}
+
+function cppEffectValue(value: unknown, operation: Operation): string {
+  if (typeof value === "string" && value.startsWith("$")) {
+    return cppReference(value.slice(1), operation, "Result.State");
+  }
+  if (typeof value === "string") return `TEXT(${JSON.stringify(value)})`;
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "number" && Number.isFinite(value)) return value.toString();
+  throw new Error(`Unsupported Unreal append value "${JSON.stringify(value)}"`);
 }
 
 function cppReference(reference: string, operation: Operation, stateRoot: string): string {

@@ -1,7 +1,7 @@
 type Context = Record<string, unknown>;
 
 type Token = {
-  kind: "number" | "identifier" | "operator" | "paren";
+  kind: "number" | "string" | "boolean" | "identifier" | "operator" | "paren";
   value: string;
 };
 
@@ -80,6 +80,8 @@ export function evaluateExpression(expression: string, context: Context): unknow
     const token = tokens[cursor++];
     if (!token) throw new Error("Unexpected end of expression");
     if (token.kind === "number") return Number(token.value);
+    if (token.kind === "string") return JSON.parse(token.value);
+    if (token.kind === "boolean") return token.value === "true";
     if (token.kind === "identifier") return getPath(context, token.value);
     if (token.value === "(") {
       const value = parseOr();
@@ -119,6 +121,18 @@ function tokenize(expression: string): Token[] {
     if (number) {
       tokens.push({ kind: "number", value: number[0] });
       remaining = remaining.slice(number[0].length);
+      continue;
+    }
+    const stringLiteral = remaining.match(/^"(?:[^"\\]|\\.)*"/);
+    if (stringLiteral) {
+      tokens.push({ kind: "string", value: stringLiteral[0] });
+      remaining = remaining.slice(stringLiteral[0].length);
+      continue;
+    }
+    const booleanLiteral = remaining.match(/^(true|false)\b/);
+    if (booleanLiteral) {
+      tokens.push({ kind: "boolean", value: booleanLiteral[1] });
+      remaining = remaining.slice(booleanLiteral[0].length);
       continue;
     }
     const identifier = remaining.match(/^[A-Za-z_][A-Za-z0-9_.]*/);

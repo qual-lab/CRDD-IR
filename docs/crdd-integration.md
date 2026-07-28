@@ -10,6 +10,18 @@ managed guidance block was edited, the installer backs it up under
 `.crdd-ir/backups/` and stops. Review the difference before explicitly using
 `-ForceManagedUpdate`.
 
+For repositories with multiple contracts, use
+`crdd-ir batch <ir|unreal|assets> <spec.md>... --out-dir <directory>`.
+Each operation receives an isolated output directory and a SHA-256 batch
+manifest. Duplicate operation IDs stop generation. Verified unchanged outputs
+are reused; a corrupt cache manifest is preserved with a `.corrupt.*` suffix
+before regeneration.
+
+Use `--format json` with validation commands to receive the versioned
+`crdd-ir/diagnostics-v0.1` envelope and stable `CRDD_*` diagnostic codes.
+The expression language and Unreal adapter support numeric, boolean, and string
+literals; array append effects may mix typed literals and field references.
+
 CRDD IR本体はCRDD適用先へコピーせず、repository rootの`tools/CRDD-IR`
 へGit submoduleとして配置する。
 

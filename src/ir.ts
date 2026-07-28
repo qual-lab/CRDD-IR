@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { extractReferences } from "./expression.ts";
+import { DiagnosticError, formatDiagnosticText } from "./diagnostics.ts";
 import type { CrddIr, Diagnostic, FieldDefinition } from "./model.ts";
 
 const allowedFieldTypes = new Set(["number", "string", "boolean", "array", "object"]);
@@ -18,7 +19,7 @@ export async function loadIr(path: string): Promise<CrddIr> {
   const diagnostics = validateIr(value);
   const errors = diagnostics.filter((item) => item.severity === "error");
   if (errors.length > 0) {
-    throw new Error(formatDiagnostics(errors));
+    throw new DiagnosticError(errors, path);
   }
 
   return value as CrddIr;
@@ -511,12 +512,29 @@ function requireBoolean(
 function warnForDuplicates(value: unknown, path: string, diagnostics: Diagnostic[]): void {
   if (!Array.isArray(value)) return;
   if (new Set(value).size !== value.length) {
-    diagnostics.push({ severity: "warning", path, message: "contains duplicate values" });
+    diagnostics.push({
+      code: "CRDD_IR_DUPLICATE",
+      severity: "warning",
+      path,
+      message: "contains duplicate values",
+    });
   }
 }
 
 function error(path: string, message: string): Diagnostic {
-  return { severity: "error", path, message };
+  return { code: diagnosticCode(path, message), severity: "error", path, message };
+}
+
+function diagnosticCode(path: string, message: string): string {
+  if (path === "$.irVersion") return "CRDD_IR_VERSION";
+  if (/duplicate/i.test(message)) return "CRDD_IR_DUPLICATE";
+  if (/reference|undeclared|unknown/i.test(message)) return "CRDD_IR_REFERENCE";
+  if (/required|must contain|non-empty/i.test(message)) return "CRDD_IR_REQUIRED";
+  if (/type|array|object|string|boolean|number/i.test(message)) return "CRDD_IR_TYPE";
+  if (/unit|atomic|rollback|effect|target|append|assign/i.test(`${path} ${message}`)) {
+    return "CRDD_IR_SEMANTIC";
+  }
+  return "CRDD_IR_INVALID";
 }
 
 function isRecord(value: unknown): value is Record<string, any> {
@@ -524,5 +542,5 @@ function isRecord(value: unknown): value is Record<string, any> {
 }
 
 export function formatDiagnostics(diagnostics: Diagnostic[]): string {
-  return diagnostics.map((item) => `${item.severity.toUpperCase()} ${item.path}: ${item.message}`).join("\n");
+  return formatDiagnosticText(diagnostics);
 }
