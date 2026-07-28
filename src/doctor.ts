@@ -5,6 +5,7 @@ import { dirname, isAbsolute, relative, resolve } from "node:path";
 import { compileMarkdown } from "./compiler.ts";
 import { loadProjectConfig } from "./project-config.ts";
 import { analyzeTestCoverage, generateTestManifest } from "./test-manifest.ts";
+import { analyzeMutationCoverage } from "./mutation.ts";
 
 export type DoctorCheck = {
   code: string;
@@ -64,6 +65,16 @@ export async function runDoctor(configPath: string): Promise<DoctorReport> {
       : fail(
         "CRDD_REQUIREMENTS_UNCOVERED",
         `Requirements without failure cases: ${coverage.uncovered.join(", ")}`,
+      ));
+    const mutation = analyzeMutationCoverage(compilation.ir, manifest);
+    checks.push(mutation.survived.length === 0
+      ? pass(
+        "CRDD_MUTATIONS_KILLED",
+        `Conformance tests killed all ${mutation.total} deterministic mutants`,
+      )
+      : fail(
+        "CRDD_MUTATIONS_SURVIVED",
+        `Surviving mutants: ${mutation.survived.join(", ")}`,
       ));
   } catch (error) {
     checks.push(fail("CRDD_SOURCE_INVALID", (error as Error).message, paths.source));

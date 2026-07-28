@@ -3,6 +3,7 @@ import type { ConformanceBundle, CrddIr, TestManifest } from "./model.ts";
 import type { GeneratedFile } from "./unreal.ts";
 import type { UnrealExecutionEvidence } from "./unreal-report.ts";
 import { analyzeTestCoverage } from "./test-manifest.ts";
+import { analyzeMutationCoverage, type MutationReport } from "./mutation.ts";
 
 export type TraceabilityManifest = {
   protocol: "crdd-ir/traceability-v0.1";
@@ -37,6 +38,7 @@ export type TraceabilityManifest = {
     percentage: number;
     uncovered: string[];
   };
+  mutation: MutationReport;
   execution?: {
     path: string;
     sha256: string;
@@ -63,6 +65,7 @@ export function generateTraceabilityManifest(
     ]),
   );
   const coverage = analyzeTestCoverage(ir, testManifest);
+  const mutation = analyzeMutationCoverage(ir, testManifest);
 
   return {
     protocol: "crdd-ir/traceability-v0.1",
@@ -103,6 +106,7 @@ export function generateTraceabilityManifest(
       ...coverage,
       percentage: coverage.requirements === 0 ? 100 : coverage.covered / coverage.requirements * 100,
     },
+    mutation,
     ...(execution
       ? {
           execution: {
@@ -145,6 +149,7 @@ export function generateEvidenceMarkdown(manifest: TraceabilityManifest): string
 - Conformance Bundle SHA-256: \`${manifest.conformance.sha256}\`
 - Conformance Cases: ${manifest.conformance.cases.length}
 - Requirement Failure Coverage: ${manifest.coverage.covered}/${manifest.coverage.requirements} (${manifest.coverage.percentage}%)
+- Mutation Score: ${manifest.mutation.killed}/${manifest.mutation.total} (${manifest.mutation.score}%)
 
 ## Requirement Coverage
 

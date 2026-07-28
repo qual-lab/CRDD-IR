@@ -127,9 +127,16 @@
     "uncovered": [],
     "percentage": 100
   },
+  "mutation": {
+    "protocol": "crdd-ir/mutation-v0.1",
+    "total": 6,
+    "killed": 6,
+    "survived": [],
+    "score": 100
+  },
   "execution": {
     "path": "unreal-execution.json",
-    "sha256": "3ce0e157a6707262076dcc776207a1c44476ccb3dfab1f1d59f456ed6f32177c",
+    "sha256": "95922446a48a9957ad39fd986caaef04e09fb8f2be0ef287ba4fa481c6b3b136",
     "status": "passed",
     "tests": [
       "CRDD.Assets.GeneratedMeshes",

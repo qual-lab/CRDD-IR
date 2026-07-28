@@ -3,7 +3,7 @@
   "$id": "https://crdd.dev/schema/traceability-manifest/v0.1.json",
   "title": "CRDD IR Traceability Manifest v0.1",
   "type": "object",
-  "required": ["protocol", "operation", "source", "generatedFiles", "requirements", "conformance", "coverage"],
+  "required": ["protocol", "operation", "source", "generatedFiles", "requirements", "conformance", "coverage", "mutation"],
   "properties": {
     "protocol": { "const": "crdd-ir/traceability-v0.1" },
     "operation": { "type": "string", "minLength": 1 },
@@ -79,6 +79,21 @@
           "type": "array",
           "items": { "type": "string", "minLength": 1 }
         }
+      },
+      "additionalProperties": false
+    },
+    "mutation": {
+      "type": "object",
+      "required": ["protocol", "total", "killed", "survived", "score"],
+      "properties": {
+        "protocol": { "const": "crdd-ir/mutation-v0.1" },
+        "total": { "type": "integer", "minimum": 0 },
+        "killed": { "type": "integer", "minimum": 0 },
+        "survived": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "score": { "type": "number", "minimum": 0, "maximum": 100 }
       },
       "additionalProperties": false
     },

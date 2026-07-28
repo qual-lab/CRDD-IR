@@ -57,6 +57,11 @@ preserved. Modified owned content is backed up and requires explicit
 Cylinders use 24 fixed segments and include side/cap faces, UV coordinates,
 vertex normals, material output, placement metadata, and CRDD trace comments.
 
+Evidence also records deterministic mutation coverage. The compiler removes
+requirements and effects and flips supported boundary operators, then proves
+that the generated Conformance Suite detects every mutant. `doctor` rejects a
+project when any mutant survives.
+
 CRDD IR本体はCRDD適用先へコピーせず、repository rootの`tools/CRDD-IR`
 へGit submoduleとして配置する。
 
