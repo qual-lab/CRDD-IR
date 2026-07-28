@@ -19,11 +19,11 @@
 | --- | --- | --- |
 | unreal/PlaceWall.generated.h | `1758106f98246e1f645f829ff01d342fdf3c4961cddbfbb59971acb4efcad0d9` | REQ-WALL-001, DEC-WALL-003 |
 | unreal/PlaceWall.generated.cpp | `d78e9c18758b43dc34e6d84b4105f33d109353d1eeb62ad77974603ba543a51f` | REQ-WALL-001, DEC-WALL-003 |
-| assets/WallPreview.generated.obj | `ca616a4b3feb411aaecffc574a99f8384e3a6e7e6a87b19a9c5f0244f1de9684` | REQ-WALL-001 |
+| assets/WallPreview.generated.obj | `1aa038429906fc0e614a0c625033686f35f19b9cf47426e90eae2ba122e3c752` | REQ-WALL-001 |
 | assets/WallPreview.generated.mtl | `1607240ad13b4560495b8b431245f3bdb8ff49a88f924a0cc1a9d94b623d9e30` | REQ-WALL-001 |
 ## Unreal Execution
 
 - Status: **PASSED**
 - Evidence: `unreal-execution.json`
-- Evidence SHA-256: `200414224d6b13b2baea517e002ac4a3bc43a6d437cf36144ec88e96202fa474`
-- Tests: CRDD.PlaceWall.Conformance
+- Evidence SHA-256: `eebccd0f67bd5e219c047543502ea37526ae12283ad5cc27167839f445dc01c6`
+- Tests: CRDD.Assets.WallPreview, CRDD.PlaceWall.Conformance

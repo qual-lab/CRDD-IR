@@ -4,6 +4,7 @@
 
 #include "Dom/JsonObject.h"
 #include "HAL/FileManager.h"
+#include "Engine/StaticMesh.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
@@ -13,6 +14,12 @@
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FCrddPlaceWallConformanceTest,
     "CRDD.PlaceWall.Conformance",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter
+)
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FCrddWallPreviewAssetTest,
+    "CRDD.Assets.WallPreview",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter
 )
 
@@ -171,6 +178,24 @@ bool FCrddPlaceWallConformanceTest::RunTest(const FString& Parameters)
         }
     }
 
+    return true;
+}
+
+bool FCrddWallPreviewAssetTest::RunTest(const FString& Parameters)
+{
+    const UStaticMesh* Mesh = LoadObject<UStaticMesh>(
+        nullptr,
+        TEXT("/Game/CRDD/Generated/WallPreview.WallPreview")
+    );
+    if (!TestNotNull(TEXT("Generated WallPreview StaticMesh exists"), Mesh))
+    {
+        return false;
+    }
+
+    const FVector Size = Mesh->GetBoundingBox().GetSize();
+    TestTrue(TEXT("WallPreview length is 100cm"), FMath::IsNearlyEqual(Size.X, 100.0, 0.1));
+    TestTrue(TEXT("WallPreview width is 20cm"), FMath::IsNearlyEqual(Size.Y, 20.0, 0.1));
+    TestTrue(TEXT("WallPreview height is 240cm"), FMath::IsNearlyEqual(Size.Z, 240.0, 0.1));
     return true;
 }
 

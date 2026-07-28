@@ -156,10 +156,17 @@ test("normalizes Unreal Automation results without device identity", async () =>
         warnings: 0,
         errors: 0,
       },
+      {
+        fullTestPath: "CRDD.Assets.WallPreview",
+        state: "Success",
+        duration: 0.02,
+        warnings: 0,
+        errors: 0,
+      },
     ],
   });
   const execution = parseUnrealAutomationReport(`\uFEFF${raw}`, "PlaceWall");
-  assert.deepEqual(execution.summary, { succeeded: 1, failed: 0, notRun: 0 });
+  assert.deepEqual(execution.summary, { succeeded: 2, failed: 0, notRun: 0 });
   assert.deepEqual(execution.platforms, ["WindowsEditor"]);
   assert.doesNotMatch(JSON.stringify(execution), /developer-machine|private-instance-id/);
 
@@ -200,5 +207,7 @@ test("generates deterministic Unreal-scale 3D assets from CRDD", async () => {
   assert.match(obj, /Units: centimeters/);
   assert.match(obj, /v -50 -10 0/);
   assert.match(obj, /v 50 10 240/);
+  assert.match(obj, /vt 1 1/);
+  assert.match(obj, /f 1\/1 4\/4 3\/3 2\/2/);
   assert.match(obj, /CRDD-TRACE: REQ-WALL-001/);
 });

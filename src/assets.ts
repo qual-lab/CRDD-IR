@@ -29,12 +29,16 @@ v ${n(-x)} ${n(-y)} ${n(height)}
 v ${n(x)} ${n(-y)} ${n(height)}
 v ${n(x)} ${n(y)} ${n(height)}
 v ${n(-x)} ${n(y)} ${n(height)}
-f 1 4 3 2
-f 5 6 7 8
-f 1 2 6 5
-f 2 3 7 6
-f 3 4 8 7
-f 4 1 5 8
+vt 0 0
+vt 1 0
+vt 1 1
+vt 0 1
+f 1/1 4/4 3/3 2/2
+f 5/1 6/2 7/3 8/4
+f 1/1 2/2 6/3 5/4
+f 2/1 3/2 7/3 6/4
+f 3/1 4/2 8/3 7/4
+f 4/1 1/2 5/3 8/4
 `;
   const [red, green, blue] = asset.material.baseColor;
   const mtl = `${traces}

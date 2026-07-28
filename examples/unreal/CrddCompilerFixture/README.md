@@ -19,6 +19,7 @@ node src/cli.ts generate unreal `
 ## Build
 
 Repository rootで`npm run verify:unreal`を実行すると、生成、Build、
+OBJから`/Game/CRDD/Generated/WallPreview`へのStaticMesh Import、
 Automation Test、`07_Quality/CRDD_IR`のEvidence更新までを一括実行する。
 
 ```powershell

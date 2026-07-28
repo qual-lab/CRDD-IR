@@ -37,7 +37,11 @@ export function parseUnrealAutomationReport(
   const expectedPath = `CRDD.${operation}.Conformance`;
   const tests = value.tests
     .filter(isRecord)
-    .filter((test) => test.fullTestPath === expectedPath)
+    .filter(
+      (test) =>
+        test.fullTestPath === expectedPath ||
+        (typeof test.fullTestPath === "string" && test.fullTestPath.startsWith("CRDD.Assets.")),
+    )
     .map((test) => ({
       path: requireString(test, "fullTestPath"),
       state: requireString(test, "state"),

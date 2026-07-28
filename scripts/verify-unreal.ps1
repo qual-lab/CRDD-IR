@@ -14,6 +14,7 @@ if ([string]::IsNullOrWhiteSpace($UnrealRoot)) {
 $buildTool = Join-Path $UnrealRoot "Engine\Build\BatchFiles\Build.bat"
 $editorCmd = Join-Path $UnrealRoot "Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
 $project = Join-Path $repoRoot "examples\unreal\CrddCompilerFixture\CrddCompilerFixture.uproject"
+$assetImportScript = Join-Path $repoRoot "examples\unreal\CrddCompilerFixture\Scripts\import_generated_assets.py"
 $spec = "examples/place-wall/05_SPEC/01_Behavior_Specification.md"
 $fixtureGenerated = "examples/unreal/CrddCompilerFixture/Source/CrddCompilerFixture/Generated"
 $evidenceDir = "examples/place-wall/07_Quality/CRDD_IR"
@@ -21,7 +22,7 @@ $runId = [Guid]::NewGuid().ToString("N")
 $reportDir = Join-Path $repoRoot ".crdd-ir\reports\$runId"
 $reportPath = Join-Path $reportDir "index.json"
 
-foreach ($requiredPath in @($buildTool, $editorCmd, $project)) {
+foreach ($requiredPath in @($buildTool, $editorCmd, $project, $assetImportScript)) {
     if (-not (Test-Path -LiteralPath $requiredPath)) {
         throw "Required Unreal path not found: $requiredPath"
     }
@@ -33,19 +34,19 @@ function Assert-LastExitCode([string]$step) {
     }
 }
 
-Write-Host "[1/7] Node contract tests"
+Write-Host "[1/8] Node contract tests"
 & npm.cmd test
 Assert-LastExitCode "Node contract tests"
 
-Write-Host "[2/7] Compile and validate CRDD Markdown"
+Write-Host "[2/8] Compile and validate CRDD Markdown"
 & node src/cli.ts check $spec
 Assert-LastExitCode "CRDD source validation"
 
-Write-Host "[3/7] Generate Conformance Bundle"
+Write-Host "[3/8] Generate Conformance Bundle"
 & node src/cli.ts test bundle $spec --out generated/place-wall.conformance.json
 Assert-LastExitCode "Conformance Bundle generation"
 
-Write-Host "[4/7] Generate Unreal C++"
+Write-Host "[4/8] Generate Unreal C++ and 3D assets"
 & node src/cli.ts generate unreal $spec --out-dir generated/unreal
 Assert-LastExitCode "Unreal reference generation"
 & node src/cli.ts generate unreal $spec --out-dir $fixtureGenerated
@@ -53,15 +54,27 @@ Assert-LastExitCode "Unreal fixture generation"
 & node src/cli.ts generate assets $spec --out-dir generated/assets
 Assert-LastExitCode "3D asset generation"
 
-Write-Host "[5/7] Build Unreal fixture"
+Write-Host "[5/8] Build Unreal fixture"
 & $buildTool CrddCompilerFixtureEditor Win64 $Configuration $project -WaitMutex -NoHotReload
 Assert-LastExitCode "Unreal build"
 
-Write-Host "[6/7] Run Unreal Automation Test"
+Write-Host "[6/8] Import generated 3D assets"
+& $editorCmd `
+    $project `
+    -run=pythonscript `
+    "-script=$assetImportScript" `
+    -unattended `
+    -nop4 `
+    -NullRHI `
+    -nosplash `
+    -NoSound
+Assert-LastExitCode "Generated 3D asset import"
+
+Write-Host "[7/8] Run Unreal Automation Tests"
 New-Item -ItemType Directory -Force -Path $reportDir | Out-Null
 & $editorCmd `
     $project `
-    "-ExecCmds=Automation RunTests CRDD.PlaceWall.Conformance" `
+    "-ExecCmds=Automation RunTests CRDD." `
     "-TestExit=Automation Test Queue Empty" `
     -unattended `
     -nop4 `
@@ -75,7 +88,7 @@ if (-not (Test-Path -LiteralPath $reportPath)) {
     throw "Unreal Automation Test did not produce a report: $reportPath"
 }
 
-Write-Host "[7/7] Generate traceability and execution evidence"
+Write-Host "[8/8] Generate traceability and execution evidence"
 & node src/cli.ts generate evidence $spec --out-dir $evidenceDir --unreal-report $reportPath
 Assert-LastExitCode "Evidence generation"
 

@@ -1,2 +1,7 @@
 /.crdd-ir/
 /node_modules/
+/examples/unreal/CrddCompilerFixture/Binaries/
+/examples/unreal/CrddCompilerFixture/DerivedDataCache/
+/examples/unreal/CrddCompilerFixture/Intermediate/
+/examples/unreal/CrddCompilerFixture/Saved/
+/examples/unreal/CrddCompilerFixture/Content/CRDD/Generated/
