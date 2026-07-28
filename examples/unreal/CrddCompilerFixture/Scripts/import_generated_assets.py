@@ -18,6 +18,14 @@ level_subsystem = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
 actor_subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
 imported_assets = []
 asset_definitions = manifest.get("assets", [])
+generated_owner_tag = unreal.Name("CRDD_GENERATED")
+
+
+def tag_generated_actor(actor, asset_id):
+    actor.set_editor_property(
+        "tags",
+        [generated_owner_tag, unreal.Name(f"CRDD_ASSET_{asset_id}")],
+    )
 
 for asset_definition in asset_definitions:
     asset_id = asset_definition["id"]
@@ -72,6 +80,7 @@ for asset_definition in asset_definitions:
     if actor is None:
         raise RuntimeError(f"Failed to place generated mesh in level: {asset_path}")
     actor.set_actor_label(actor_label)
+    tag_generated_actor(actor, asset_id)
     if not level_subsystem.save_current_level():
         raise RuntimeError(f"Failed to save generated level: {level_path}")
 
@@ -92,7 +101,9 @@ elif not level_subsystem.new_level(scene_path, False):
 
 generated_labels = {f"CRDD_{asset['id']}" for asset in asset_definitions}
 for existing_actor in actor_subsystem.get_all_level_actors():
-    if existing_actor.get_actor_label() in generated_labels:
+    is_owned = generated_owner_tag in existing_actor.get_editor_property("tags")
+    is_legacy_generated = existing_actor.get_actor_label() in generated_labels
+    if is_owned or is_legacy_generated:
         if not actor_subsystem.destroy_actor(existing_actor):
             raise RuntimeError(
                 f"Failed to remove previous scene actor: {existing_actor.get_path_name()}"
@@ -114,6 +125,7 @@ for asset_definition in asset_definitions:
     if actor is None:
         raise RuntimeError(f"Failed to place generated scene mesh: {asset_path}")
     actor.set_actor_label(f"CRDD_{asset_id}")
+    tag_generated_actor(actor, asset_id)
 
 if not level_subsystem.save_current_level():
     raise RuntimeError(f"Failed to save generated scene: {scene_path}")

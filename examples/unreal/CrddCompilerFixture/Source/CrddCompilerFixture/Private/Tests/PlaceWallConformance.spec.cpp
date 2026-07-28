@@ -345,6 +345,10 @@ bool FCrddGeneratedPreviewLevelsTest::RunTest(const FString& Parameters)
                 *FString::Printf(TEXT("%s actor rotation matches manifest"), *Asset.Id),
                 Actor->GetActorRotation().Equals(Asset.RotationDeg, 0.01)
             );
+            TestTrue(
+                *FString::Printf(TEXT("%s actor has generated owner tag"), *Asset.Id),
+                Actor->Tags.Contains(FName(TEXT("CRDD_GENERATED")))
+            );
             break;
         }
         TestTrue(
@@ -371,6 +375,21 @@ bool FCrddGeneratedSceneTest::RunTest(const FString& Parameters)
         return false;
     }
 
+    int32 GeneratedActorCount = 0;
+    for (TActorIterator<AActor> It(World); It; ++It)
+    {
+        const AActor* Actor = *It;
+        if (Actor && Actor->Tags.Contains(FName(TEXT("CRDD_GENERATED"))))
+        {
+            ++GeneratedActorCount;
+        }
+    }
+    TestEqual(
+        TEXT("Scene contains exactly the manifest-owned actors"),
+        GeneratedActorCount,
+        Assets.Num()
+    );
+
     for (const FCrddAssetExpectation& Asset : Assets)
     {
         const FString ExpectedLabel = FString::Printf(TEXT("CRDD_%s"), *Asset.Id);
@@ -390,6 +409,10 @@ bool FCrddGeneratedSceneTest::RunTest(const FString& Parameters)
             TestTrue(
                 *FString::Printf(TEXT("%s scene rotation matches manifest"), *Asset.Id),
                 Actor->GetActorRotation().Equals(Asset.RotationDeg, 0.01)
+            );
+            TestTrue(
+                *FString::Printf(TEXT("%s scene actor has generated owner tag"), *Asset.Id),
+                Actor->Tags.Contains(FName(TEXT("CRDD_GENERATED")))
             );
             break;
         }
