@@ -39,6 +39,14 @@ counterexamples for non-boundary expressions, and records requirement failure
 coverage in traceability evidence. `doctor` fails before generation when that
 coverage cannot be constructed.
 
+Array state supports typed `append`, `update`, and `remove` effects. `update`
+and `remove` use an exact-match `where` object whose values may be typed
+literals or input/state references; `update` additionally requires a typed
+`set` object. The compiler validates every referenced item field, simulates the
+mutation deterministically, seeds an observable matching item in generated
+conformance cases, and emits equivalent Unreal C++. The `UpdateWall` example is
+compiled beside `PlaceWall` by the UE 5.8 verification fixture.
+
 Operational recovery is ownership-aware:
 
 ```powershell

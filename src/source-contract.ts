@@ -180,13 +180,26 @@ function validateSourceContract(
       const action = effect.action;
       const allowed = action === "append"
         ? ["target", "action", "value"]
+        : action === "remove"
+          ? ["target", "action", "where"]
+          : action === "update"
+            ? ["target", "action", "where", "set"]
         : ["target", "action", "expression"];
       rejectUnknown(effect, allowed, base, add);
       requireString(effect.target, `${base}.target`, add);
-      if (!["assign", "append", "increment"].includes(String(action))) {
-        add("CRDD_SOURCE_EFFECT", `${base}.action`, 'must be "assign", "append", or "increment"');
+      if (!["assign", "append", "increment", "remove", "update"].includes(String(action))) {
+        add(
+          "CRDD_SOURCE_EFFECT",
+          `${base}.action`,
+          'must be "assign", "append", "increment", "remove", or "update"',
+        );
       } else if (action === "append") {
         if (!Object.hasOwn(effect, "value")) add("CRDD_SOURCE_REQUIRED", `${base}.value`, "is required");
+      } else if (action === "remove") {
+        requireRecord(effect.where, `${base}.where`, add);
+      } else if (action === "update") {
+        requireRecord(effect.where, `${base}.where`, add);
+        requireRecord(effect.set, `${base}.set`, add);
       } else {
         requireString(effect.expression, `${base}.expression`, add);
       }

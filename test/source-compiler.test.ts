@@ -18,10 +18,15 @@ import {
 } from "../src/traceability.ts";
 import { generateUnreal } from "../src/unreal.ts";
 import { parseUnrealAutomationReport } from "../src/unreal-report.ts";
+import { validateIr } from "../src/ir.ts";
 import type { CrddIr, FieldDefinition } from "../src/model.ts";
 
 const sourcePath = new URL(
   "../examples/place-wall/05_SPEC/01_Behavior_Specification.md",
+  import.meta.url,
+);
+const updateWallSourcePath = new URL(
+  "../examples/update-wall/05_SPEC/01_Behavior_Specification.md",
   import.meta.url,
 );
 
@@ -173,6 +178,66 @@ test("derives deterministic counterexamples for non-boundary requirements", asyn
     covered: 1,
     uncovered: [],
   });
+});
+
+test("validates, simulates, and generates typed array update/remove effects", async () => {
+  const base = (await compileMarkdown(fileURLToPath(sourcePath))).ir;
+  const request = {
+    input: { length: 1, cost: 100 },
+    state: {
+      budget: { remaining: 1_000 },
+      walls: [
+        { length: 1, cost: 100 },
+        { length: 3, cost: 300 },
+      ],
+    },
+  };
+
+  const update = structuredClone(base);
+  update.operation.effects = [{
+    target: "state.walls",
+    action: "update",
+    where: { cost: "$input.cost" },
+    set: { length: 2 },
+  }];
+  assert.deepEqual(validateIr(update).filter((item) => item.severity === "error"), []);
+  const updated = simulate(update, structuredClone(request));
+  assert.equal(updated.ok, true);
+  assert.deepEqual(updated.state.walls, [
+    { length: 2, cost: 100 },
+    { length: 3, cost: 300 },
+  ]);
+  const updateCpp = generateUnreal(update).find((file) => file.name.endsWith(".cpp"))?.content ?? "";
+  assert.match(updateCpp, /for \(FCrddPlaceWallWallsItem& Item/);
+  assert.match(updateCpp, /Item\.CostJPY == Input\.CostJPY/);
+  assert.match(updateCpp, /Item\.LengthMeters = 2/);
+
+  const remove = structuredClone(base);
+  remove.operation.effects = [{
+    target: "state.walls",
+    action: "remove",
+    where: { cost: "$input.cost" },
+  }];
+  assert.deepEqual(validateIr(remove).filter((item) => item.severity === "error"), []);
+  const removed = simulate(remove, structuredClone(request));
+  assert.equal(removed.ok, true);
+  assert.deepEqual(removed.state.walls, [{ length: 3, cost: 300 }]);
+  const removeCpp = generateUnreal(remove).find((file) => file.name.endsWith(".cpp"))?.content ?? "";
+  assert.match(removeCpp, /RemoveAll/);
+});
+
+test("compiles the UpdateWall source contract and exercises its generated case", async () => {
+  const ir = (await compileMarkdown(fileURLToPath(updateWallSourcePath))).ir;
+  assert.deepEqual(validateIr(ir).filter((item) => item.severity === "error"), []);
+  const manifest = generateTestManifest(ir);
+  const success = manifest.cases.find((item) => item.expect.ok);
+  assert.ok(success);
+  if (!success) return;
+  const result = simulate(ir, structuredClone(success.arrange));
+  assert.equal(result.ok, true);
+  assert.equal((result.state.walls as Array<{ length: number }>)[0].length, 1);
+  const mutation = (await import("../src/mutation.ts")).analyzeMutationCoverage(ir, manifest);
+  assert.equal(mutation.score, 100);
 });
 
 test("produces deterministic traceability evidence from CRDD source", async () => {

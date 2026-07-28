@@ -4,7 +4,7 @@ import { DiagnosticError, formatDiagnosticText } from "./diagnostics.ts";
 import type { CrddIr, Diagnostic, FieldDefinition } from "./model.ts";
 
 const allowedFieldTypes = new Set(["number", "string", "boolean", "array", "object"]);
-const allowedEffectActions = new Set(["assign", "append", "increment"]);
+const allowedEffectActions = new Set(["assign", "append", "increment", "remove", "update"]);
 
 export async function loadIr(path: string): Promise<CrddIr> {
   const source = await readFile(path, "utf8");
@@ -75,11 +75,19 @@ export function validateIr(value: unknown): Diagnostic[] {
       }
       requireString(effect, "target", path, diagnostics);
       if (typeof effect.action !== "string" || !allowedEffectActions.has(effect.action)) {
-        diagnostics.push(error(`${path}.action`, 'must be "assign", "append", or "increment"'));
+        diagnostics.push(error(
+          `${path}.action`,
+          'must be "assign", "append", "increment", "remove", or "update"',
+        ));
       } else if (effect.action === "assign" || effect.action === "increment") {
         requireString(effect, "expression", path, diagnostics);
-      } else if (!("value" in effect)) {
+      } else if (effect.action === "append" && !("value" in effect)) {
         diagnostics.push(error(`${path}.value`, "is required for append"));
+      } else if (effect.action === "remove" && !isRecord(effect.where)) {
+        diagnostics.push(error(`${path}.where`, "is required for remove"));
+      } else if (effect.action === "update") {
+        if (!isRecord(effect.where)) diagnostics.push(error(`${path}.where`, "is required for update"));
+        if (!isRecord(effect.set)) diagnostics.push(error(`${path}.set`, "is required for update"));
       }
     });
   }
@@ -255,8 +263,12 @@ function validateSemantics(operation: Record<string, unknown>, diagnostics: Diag
         diagnostics.push(error(`${path}.target`, `references undefined state field "${target}"`));
         return;
       }
-      if (effect.action === "append" && targetField.type !== "array") {
-        diagnostics.push(error(`${path}.target`, `append requires an array target, got "${targetField.type}"`));
+      if (["append", "remove", "update"].includes(String(effect.action)) &&
+          targetField.type !== "array") {
+        diagnostics.push(error(
+          `${path}.target`,
+          `${effect.action} requires an array target, got "${targetField.type}"`,
+        ));
       }
       if (effect.action === "increment" && targetField.type !== "number") {
         diagnostics.push(error(`${path}.target`, `increment requires a number target, got "${targetField.type}"`));
@@ -283,6 +295,29 @@ function validateSemantics(operation: Record<string, unknown>, diagnostics: Diag
           );
         }
       }
+      if ((effect.action === "remove" || effect.action === "update") &&
+          targetField.type === "array") {
+        validateObjectValue(
+          effect.where,
+          targetField.items.properties,
+          `${path}.where`,
+          input,
+          state,
+          diagnostics,
+          false,
+        );
+        if (effect.action === "update") {
+          validateObjectValue(
+            effect.set,
+            targetField.items.properties,
+            `${path}.set`,
+            input,
+            state,
+            diagnostics,
+            false,
+          );
+        }
+      }
     });
 
     if (operation.effects.length > 0 && isRecord(operation.transaction)) {
@@ -306,8 +341,20 @@ function validateAppendValue(
   state: Record<string, FieldDefinition>,
   diagnostics: Diagnostic[],
 ): void {
-  if (!isRecord(value)) {
-    diagnostics.push(error(path, "must be an object matching the array item schema"));
+  validateObjectValue(value, properties, path, input, state, diagnostics, true);
+}
+
+function validateObjectValue(
+  value: unknown,
+  properties: Record<string, FieldDefinition>,
+  path: string,
+  input: Record<string, FieldDefinition>,
+  state: Record<string, FieldDefinition>,
+  diagnostics: Diagnostic[],
+  requireAll: boolean,
+): void {
+  if (!isRecord(value) || Object.keys(value).length === 0) {
+    diagnostics.push(error(path, "must be a non-empty object matching the array item schema"));
     return;
   }
   for (const key of Object.keys(value)) {
@@ -315,25 +362,27 @@ function validateAppendValue(
   }
   for (const [key, expected] of Object.entries(properties)) {
     if (!(key in value)) {
-      diagnostics.push(error(`${path}.${key}`, "is required by the array item schema"));
+      if (requireAll) diagnostics.push(error(`${path}.${key}`, "is required by the array item schema"));
       continue;
     }
     const candidate = value[key];
-    if (typeof candidate !== "string" || !candidate.startsWith("$")) {
-      diagnostics.push(error(`${path}.${key}`, "must be a field reference"));
-      continue;
-    }
-    const source = fieldForReference(candidate.slice(1), input, state);
-    if (!source) continue;
-    if (source.type !== expected.type) {
-      diagnostics.push(error(`${path}.${key}`, `has type "${source.type}", expected "${expected.type}"`));
-    } else if ((source.unit ?? null) !== (expected.unit ?? null)) {
-      diagnostics.push(
-        error(
+    if (typeof candidate === "string" && candidate.startsWith("$")) {
+      const source = fieldForReference(candidate.slice(1), input, state);
+      if (!source) continue;
+      if (source.type !== expected.type) {
+        diagnostics.push(error(`${path}.${key}`, `has type "${source.type}", expected "${expected.type}"`));
+      } else if ((source.unit ?? null) !== (expected.unit ?? null)) {
+        diagnostics.push(error(
           `${path}.${key}`,
           `has unit "${source.unit ?? "none"}", expected "${expected.unit ?? "none"}"`,
-        ),
-      );
+        ));
+      }
+    } else if (
+      (expected.type === "number" && typeof candidate !== "number") ||
+      (expected.type === "string" && typeof candidate !== "string") ||
+      (expected.type === "boolean" && typeof candidate !== "boolean")
+    ) {
+      diagnostics.push(error(`${path}.${key}`, `must have type "${expected.type}"`));
     }
   }
 }

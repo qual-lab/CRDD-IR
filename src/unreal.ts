@@ -190,20 +190,55 @@ function cppEffect(effect: Effect, operation: Operation): string {
     )};`;
   }
 
-  if (!effect.target.startsWith("state.") || typeof effect.value !== "object" || effect.value === null) {
-    throw new Error("Unreal MVP only supports object append to state arrays");
-  }
+  if (!effect.target.startsWith("state.")) throw new Error("Unreal array effect target must be state");
   const stateName = effect.target.slice("state.".length);
   if (operation.state[stateName]?.type !== "array") {
-    throw new Error(`Unreal append target "${effect.target}" is not an array`);
+    throw new Error(`Unreal ${effect.action} target "${effect.target}" is not an array`);
   }
-  const value = effect.value as Record<string, unknown>;
   const arrayField = operation.state[stateName];
-  if (arrayField.type !== "array") throw new Error(`Unreal append target "${effect.target}" is not an array`);
+  if (arrayField.type !== "array") throw new Error(`Unreal ${effect.action} target is not an array`);
+  const collection = `Result.State.${cppField(stateName, arrayField)}`;
+  const itemType = `FCrdd${pascalIdentifier(operation.id)}${pascalIdentifier(stateName)}Item`;
+  if (effect.action === "remove" || effect.action === "update") {
+    const condition = cppItemMatch(effect.where, arrayField.items.properties, operation);
+    if (effect.action === "remove") {
+      return `    ${collection}.RemoveAll([&](const ${itemType}& Item)
+    {
+        return ${condition};
+    });`;
+    }
+    const assignments = Object.entries(effect.set)
+      .map(([name, value]) =>
+        `            Item.${cppField(name, arrayField.items.properties[name])} = ` +
+        `${cppEffectValue(value, operation)};`
+      )
+      .join("\n");
+    return `    for (${itemType}& Item : ${collection})
+    {
+        if (${condition})
+        {
+${assignments}
+        }
+    }`;
+  }
+
+  const value = effect.value as Record<string, unknown>;
   const values = Object.keys(arrayField.items.properties)
     .map((name) => cppEffectValue(value[name], operation))
     .join(", ");
-  return `    Result.State.${cppField(stateName, operation.state[stateName])}.Add({${values}});`;
+  return `    ${collection}.Add({${values}});`;
+}
+
+function cppItemMatch(
+  where: Record<string, unknown>,
+  properties: Record<string, FieldDefinition>,
+  operation: Operation,
+): string {
+  return Object.entries(where)
+    .map(([name, value]) =>
+      `Item.${cppField(name, properties[name])} == ${cppEffectValue(value, operation)}`
+    )
+    .join(" && ");
 }
 
 function generateArrayElementStruct(operation: Operation, stateName: string): string {

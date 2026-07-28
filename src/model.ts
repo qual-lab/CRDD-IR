@@ -67,6 +67,17 @@ export type Effect =
       target: string;
       action: "increment";
       expression: string;
+    }
+  | {
+      target: string;
+      action: "remove";
+      where: Record<string, unknown>;
+    }
+  | {
+      target: string;
+      action: "update";
+      where: Record<string, unknown>;
+      set: Record<string, unknown>;
     };
 
 export type CrddError = {

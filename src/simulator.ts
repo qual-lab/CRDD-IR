@@ -33,10 +33,23 @@ export function simulate(ir: CrddIr, request: SimulationRequest): SimulationResu
           throw new Error(`Increment target and expression must be numbers: "${effect.target}"`);
         }
         setPath(workingState, target, current + delta);
-      } else {
+      } else if (effect.action === "append") {
         const collection = getPath(workingState, target);
         if (!Array.isArray(collection)) throw new Error(`Append target "${effect.target}" is not an array`);
         collection.push(resolveValue(effect.value, context));
+      } else {
+        const collection = getPath(workingState, target);
+        if (!Array.isArray(collection)) throw new Error(`${effect.action} target "${effect.target}" is not an array`);
+        const where = resolveValue(effect.where, context) as Record<string, unknown>;
+        if (effect.action === "remove") {
+          const retained = collection.filter((item) => !matches(item, where));
+          setPath(workingState, target, retained);
+        } else {
+          const updates = resolveValue(effect.set, context) as Record<string, unknown>;
+          for (const item of collection) {
+            if (matches(item, where)) Object.assign(item as object, structuredClone(updates));
+          }
+        }
       }
     }
   } catch (error) {
@@ -52,6 +65,13 @@ export function simulate(ir: CrddIr, request: SimulationRequest): SimulationResu
     state: workingState,
     traces: ir.operation.traces,
   };
+}
+
+function matches(value: unknown, where: Record<string, unknown>): boolean {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  return Object.entries(where).every(([key, expected]) =>
+    Object.is((value as Record<string, unknown>)[key], expected)
+  );
 }
 
 function validateRequest(ir: CrddIr, request: SimulationRequest): void {

@@ -88,6 +88,27 @@
             "value": {}
           },
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["target", "action", "where"],
+          "properties": {
+            "target": { "type": "string", "minLength": 1 },
+            "action": { "const": "remove" },
+            "where": { "type": "object", "minProperties": 1 }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["target", "action", "where", "set"],
+          "properties": {
+            "target": { "type": "string", "minLength": 1 },
+            "action": { "const": "update" },
+            "where": { "type": "object", "minProperties": 1 },
+            "set": { "type": "object", "minProperties": 1 }
+          },
+          "additionalProperties": false
         }
       ]
     },

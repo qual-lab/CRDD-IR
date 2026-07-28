@@ -16,7 +16,9 @@ $editorCmd = Join-Path $UnrealRoot "Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
 $project = Join-Path $repoRoot "examples\unreal\CrddCompilerFixture\CrddCompilerFixture.uproject"
 $assetImportScript = Join-Path $repoRoot "examples\unreal\CrddCompilerFixture\Scripts\import_generated_assets.py"
 $spec = "examples/place-wall/05_SPEC/01_Behavior_Specification.md"
+$updateWallSpec = "examples/update-wall/05_SPEC/01_Behavior_Specification.md"
 $fixtureGenerated = "examples/unreal/CrddCompilerFixture/Source/CrddCompilerFixture/Generated"
+$fixtureBatchGenerated = Join-Path $repoRoot ".crdd-ir\fixture-operations"
 $evidenceDir = "examples/place-wall/07_Quality/CRDD_IR"
 $runId = [Guid]::NewGuid().ToString("N")
 $reportDir = Join-Path $repoRoot ".crdd-ir\reports\$runId"
@@ -52,6 +54,16 @@ Write-Host "[4/8] Generate Unreal C++ and 3D assets"
 Assert-LastExitCode "Unreal reference generation"
 & node src/cli.ts generate unreal $spec --out-dir $fixtureGenerated
 Assert-LastExitCode "Unreal fixture generation"
+& node src/cli.ts batch unreal $spec $updateWallSpec --out-dir $fixtureBatchGenerated
+Assert-LastExitCode "Multi-operation Unreal fixture generation"
+Copy-Item `
+    (Join-Path $fixtureBatchGenerated "UpdateWall\UpdateWall.generated.h") `
+    (Join-Path $repoRoot "$fixtureGenerated\UpdateWall.generated.h") `
+    -Force
+Copy-Item `
+    (Join-Path $fixtureBatchGenerated "UpdateWall\UpdateWall.generated.cpp") `
+    (Join-Path $repoRoot "$fixtureGenerated\UpdateWall.generated.cpp") `
+    -Force
 & node src/cli.ts generate assets $spec --out-dir generated/assets
 Assert-LastExitCode "3D asset generation"
 

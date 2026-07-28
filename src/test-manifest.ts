@@ -158,7 +158,32 @@ function createBaseline(ir: CrddIr): SimulationRequest {
     const value = field.type === "array" ? [] : field.type === "number" ? 1_000_000 : null;
     setPath(state, path, value);
   }
+  for (const effect of ir.operation.effects) {
+    if (effect.action !== "remove" && effect.action !== "update") continue;
+    const statePath = effect.target.startsWith("state.") ? effect.target.slice(6) : "";
+    const field = ir.operation.state[statePath];
+    const collection = getPath({ state }, effect.target);
+    if (field?.type !== "array" || !Array.isArray(collection)) continue;
+    const item = Object.fromEntries(Object.entries(field.items.properties).map(([name, definition]) => [
+      name,
+      definition.type === "number" ? 0 : definition.type === "boolean" ? false : "",
+    ]));
+    Object.assign(item, resolveTemplate(effect.where, { input, state }));
+    collection.push(item);
+  }
   return { input, state };
+}
+
+function resolveTemplate(
+  value: Record<string, unknown>,
+  context: Record<string, unknown>,
+): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(value).map(([key, candidate]) => [
+    key,
+    typeof candidate === "string" && candidate.startsWith("$")
+      ? structuredClone(getPath(context, candidate.slice(1)))
+      : structuredClone(candidate),
+  ]));
 }
 
 function setPath(root: Record<string, unknown>, path: string, value: unknown): void {
