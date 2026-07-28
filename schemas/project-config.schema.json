@@ -40,7 +40,9 @@
             "engineRoot",
             "editorTarget",
             "configuration",
-            "integrationPlugin"
+            "integrationPlugin",
+            "editorProfile",
+            "shippingProfile"
           ],
           "properties": {
             "project": { "$ref": "#/$defs/path" },
@@ -48,7 +50,9 @@
             "editorTarget": { "type": "string" },
             "gameTarget": { "type": "string", "minLength": 1 },
             "configuration": { "enum": ["Debug", "DebugGame", "Development", "Shipping", "Test"] },
-            "integrationPlugin": { "const": "CRDDIRIntegration" }
+            "integrationPlugin": { "const": "CRDDIRIntegration" },
+            "editorProfile": { "$ref": "#/$defs/path" },
+            "shippingProfile": { "$ref": "#/$defs/path" }
           },
           "additionalProperties": false
         }

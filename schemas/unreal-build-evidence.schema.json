@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://crdd.dev/schema/unreal-build-evidence/v0.1.json",
+  "title": "CRDD Unreal Build Evidence v0.1",
+  "type": "object",
+  "required": ["protocol", "operation", "target", "toolchain", "modules", "hashes", "stages", "automation", "packageFiles"],
+  "properties": {
+    "protocol": { "const": "crdd-ir/unreal-build-evidence-v0.1" },
+    "operation": { "type": "string", "minLength": 1 },
+    "target": { "type": "object" },
+    "toolchain": { "type": "object" },
+    "modules": { "type": "array", "items": { "type": "object" } },
+    "hashes": {
+      "type": "object",
+      "required": ["irSha256", "targetPlanSha256", "packageSha256", "identitySha256"],
+      "additionalProperties": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+    },
+    "stages": { "type": "object" },
+    "automation": { "type": "object" },
+    "packageFiles": { "type": "array", "items": { "type": "object" } }
+  },
+  "additionalProperties": false
+}

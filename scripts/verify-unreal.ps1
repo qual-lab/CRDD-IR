@@ -24,6 +24,8 @@ $spec = "examples/create-entity/05_SPEC/01_Behavior_Specification.md"
 $updateEntitySpec = "examples/update-entity/05_SPEC/01_Behavior_Specification.md"
 $fixtureGenerated = "examples/unreal/CrddCompilerFixture/Source/CrddCompilerFixture/Generated"
 $evidenceDir = "examples/create-entity/07_Quality/CRDD_IR"
+$editorProfile = "examples/unreal/profiles/ue-5.8-editor.json"
+$shippingProfile = "examples/unreal/profiles/ue-5.8-shipping.json"
 $runId = [Guid]::NewGuid().ToString("N")
 $reportDir = Join-Path $repoRoot ".crdd-ir\reports\$runId"
 $reportPath = Join-Path $reportDir "index.json"
@@ -64,9 +66,9 @@ Write-Host "[3/10] Generate Conformance Bundle"
 Assert-LastExitCode "Conformance Bundle generation"
 
 Write-Host "[4/10] Generate Unreal C++ and 3D assets"
-& node src/cli.ts generate unreal $spec --out-dir generated/unreal --force
+& node src/cli.ts unreal generate $spec --profile $editorProfile --out-dir generated/unreal --force
 Assert-LastExitCode "Unreal reference generation"
-& node src/cli.ts batch unreal $spec $updateEntitySpec --out-dir $fixtureGenerated --flat
+& node src/cli.ts batch unreal $spec $updateEntitySpec --out-dir $fixtureGenerated --flat --profile $editorProfile --force
 Assert-LastExitCode "Multi-operation Unreal fixture generation"
 & node src/cli.ts generate assets $spec --out-dir generated/assets --force
 Assert-LastExitCode "3D asset generation"
@@ -141,6 +143,12 @@ Assert-LastExitCode "Unreal Shipping cook and package"
 Write-Host "[10/10] Generate traceability and execution evidence"
 & node src/cli.ts generate evidence $spec --out-dir $evidenceDir --unreal-report $reportPath
 Assert-LastExitCode "Evidence generation"
+& node src/cli.ts unreal evidence $spec `
+    --profile $shippingProfile `
+    --automation-report $reportPath `
+    --package-dir $packageDir `
+    --out "$evidenceDir/unreal-build-evidence.json"
+Assert-LastExitCode "Normalized Unreal build evidence"
 
 Write-Host "CRDD Unreal verification succeeded."
 Write-Host "Raw Unreal report: $reportPath"

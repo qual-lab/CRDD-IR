@@ -35,19 +35,21 @@ $manifest = Resolve-ProjectPath (
 )
 $sources = @($config.source | ForEach-Object { Resolve-ProjectPath ([string]$_) })
 $evidence = Resolve-ProjectPath $config.evidence
+$editorProfile = Resolve-ProjectPath $config.unreal.editorProfile
+$shippingProfile = Resolve-ProjectPath $config.unreal.shippingProfile
 $pythonScript = Join-Path $resolvedProjectRoot "tools\crdd-import-generated-assets.py"
 $projectName = [System.IO.Path]::GetFileNameWithoutExtension($project)
 $editorTarget = if ([string]::IsNullOrWhiteSpace($config.unreal.editorTarget)) {
     "${projectName}Editor"
+}
+else {
+    $config.unreal.editorTarget
 }
 $gameTarget = if ([string]::IsNullOrWhiteSpace($config.unreal.gameTarget)) {
     $projectName
 }
 else {
     $config.unreal.gameTarget
-}
-else {
-    $config.unreal.editorTarget
 }
 $configuration = if ([string]::IsNullOrWhiteSpace($config.unreal.configuration)) {
     "Development"
@@ -57,7 +59,8 @@ else {
 }
 
 foreach ($requiredPath in @(
-    $project, $buildTool, $runUat, $editorCmd, $manifest, $pythonScript
+    $project, $buildTool, $runUat, $editorCmd, $manifest, $pythonScript,
+    $editorProfile, $shippingProfile
 )) {
     if (-not (Test-Path -LiteralPath $requiredPath)) {
         throw "Required Unreal verification path not found: $requiredPath"
@@ -179,6 +182,12 @@ foreach ($source in $sources) {
     & node $cli generate evidence `
         $source --out-dir (Join-Path $evidence $operationId) --unreal-report $reportPath
     Assert-ExitCode "CRDD evidence generation for $operationId"
+    & node $cli unreal evidence $source `
+        --profile $shippingProfile `
+        --automation-report $reportPath `
+        --package-dir $packageDir `
+        --out (Join-Path $evidence "$operationId\unreal-build-evidence.json")
+    Assert-ExitCode "Normalized Unreal build evidence for $operationId"
 }
 
 Write-Host "CRDD Unreal project verification succeeded."

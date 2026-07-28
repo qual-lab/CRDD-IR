@@ -1,0 +1,340 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://crdd.dev/schema/unreal-target-profile/v0.1.json",
+  "title": "CRDD Unreal Target Profile v0.1",
+  "type": "object",
+  "required": ["engine", "platform", "targetType", "configuration", "linkType", "withEditor"],
+  "properties": {
+    "engine": {
+      "type": "object",
+      "required": ["major", "minor", "patch", "dialect"],
+      "properties": {
+        "major": { "type": "integer", "minimum": 0 },
+        "minor": { "type": "integer", "minimum": 0 },
+        "patch": { "type": "integer", "minimum": 0 },
+        "dialect": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "platform": { "enum": ["Win64", "Linux", "LinuxArm64", "Mac", "Android", "IOS"] },
+    "targetType": { "enum": ["Editor", "Game", "Client", "Server", "Program"] },
+    "configuration": { "enum": ["Debug", "DebugGame", "Development", "Test", "Shipping"] },
+    "linkType": { "enum": ["modular", "monolithic"] },
+    "withEditor": { "type": "boolean" },
+    "buildId": { "type": "string", "minLength": 1 },
+    "toolchain": {
+      "type": "object",
+      "properties": {
+        "compiler": { "type": "string", "minLength": 1 },
+        "compilerVersion": { "type": "string", "minLength": 1 },
+        "sdk": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "modules": { "type": "array", "items": { "$ref": "#/$defs/module" } },
+    "plugins": { "type": "array", "items": { "$ref": "#/$defs/plugin" } },
+    "adapter": { "$ref": "#/$defs/adapter" }
+  },
+  "$defs": {
+    "module": {
+      "type": "object",
+      "required": ["name", "type", "loadingPhase", "publicDependencies", "privateDependencies", "dynamicModules", "publicIncludes", "privateIncludes", "platformAllowList", "platformDenyList"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "type": { "enum": ["Runtime", "Editor", "Developer", "Program"] },
+        "loadingPhase": { "enum": ["Default", "PreDefault", "PostDefault", "PostEngineInit"] },
+        "publicDependencies": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+        "privateDependencies": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+        "dynamicModules": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+        "publicIncludes": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+        "privateIncludes": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+        "platformAllowList": { "type": "array", "uniqueItems": true, "items": { "enum": ["Win64", "Linux", "LinuxArm64", "Mac", "Android", "IOS"] } },
+        "platformDenyList": { "type": "array", "uniqueItems": true, "items": { "enum": ["Win64", "Linux", "LinuxArm64", "Mac", "Android", "IOS"] } }
+      },
+      "additionalProperties": false
+    },
+    "plugin": {
+      "type": "object",
+      "required": ["name", "enabledByDefault", "canContainContent", "supportedTargetPlatforms", "optional", "modules", "dependencies"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "enabledByDefault": { "type": "boolean" },
+        "canContainContent": { "type": "boolean" },
+        "supportedTargetPlatforms": { "type": "array", "uniqueItems": true, "items": { "enum": ["Win64", "Linux", "LinuxArm64", "Mac", "Android", "IOS"] } },
+        "optional": { "type": "boolean" },
+        "modules": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+        "dependencies": { "type": "array", "uniqueItems": true, "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "adapter": {
+      "type": "object",
+      "required": ["lifecycle", "execution", "types", "declarations"],
+      "properties": {
+        "lifecycle": {
+          "type": "object",
+          "required": [
+            "scope", "initialize", "deinitialize", "cancelOnTeardown",
+            "preventDoubleInitialize", "dependencies"
+          ],
+          "properties": {
+            "scope": { "enum": ["Engine", "Editor", "GameInstance", "World", "LocalPlayer"] },
+            "initialize": { "type": "boolean" },
+            "deinitialize": { "type": "boolean" },
+            "cancelOnTeardown": { "type": "boolean" },
+            "preventDoubleInitialize": { "type": "boolean" },
+            "dependencies": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+          },
+          "additionalProperties": false
+        },
+        "execution": {
+          "type": "object",
+          "required": [
+            "mode", "completionThread", "cancellation", "revisionPolicy",
+            "allowUObjectAccess", "discardStaleResults"
+          ],
+          "properties": {
+            "mode": { "enum": ["game-thread", "thread-safe-pure", "worker"] },
+            "completionThread": { "enum": ["game-thread", "worker"] },
+            "cancellation": { "enum": ["none", "cooperative"] },
+            "revisionPolicy": { "enum": ["none", "input-hash", "monotonic-revision"] },
+            "deadlineMs": { "type": "integer", "minimum": 1 },
+            "allowUObjectAccess": { "type": "boolean" },
+            "discardStaleResults": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        },
+        "types": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/typeProjection" }
+        },
+        "declarations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/declaration" }
+        },
+        "assets": { "type": "array", "items": { "$ref": "#/$defs/assetContract" } },
+        "config": { "type": "array", "items": { "$ref": "#/$defs/configPatch" } },
+        "serialization": { "$ref": "#/$defs/serialization" },
+        "delegates": { "type": "array", "items": { "$ref": "#/$defs/delegate" } },
+        "projection": { "$ref": "#/$defs/projection" },
+        "performance": { "$ref": "#/$defs/performance" }
+      },
+      "additionalProperties": false
+    },
+    "typeProjection": {
+      "type": "object",
+      "required": [
+        "source", "target", "reference", "serialized", "reflected",
+        "editable", "blueprint", "transient"
+      ],
+      "properties": {
+        "source": { "type": "string", "minLength": 1 },
+        "target": {
+          "enum": [
+            "PureCpp", "USTRUCT", "UObject", "UDataAsset", "UPrimaryDataAsset",
+            "AActor", "UActorComponent", "USubsystem", "UInterface"
+          ]
+        },
+        "reference": {
+          "enum": [
+            "value", "owned", "observed", "weak", "soft-object", "soft-class",
+            "strong", "shared", "unique"
+          ]
+        },
+        "serialized": { "type": "boolean" },
+        "reflected": { "type": "boolean" },
+        "editable": { "type": "boolean" },
+        "blueprint": { "type": "boolean" },
+        "transient": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "assetContract": {
+      "type": "object",
+      "required": [
+        "id", "reference", "bundles", "scanPath", "cookRule",
+        "developmentOnly", "unload"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "primaryAssetType": { "type": "string", "minLength": 1 },
+        "primaryAssetId": { "type": "string", "minLength": 1 },
+        "reference": { "enum": ["hard", "soft"] },
+        "bundles": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "scanPath": { "type": "string", "minLength": 1 },
+        "cookRule": { "enum": ["Unknown", "NeverCook", "DevelopmentCook", "AlwaysCook"] },
+        "chunkId": { "type": "integer", "minimum": 0 },
+        "developmentOnly": { "type": "boolean" },
+        "fallback": { "type": "string", "minLength": 1 },
+        "memoryBudgetMb": { "type": "number", "exclusiveMinimum": 0 },
+        "unload": { "enum": ["manual", "owner-lifetime", "never"] }
+      },
+      "additionalProperties": false
+    },
+    "configPatch": {
+      "type": "object",
+      "required": ["file", "section", "key", "operation", "owner"],
+      "properties": {
+        "file": { "type": "string", "minLength": 1 },
+        "platform": { "type": "string", "minLength": 1 },
+        "section": { "type": "string", "minLength": 1 },
+        "key": { "type": "string", "minLength": 1 },
+        "operation": { "enum": ["set", "add", "remove", "clear"] },
+        "value": { "type": "string" },
+        "owner": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "serialization": {
+      "type": "object",
+      "required": [
+        "schemaVersion", "customVersionGuid", "preserveUnknownFields", "namePolicy",
+        "objectPathRedirects", "maxPayloadBytes", "async", "atomicWrite",
+        "compression", "encryption", "hashOrder", "excludeEditorOnly"
+      ],
+      "properties": {
+        "schemaVersion": { "type": "integer", "minimum": 1 },
+        "customVersionGuid": { "type": "string", "minLength": 1 },
+        "preserveUnknownFields": { "type": "boolean" },
+        "namePolicy": { "enum": ["string", "name-transient-only"] },
+        "objectPathRedirects": { "type": "object", "additionalProperties": { "type": "string" } },
+        "maxPayloadBytes": { "type": "integer", "minimum": 1 },
+        "async": { "type": "boolean" },
+        "atomicWrite": { "const": true },
+        "compression": { "enum": ["none", "zlib", "oodle"] },
+        "encryption": { "enum": ["none", "project-provider"] },
+        "hashOrder": { "enum": ["before-encryption", "after-encryption"] },
+        "excludeEditorOnly": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "delegate": {
+      "type": "object",
+      "required": [
+        "name", "kind", "cardinality", "owner", "weakBinding", "unbind",
+        "preventDuplicateBinding", "order", "reentrant", "visibility", "arguments"
+      ],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["native", "dynamic"] },
+        "cardinality": { "enum": ["single-cast", "multicast"] },
+        "owner": { "type": "string", "minLength": 1 },
+        "weakBinding": { "type": "boolean" },
+        "unbind": { "enum": ["owner-destroyed", "deinitialize", "manual"] },
+        "preventDuplicateBinding": { "type": "boolean" },
+        "order": { "enum": ["unspecified", "registration"] },
+        "reentrant": { "type": "boolean" },
+        "visibility": { "enum": ["Runtime", "Editor", "Both"] },
+        "arguments": { "type": "array", "items": { "type": "object" } }
+      },
+      "additionalProperties": false
+    },
+    "projection": {
+      "type": "object",
+      "required": [
+        "domainId", "actorIsAuthoritative", "diff", "objectPool", "worldPartition",
+        "rebuild", "staleActorDetection", "distinguishPieAndEditorWorld"
+      ],
+      "properties": {
+        "domainId": { "type": "string", "minLength": 1 },
+        "actorIsAuthoritative": { "const": false },
+        "diff": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "enum": ["spawn", "update", "destroy"] }
+        },
+        "objectPool": { "type": "boolean" },
+        "worldPartition": { "enum": ["unsupported", "supported"] },
+        "rebuild": { "type": "boolean" },
+        "staleActorDetection": { "type": "boolean" },
+        "distinguishPieAndEditorWorld": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "performance": {
+      "type": "object",
+      "required": ["enabled", "shipping", "scopes", "insights", "memory", "correlationId"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "shipping": { "type": "boolean" },
+        "scopes": { "type": "array", "items": { "type": "string" } },
+        "insights": { "type": "boolean" },
+        "memory": { "type": "boolean" },
+        "correlationId": { "enum": ["none", "non-personal-random", "input-hash"] }
+      },
+      "additionalProperties": false
+    },
+    "declaration": {
+      "type": "object",
+      "required": [
+        "kind", "name", "module", "apiMacro", "generatedBody",
+        "generatedHeaderLast", "metadata", "properties", "functions"
+      ],
+      "properties": {
+        "kind": { "enum": ["UCLASS", "USTRUCT", "UENUM", "UINTERFACE"] },
+        "name": { "type": "string", "minLength": 1 },
+        "module": { "type": "string", "minLength": 1 },
+        "apiMacro": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*_API$" },
+        "namespace": { "type": "string" },
+        "template": { "type": "boolean" },
+        "generatedBody": { "type": "boolean" },
+        "generatedHeaderLast": { "const": true },
+        "base": { "type": "string", "minLength": 1 },
+        "values": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "metadata": { "type": "object" },
+        "properties": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "cppType", "specifiers"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "cppType": { "type": "string", "minLength": 1 },
+              "specifiers": { "type": "array", "items": { "type": "string" } },
+              "reference": { "$ref": "#/$defs/typeProjection/properties/reference" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "functions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "returnType", "parameters", "specifiers", "metadata"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "returnType": { "type": "string", "minLength": 1 },
+              "parameters": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["name", "cppType"],
+                  "properties": {
+                    "name": { "type": "string", "minLength": 1 },
+                    "cppType": { "type": "string", "minLength": 1 }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "specifiers": { "type": "array", "items": { "type": "string" } },
+              "metadata": { "type": "object" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "UENUM" } }, "required": ["kind"] },
+          "then": {
+            "properties": { "generatedBody": { "const": false } },
+            "required": ["values"]
+          },
+          "else": { "properties": { "generatedBody": { "const": true } } }
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

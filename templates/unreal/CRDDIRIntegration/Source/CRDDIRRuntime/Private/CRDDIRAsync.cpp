@@ -3,6 +3,7 @@
 #include "Async/Async.h"
 #include "Async/TaskGraphInterfaces.h"
 #include "UObject/WeakObjectPtr.h"
+#include "ProfilingDebugging/CpuProfilerTrace.h"
 
 FCRDDIRAsyncHandle::FCRDDIRAsyncHandle()
     : Cancelled(MakeShared<TAtomic<bool>, ESPMode::ThreadSafe>(false))
@@ -59,6 +60,7 @@ FCRDDIRAsyncHandle FCRDDIRRuntime::RunAsync(
             ApplyOnGameThread = MoveTemp(ApplyOnGameThread)
         ]() mutable
         {
+            TRACE_CPUPROFILER_EVENT_SCOPE(CRDDIR_AsyncWork);
             if (Cancelled->Load())
             {
                 Complete->Store(true);
@@ -74,6 +76,7 @@ FCRDDIRAsyncHandle FCRDDIRRuntime::RunAsync(
                     ApplyOnGameThread = MoveTemp(ApplyOnGameThread)
                 ]() mutable
                 {
+                    TRACE_CPUPROFILER_EVENT_SCOPE(CRDDIR_GameThreadApply);
                     if (!Cancelled->Load() && WeakOwner.IsValid())
                     {
                         ApplyOnGameThread();
@@ -84,6 +87,70 @@ FCRDDIRAsyncHandle FCRDDIRRuntime::RunAsync(
         }
     );
 
+    return FCRDDIRAsyncHandle(Cancelled, Complete);
+}
+
+FCRDDIRAsyncHandle FCRDDIRRuntime::RunAsyncVersioned(
+    UObject* Owner,
+    uint64 ExpectedRevision,
+    TFunction<uint64()> CurrentRevision,
+    TUniqueFunction<void()> Work,
+    TUniqueFunction<void()> ApplyOnGameThread
+)
+{
+    check(IsInGameThread());
+    check(Owner);
+
+    const TWeakObjectPtr<UObject> WeakOwner(Owner);
+    const TSharedRef<TAtomic<bool>, ESPMode::ThreadSafe> Cancelled =
+        MakeShared<TAtomic<bool>, ESPMode::ThreadSafe>(false);
+    const TSharedRef<TAtomic<bool>, ESPMode::ThreadSafe> Complete =
+        MakeShared<TAtomic<bool>, ESPMode::ThreadSafe>(false);
+
+    Async(
+        EAsyncExecution::ThreadPool,
+        [
+            WeakOwner,
+            ExpectedRevision,
+            CurrentRevision,
+            Cancelled,
+            Complete,
+            Work = MoveTemp(Work),
+            ApplyOnGameThread = MoveTemp(ApplyOnGameThread)
+        ]() mutable
+        {
+            TRACE_CPUPROFILER_EVENT_SCOPE(CRDDIR_VersionedAsyncWork);
+            if (Cancelled->Load())
+            {
+                Complete->Store(true);
+                return;
+            }
+            Work();
+            AsyncTask(
+                ENamedThreads::GameThread,
+                [
+                    WeakOwner,
+                    ExpectedRevision,
+                    CurrentRevision,
+                    Cancelled,
+                    Complete,
+                    ApplyOnGameThread = MoveTemp(ApplyOnGameThread)
+                ]() mutable
+                {
+                    TRACE_CPUPROFILER_EVENT_SCOPE(CRDDIR_VersionedGameThreadApply);
+                    if (
+                        !Cancelled->Load() &&
+                        WeakOwner.IsValid() &&
+                        CurrentRevision() == ExpectedRevision
+                    )
+                    {
+                        ApplyOnGameThread();
+                    }
+                    Complete->Store(true);
+                }
+            );
+        }
+    );
     return FCRDDIRAsyncHandle(Cancelled, Complete);
 }
 

@@ -19,6 +19,8 @@ const unrealKeys = new Set([
   "gameTarget",
   "configuration",
   "integrationPlugin",
+  "editorProfile",
+  "shippingProfile",
 ]);
 const configurations = new Set(["Debug", "DebugGame", "Development", "Shipping", "Test"]);
 
@@ -37,6 +39,8 @@ export interface ProjectConfig {
     gameTarget?: string;
     configuration: string;
     integrationPlugin: "CRDDIRIntegration";
+    editorProfile: string;
+    shippingProfile: string;
   };
 }
 
@@ -93,6 +97,8 @@ export function validateProjectConfig(value: unknown): ProjectConfig {
     if (unreal.integrationPlugin !== "CRDDIRIntegration") {
       throw new Error('config.unreal.integrationPlugin must be "CRDDIRIntegration"');
     }
+    projectPath(unreal.editorProfile, "config.unreal.editorProfile");
+    projectPath(unreal.shippingProfile, "config.unreal.shippingProfile");
   }
 
   return value as ProjectConfig;

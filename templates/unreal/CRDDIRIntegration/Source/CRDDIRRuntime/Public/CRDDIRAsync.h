@@ -42,6 +42,14 @@ public:
         TUniqueFunction<void()> ApplyOnGameThread
     );
 
+    static FCRDDIRAsyncHandle RunAsyncVersioned(
+        UObject* Owner,
+        uint64 ExpectedRevision,
+        TFunction<uint64()> CurrentRevision,
+        TUniqueFunction<void()> Work,
+        TUniqueFunction<void()> ApplyOnGameThread
+    );
+
     static void DispatchToGameThread(
         UObject* Owner,
         TUniqueFunction<void()> ApplyOnGameThread

@@ -49,6 +49,11 @@ crdd-ir test bundle <ir.json> [--out <file>]
 crdd-ir test run <ir.json> [--adapter <module>]
 crdd-ir test run <ir.json> --command <executable> [--arg <value>...]
 crdd-ir generate unreal <ir.json> [--out-dir <directory>]
+crdd-ir unreal plan <spec.md> --profile <profile.json> [--out <plan.json>]
+crdd-ir unreal generate <spec.md> --profile <profile.json> --out-dir <directory>
+crdd-ir unreal config apply <profile.json> --project-root <directory>
+crdd-ir unreal evidence <spec.md> --profile <profile.json> --automation-report <index.json> --package-dir <directory> --out <evidence.json>
+crdd-ir unreal diagnostics <unreal.log>
 crdd-ir generate assets <ir.json> [--out-dir <directory>]
 crdd-ir generate evidence <spec.md> [--out-dir <directory>] [--unreal-report <index.json>]
 crdd-ir view trace <ir.json>
@@ -99,5 +104,7 @@ Compilerを組み込まない。
 - CRDD IRはCompilerが一時生成するVersion付き内部表現
 - 生成コードは一方向生成し、人間の実装は明示的な拡張点へ置く
 - Unreal固有の操作感、描画、最適化はIRへ取り込まない
+- 配布用Unreal生成は固定したTarget ProfileからVersion付きTarget Planを作り、
+  Module/Plugin/UHT/GC/Thread/Cook/Shipping制約に違反すれば生成前に停止する
 
 詳細は [docs/mvp.md](docs/mvp.md) を参照してください。

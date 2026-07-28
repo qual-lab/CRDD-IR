@@ -55,6 +55,30 @@ The Unreal integration plugin has a strict module boundary:
   keeps only a weak UObject owner, supports cooperative cancellation, and
   applies results only on the Game Thread.
 
+Production generation is profile-driven. The installer tracks Editor and
+Shipping profiles under `Config/CRDD/`; these pin the engine dialect, platform,
+target kind, configuration, link mode, module/plugin graph, reflection surface,
+GC ownership, lifecycle, async completion/revision policy, Asset Manager/Cook
+rules, partial Config ownership, serialization, delegates, world projection,
+and performance instrumentation. `unreal plan` validates these constraints
+before any C++ is written. Target adapters consume the versioned plan rather
+than interpreting Unreal policy ad hoc.
+
+The limited UHT declaration model permits only explicitly supported
+`UCLASS`/`USTRUCT`/`UENUM`/paired `UINTERFACE` declarations, properties,
+functions and RPC specifiers. It rejects namespaces, templates, invalid API
+macros, invalid generated-header ordering, contradictory transient/save
+semantics, ambiguous RPC direction, and RPC return values.
+
+Config application owns only `CRDD-IR:<owner>:BEGIN/END` blocks and fails on an
+unmanaged key collision. Build evidence normalizes target/toolchain/module
+identity, Automation results, and packaged-file hashes. Compiler, UHT, UBT,
+Cook, and Automation logs can be converted to stable path-sanitized diagnostics.
+The runtime boundary additionally provides cooperative cancellation, stale
+revision rejection, Game Thread completion, Asset Manager loading, atomic
+size-limited asynchronous serialization, Unreal Insights scopes, and a
+product-owned world-projection port where Actor state is never authoritative.
+
 `verify` builds both the configured Editor target and the `gameTarget` Shipping
 target. It then cooks the generated runtime scene from `assets.manifest.json`,
 stages it, and produces a Pak/IoStore package under `.crdd-ir/packages/`.

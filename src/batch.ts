@@ -4,6 +4,8 @@ import { resolve } from "node:path";
 import { generateAssets } from "./assets.ts";
 import { compileMarkdown, type CompilationResult } from "./compiler.ts";
 import { generateUnreal } from "./unreal.ts";
+import { buildUnrealTargetPlan, type UnrealTargetProfile } from "./unreal-target.ts";
+import { generateUnrealReflection } from "./unreal-uht.ts";
 
 export type BatchTarget = "ir" | "unreal" | "assets";
 export type BatchLayout = "operation-directories" | "flat";
@@ -25,7 +27,7 @@ export async function generateBatch(
   sources: string[],
   outDir: string,
   target: BatchTarget,
-  options: { layout?: BatchLayout; force?: boolean } = {},
+  options: { layout?: BatchLayout; force?: boolean; unrealProfile?: UnrealTargetProfile } = {},
 ): Promise<BatchManifest> {
   const layout = options.layout ?? "operation-directories";
   if (layout === "flat" && target !== "unreal") {
@@ -42,9 +44,10 @@ export async function generateBatch(
     await rejectModifiedOwnedOutputs(outDir, previous);
   }
 
-  for (const compilation of compilations.sort((a, b) =>
+  const sortedCompilations = compilations.sort((a, b) =>
     a.ir.operation.id.localeCompare(b.ir.operation.id)
-  )) {
+  );
+  for (const [compilationIndex, compilation] of sortedCompilations.entries()) {
     const operationDir = layout === "flat"
       ? resolve(outDir)
       : resolve(outDir, compilation.ir.operation.id);
@@ -52,7 +55,19 @@ export async function generateBatch(
     const files = target === "ir"
       ? [{ name: `${compilation.ir.operation.id}.ir.json`, content: compilation.canonicalJson }]
       : target === "unreal"
-        ? generateUnreal(compilation.ir)
+        ? [
+            ...generateUnreal(compilation.ir, options.unrealProfile ? {
+              irSha256: compilation.digest,
+              generatorVersion: "0.1.0",
+            } : undefined),
+            ...(options.unrealProfile && compilationIndex === 0
+              ? generateUnrealReflection(buildUnrealTargetPlan(
+                  compilation.ir,
+                  compilation.digest,
+                  options.unrealProfile,
+                ))
+              : []),
+          ]
         : generateAssets(compilation.ir);
     if (target === "assets" && files.length === 0) {
       throw new Error(`Operation "${compilation.ir.operation.id}" declares no assets`);

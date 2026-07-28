@@ -18,6 +18,20 @@ import { generateEvidenceMarkdown, generateTraceabilityManifest } from "./tracea
 import { generateTransactionally } from "./generation.ts";
 import { generateUnreal } from "./unreal.ts";
 import { parseUnrealAutomationReport } from "./unreal-report.ts";
+import {
+  buildUnrealTargetPlan,
+  unrealTargetPlanDigest,
+  type UnrealTargetPlan,
+} from "./unreal-target.ts";
+import {
+  createUnrealMigrationReport,
+  semanticUnrealPlanDiff,
+} from "./unreal-dialect.ts";
+import { applyUnrealConfigToProject } from "./unreal-config.ts";
+import { validateUnrealTargetProfile } from "./unreal-target.ts";
+import { createUnrealBuildEvidence } from "./unreal-build-evidence.ts";
+import { normalizeUnrealDiagnostics } from "./unreal-diagnostics.ts";
+import { generateUnrealReflection } from "./unreal-uht.ts";
 import type { SimulationRequest, TestManifest } from "./model.ts";
 
 const args = process.argv.slice(2);
@@ -94,9 +108,13 @@ async function main(argv: string[]): Promise<void> {
     }
     const outDir = option(argv, "--out-dir") ?? `generated/batch/${target}`;
     const sources = operandsAfter(argv, 2);
+    const profilePath = option(argv, "--profile");
     const manifest = await generateBatch(sources, outDir, target, {
       layout: argv.includes("--flat") ? "flat" : "operation-directories",
       force: argv.includes("--force"),
+      unrealProfile: profilePath
+        ? validateUnrealTargetProfile(JSON.parse(await readFile(profilePath, "utf8")))
+        : undefined,
     });
     console.log(`Generated ${manifest.operations.length} operation(s) in ${resolve(outDir)}`);
     return;
@@ -142,6 +160,123 @@ async function main(argv: string[]): Promise<void> {
       console.log(report.ok ? "Project is ready." : "Project is not ready.");
     }
     if (!report.ok) process.exitCode = 1;
+    return;
+  }
+
+  if (command === "unreal" && subcommand === "plan") {
+    const sourcePath = required(argv[2], "CRDD Markdown file");
+    const profilePath = option(argv, "--profile");
+    if (!profilePath) throw new Error("Missing --profile <unreal-target-profile.json>");
+    const profile = JSON.parse(await readFile(profilePath, "utf8"));
+    const compilation = await compileMarkdown(sourcePath);
+    const plan = buildUnrealTargetPlan(compilation.ir, compilation.digest, profile);
+    const out = option(argv, "--out");
+    if (out) {
+      await writeJson(out, plan);
+      console.log(`Generated ${out}`);
+    } else {
+      console.log(JSON.stringify(plan, null, 2));
+    }
+    console.error(`Unreal Target Plan SHA-256 ${unrealTargetPlanDigest(plan)}`);
+    return;
+  }
+
+  if (command === "unreal" && subcommand === "migration") {
+    const from = option(argv, "--from");
+    const to = option(argv, "--to");
+    if (!from || !to) throw new Error("Missing --from <dialect> or --to <dialect>");
+    console.log(JSON.stringify(createUnrealMigrationReport(from, to), null, 2));
+    return;
+  }
+
+  if (command === "unreal" && subcommand === "diff") {
+    const beforePath = required(argv[2], "before Unreal Target Plan");
+    const afterPath = required(argv[3], "after Unreal Target Plan");
+    const before = JSON.parse(await readFile(beforePath, "utf8")) as UnrealTargetPlan;
+    const after = JSON.parse(await readFile(afterPath, "utf8")) as UnrealTargetPlan;
+    console.log(JSON.stringify({
+      protocol: "crdd-ir/unreal-semantic-diff-v0.1",
+      changes: semanticUnrealPlanDiff(before, after),
+    }, null, 2));
+    return;
+  }
+
+  if (command === "unreal" && subcommand === "config") {
+    if (argv[2] !== "apply") throw new Error("Expected unreal config apply");
+    const profilePath = required(argv[3], "Unreal Target Profile");
+    const projectRoot = option(argv, "--project-root");
+    if (!projectRoot) throw new Error("Missing --project-root <directory>");
+    const profile = validateUnrealTargetProfile(
+      JSON.parse(await readFile(profilePath, "utf8")),
+    );
+    const edits = await applyUnrealConfigToProject(
+      projectRoot,
+      profile.adapter?.config ?? [],
+      argv.includes("--dry-run"),
+    );
+    console.table(edits.map((edit) => ({ file: edit.file, action: "managed-block-update" })));
+    return;
+  }
+
+  if (command === "unreal" && subcommand === "evidence") {
+    const sourcePath = required(argv[2], "CRDD Markdown file");
+    const profilePath = option(argv, "--profile");
+    const reportPath = option(argv, "--automation-report");
+    const out = option(argv, "--out");
+    if (!profilePath || !reportPath || !out) {
+      throw new Error("unreal evidence requires --profile, --automation-report, and --out");
+    }
+    const compilation = await compileMarkdown(sourcePath);
+    const profile = JSON.parse(await readFile(profilePath, "utf8"));
+    const plan = buildUnrealTargetPlan(compilation.ir, compilation.digest, profile);
+    const execution = parseUnrealAutomationReport(
+      await readFile(reportPath, "utf8"),
+      compilation.ir.operation.id,
+    );
+    const evidence = await createUnrealBuildEvidence(
+      plan,
+      execution,
+      option(argv, "--package-dir"),
+    );
+    await writeJson(out, evidence);
+    if (evidence.stages.automation !== "passed") process.exitCode = 1;
+    console.log(`Generated ${out}`);
+    return;
+  }
+
+  if (command === "unreal" && subcommand === "diagnostics") {
+    const logPath = required(argv[2], "Unreal log file");
+    console.log(JSON.stringify({
+      protocol: "crdd-ir/unreal-diagnostics-v0.1",
+      diagnostics: normalizeUnrealDiagnostics(
+        await readFile(logPath, "utf8"),
+        option(argv, "--source"),
+      ),
+    }, null, 2));
+    return;
+  }
+
+  if (command === "unreal" && subcommand === "generate") {
+    const sourcePath = required(argv[2], "CRDD Markdown file");
+    const profilePath = option(argv, "--profile");
+    const outDir = option(argv, "--out-dir");
+    if (!profilePath || !outDir) {
+      throw new Error("unreal generate requires --profile and --out-dir");
+    }
+    const compilation = await compileMarkdown(sourcePath);
+    const plan = buildUnrealTargetPlan(
+      compilation.ir,
+      compilation.digest,
+      JSON.parse(await readFile(profilePath, "utf8")),
+    );
+    const files = [
+      ...generateUnreal(compilation.ir, {
+        irSha256: compilation.digest,
+        generatorVersion: "0.1.0",
+      }),
+      ...generateUnrealReflection(plan),
+    ];
+    await runGeneration(outDir, files, argv);
     return;
   }
 
@@ -216,6 +351,9 @@ async function main(argv: string[]): Promise<void> {
     const irPath = required(argv[2], "IR file");
     const ir = await loadInput(irPath);
     const outDir = option(argv, "--out-dir") ?? "generated/unreal";
+    console.warn(
+      "Unprofiled Unreal generation is preview-only; use `unreal generate --profile` for distributable builds.",
+    );
     await runGeneration(outDir, generateUnreal(ir), argv);
     return;
   }
@@ -371,6 +509,15 @@ Commands:
   check <spec.md> [--format json]
   project check <crdd-ir.config.json>
   project doctor <crdd-ir.config.json> [--format json]
+  unreal plan <spec.md> --profile <profile.json> [--out <plan.json>]
+  unreal migration --from <dialect> --to <dialect>
+  unreal diff <before-plan.json> <after-plan.json>
+  unreal config apply <profile.json> --project-root <directory> [--dry-run]
+  unreal evidence <spec.md> --profile <profile.json> --automation-report <index.json>
+                  --package-dir <directory> --out <evidence.json>
+  unreal diagnostics <unreal.log> [--source <spec.md>]
+  unreal generate <spec.md> --profile <profile.json> --out-dir <directory>
+                  [--dry-run] [--force]
   lint <ir.json> [--format json]
   simulate <ir.json> --input <input.json>
   test generate <ir.json> [--out <file>]

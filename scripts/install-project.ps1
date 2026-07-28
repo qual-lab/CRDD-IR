@@ -182,6 +182,8 @@ $config = [ordered]@{
             }
             configuration = "Development"
             integrationPlugin = "CRDDIRIntegration"
+            editorProfile = "Config/CRDD/ue-5.8-editor.json"
+            shippingProfile = "Config/CRDD/ue-5.8-shipping.json"
         }
     }
 }
@@ -197,6 +199,16 @@ Install-ManagedBlock "CLAUDE.md" "CLAUDE.md.template"
 Install-ManagedBlock ".github\copilot-instructions.md" "copilot-instructions.md.template"
 
 if (-not [string]::IsNullOrWhiteSpace($UnrealProject)) {
+    Install-ManagedFile (
+        Join-Path $resolvedProjectRoot "Config\CRDD\ue-5.8-editor.json"
+    ) (Get-Content -LiteralPath (
+        Join-Path $installerRoot "templates\unreal\profiles\ue-5.8-editor.json"
+    ) -Raw)
+    Install-ManagedFile (
+        Join-Path $resolvedProjectRoot "Config\CRDD\ue-5.8-shipping.json"
+    ) (Get-Content -LiteralPath (
+        Join-Path $installerRoot "templates\unreal\profiles\ue-5.8-shipping.json"
+    ) -Raw)
     $unrealProjectPath = Join-Path $resolvedProjectRoot $UnrealProject
     if (-not (Test-Path -LiteralPath $unrealProjectPath -PathType Leaf)) {
         throw "Unreal project not found: $unrealProjectPath"

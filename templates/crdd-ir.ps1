@@ -54,6 +54,9 @@ $assetSource = Join-Path $projectRoot $assetSourceValue
 $generatedSource = Join-Path $projectRoot $config.generatedSource
 $generatedAssets = Join-Path $projectRoot $config.generatedAssets
 $evidence = Join-Path $projectRoot $config.evidence
+$editorProfile = if ($null -ne $config.unreal) {
+    Join-Path $projectRoot $config.unreal.editorProfile
+}
 
 foreach ($requiredPath in @($cli) + $sources) {
     if (-not (Test-Path -LiteralPath $requiredPath)) {
@@ -82,11 +85,14 @@ function Invoke-Generate {
         Invoke-CrddIr @("check", $source)
     }
     if ($sources.Count -eq 1) {
-        Invoke-CrddIr @("generate", "unreal", $sources[0], "--out-dir", $generatedSource)
+        Invoke-CrddIr @(
+            "unreal", "generate", $sources[0], "--profile", $editorProfile,
+            "--out-dir", $generatedSource
+        )
     }
     else {
         Invoke-CrddIr (@("batch", "unreal") + $sources + @(
-            "--out-dir", $generatedSource, "--flat"
+            "--out-dir", $generatedSource, "--flat", "--profile", $editorProfile
         ))
     }
     Invoke-CrddIr @("generate", "assets", $assetSource, "--out-dir", $generatedAssets)

@@ -65,3 +65,39 @@ test("loads runtime assets through Unreal Asset Manager", async () => {
   assert.match(loader, /TWeakObjectPtr<UObject>/);
   assert.match(loader, /check\(IsInGameThread\(\)\)/);
 });
+
+test("version-gates stale async results and persists payloads atomically", async () => {
+  const asyncRuntime = await readFile(
+    fileURLToPath(new URL("Source/CRDDIRRuntime/Private/CRDDIRAsync.cpp", pluginRoot)),
+    "utf8",
+  );
+  assert.match(asyncRuntime, /RunAsyncVersioned/);
+  assert.match(asyncRuntime, /Revision/);
+  assert.match(asyncRuntime, /TRACE_CPUPROFILER_EVENT_SCOPE/);
+
+  const serialization = await readFile(
+    fileURLToPath(new URL(
+      "Source/CRDDIRRuntime/Private/CRDDIRSerialization.cpp",
+      pluginRoot,
+    )),
+    "utf8",
+  );
+  assert.match(serialization, /FCRDDIRRuntime::RunAsync/);
+  assert.match(serialization, /MaxPayloadBytes/);
+  assert.match(serialization, /const FString Temporary/);
+  assert.match(serialization, /IFileManager::Get\(\)\.Move/);
+  assert.match(asyncRuntime, /ENamedThreads::GameThread/);
+});
+
+test("keeps domain state authoritative over Actor projection", async () => {
+  const projection = await readFile(
+    fileURLToPath(new URL(
+      "Source/CRDDIRRuntime/Public/CRDDIRWorldProjection.h",
+      pluginRoot,
+    )),
+    "utf8",
+  );
+  assert.match(projection, /Actors are never authoritative/);
+  assert.match(projection, /ECRDDIRProjectionChange::Update/);
+  assert.match(projection, /virtual void Apply/);
+});
