@@ -22,31 +22,27 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 )
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-    FCrddWallPreviewLevelTest,
-    "CRDD.Assets.WallPreviewLevel",
+    FCrddGeneratedPreviewLevelsTest,
+    "CRDD.Assets.GeneratedPreviewLevels",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter
 )
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-    FCrddWallPreviewAssetTest,
-    "CRDD.Assets.WallPreview",
-    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter
-)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-    FCrddDoorPreviewLevelTest,
-    "CRDD.Assets.DoorPreviewLevel",
-    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter
-)
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-    FCrddDoorPreviewAssetTest,
-    "CRDD.Assets.DoorPreview",
+    FCrddGeneratedMeshesTest,
+    "CRDD.Assets.GeneratedMeshes",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter
 )
 
 namespace
 {
+struct FCrddAssetExpectation
+{
+    FString Id;
+    FString Destination;
+    FString PreviewLevel;
+    FVector DimensionsCm;
+};
+
 bool ReadBundle(
     FAutomationTestBase& Test,
     TSharedPtr<FJsonObject>& OutBundle
@@ -74,6 +70,52 @@ bool ReadBundle(
     }
 
     return true;
+}
+
+bool ReadAssetManifest(
+    FAutomationTestBase& Test,
+    TArray<FCrddAssetExpectation>& OutAssets
+)
+{
+    const FString ManifestPath = FPaths::ConvertRelativePathToFull(
+        FPaths::Combine(FPaths::ProjectDir(), TEXT("../../../generated/assets/assets.manifest.json"))
+    );
+    FString Source;
+    if (!FFileHelper::LoadFileToString(Source, *ManifestPath))
+    {
+        Test.AddError(FString::Printf(TEXT("Cannot read asset manifest: %s"), *ManifestPath));
+        return false;
+    }
+
+    TSharedPtr<FJsonObject> Manifest;
+    const TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(Source);
+    if (!FJsonSerializer::Deserialize(Reader, Manifest) || !Manifest.IsValid())
+    {
+        Test.AddError(FString::Printf(TEXT("Invalid asset manifest JSON: %s"), *ManifestPath));
+        return false;
+    }
+    if (Manifest->GetStringField(TEXT("protocol")) != TEXT("crdd-ir/assets-v0.1"))
+    {
+        Test.AddError(TEXT("Unsupported asset manifest protocol"));
+        return false;
+    }
+
+    for (const TSharedPtr<FJsonValue>& Value : Manifest->GetArrayField(TEXT("assets")))
+    {
+        const TSharedPtr<FJsonObject> Asset = Value->AsObject();
+        const TSharedPtr<FJsonObject> Dimensions = Asset->GetObjectField(TEXT("dimensionsCm"));
+        OutAssets.Add({
+            Asset->GetStringField(TEXT("id")),
+            Asset->GetStringField(TEXT("unrealDestination")),
+            Asset->GetStringField(TEXT("previewLevel")),
+            FVector(
+                Dimensions->GetNumberField(TEXT("length")),
+                Dimensions->GetNumberField(TEXT("width")),
+                Dimensions->GetNumberField(TEXT("height"))
+            )
+        });
+    }
+    return Test.TestTrue(TEXT("Asset manifest contains assets"), OutAssets.Num() > 0);
 }
 
 FCrddPlaceWallState ReadState(const TSharedPtr<FJsonObject>& StateObject)
@@ -203,113 +245,83 @@ bool FCrddPlaceWallConformanceTest::RunTest(const FString& Parameters)
     return true;
 }
 
-bool FCrddWallPreviewAssetTest::RunTest(const FString& Parameters)
+bool FCrddGeneratedMeshesTest::RunTest(const FString& Parameters)
 {
-    const UStaticMesh* Mesh = LoadObject<UStaticMesh>(
-        nullptr,
-        TEXT("/Game/CRDD/Generated/WallPreview.WallPreview")
-    );
-    if (!TestNotNull(TEXT("Generated WallPreview StaticMesh exists"), Mesh))
+    TArray<FCrddAssetExpectation> Assets;
+    if (!ReadAssetManifest(*this, Assets))
     {
         return false;
     }
 
-    const FVector Size = Mesh->GetBoundingBox().GetSize();
-    TestTrue(TEXT("WallPreview length is 100cm"), FMath::IsNearlyEqual(Size.X, 100.0, 0.1));
-    TestTrue(TEXT("WallPreview width is 20cm"), FMath::IsNearlyEqual(Size.Y, 20.0, 0.1));
-    TestTrue(TEXT("WallPreview height is 240cm"), FMath::IsNearlyEqual(Size.Z, 240.0, 0.1));
-    return true;
-}
-
-bool FCrddWallPreviewLevelTest::RunTest(const FString& Parameters)
-{
-    FAutomationEditorCommonUtils::LoadMap(TEXT("/Game/CRDD/Generated/WallPreviewLevel"));
-    UWorld* World = GEditor ? GEditor->GetEditorWorldContext().World() : nullptr;
-    if (!TestNotNull(TEXT("Generated WallPreview level loads"), World))
+    for (const FCrddAssetExpectation& Asset : Assets)
     {
-        return false;
-    }
-
-    bool bFoundPlacedWall = false;
-    for (TActorIterator<AActor> It(World); It; ++It)
-    {
-        const AActor* Actor = *It;
-        if (!Actor || Actor->GetActorLabel() != TEXT("CRDD_WallPreview"))
+        const FString ObjectPath = FString::Printf(
+            TEXT("%s/%s.%s"), *Asset.Destination, *Asset.Id, *Asset.Id
+        );
+        const UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, *ObjectPath);
+        if (!TestNotNull(*FString::Printf(TEXT("%s StaticMesh exists"), *Asset.Id), Mesh))
         {
             continue;
         }
 
-        const UStaticMeshComponent* Component =
-            Actor->FindComponentByClass<UStaticMeshComponent>();
-        const UStaticMesh* Mesh = Component ? Component->GetStaticMesh() : nullptr;
-        bFoundPlacedWall = true;
+        const FVector Size = Mesh->GetBoundingBox().GetSize();
         TestTrue(
-            TEXT("Placed actor references generated WallPreview"),
-            Mesh && Mesh->GetPathName() == TEXT("/Game/CRDD/Generated/WallPreview.WallPreview")
+            *FString::Printf(TEXT("%s dimensions match manifest"), *Asset.Id),
+            Size.Equals(Asset.DimensionsCm, 0.1)
         );
-        TestTrue(
-            TEXT("Placed actor is at the origin"),
-            Actor->GetActorLocation().Equals(FVector::ZeroVector, 0.01)
-        );
-        break;
     }
-
-    TestTrue(TEXT("Generated level contains CRDD_WallPreview"), bFoundPlacedWall);
     return true;
 }
 
-bool FCrddDoorPreviewAssetTest::RunTest(const FString& Parameters)
+bool FCrddGeneratedPreviewLevelsTest::RunTest(const FString& Parameters)
 {
-    const UStaticMesh* Mesh = LoadObject<UStaticMesh>(
-        nullptr,
-        TEXT("/Game/CRDD/Generated/DoorPreview.DoorPreview")
-    );
-    if (!TestNotNull(TEXT("Generated DoorPreview StaticMesh exists"), Mesh))
+    TArray<FCrddAssetExpectation> Assets;
+    if (!ReadAssetManifest(*this, Assets))
     {
         return false;
     }
 
-    const FVector Size = Mesh->GetBoundingBox().GetSize();
-    TestTrue(TEXT("DoorPreview length is 90cm"), FMath::IsNearlyEqual(Size.X, 90.0, 0.1));
-    TestTrue(TEXT("DoorPreview width is 10cm"), FMath::IsNearlyEqual(Size.Y, 10.0, 0.1));
-    TestTrue(TEXT("DoorPreview height is 200cm"), FMath::IsNearlyEqual(Size.Z, 200.0, 0.1));
-    return true;
-}
-
-bool FCrddDoorPreviewLevelTest::RunTest(const FString& Parameters)
-{
-    FAutomationEditorCommonUtils::LoadMap(TEXT("/Game/CRDD/Generated/DoorPreviewLevel"));
-    UWorld* World = GEditor ? GEditor->GetEditorWorldContext().World() : nullptr;
-    if (!TestNotNull(TEXT("Generated DoorPreview level loads"), World))
+    for (const FCrddAssetExpectation& Asset : Assets)
     {
-        return false;
-    }
-
-    bool bFoundPlacedDoor = false;
-    for (TActorIterator<AActor> It(World); It; ++It)
-    {
-        const AActor* Actor = *It;
-        if (!Actor || Actor->GetActorLabel() != TEXT("CRDD_DoorPreview"))
+        FAutomationEditorCommonUtils::LoadMap(Asset.PreviewLevel);
+        UWorld* World = GEditor ? GEditor->GetEditorWorldContext().World() : nullptr;
+        if (!TestNotNull(*FString::Printf(TEXT("%s level loads"), *Asset.Id), World))
         {
             continue;
         }
 
-        const UStaticMeshComponent* Component =
-            Actor->FindComponentByClass<UStaticMeshComponent>();
-        const UStaticMesh* Mesh = Component ? Component->GetStaticMesh() : nullptr;
-        bFoundPlacedDoor = true;
-        TestTrue(
-            TEXT("Placed actor references generated DoorPreview"),
-            Mesh && Mesh->GetPathName() == TEXT("/Game/CRDD/Generated/DoorPreview.DoorPreview")
+        const FString ExpectedLabel = FString::Printf(TEXT("CRDD_%s"), *Asset.Id);
+        const FString ExpectedMesh = FString::Printf(
+            TEXT("%s/%s.%s"), *Asset.Destination, *Asset.Id, *Asset.Id
         );
-        TestTrue(
-            TEXT("Placed actor is at the origin"),
-            Actor->GetActorLocation().Equals(FVector::ZeroVector, 0.01)
-        );
-        break;
-    }
+        bool bFoundPlacedAsset = false;
+        for (TActorIterator<AActor> It(World); It; ++It)
+        {
+            const AActor* Actor = *It;
+            if (!Actor || Actor->GetActorLabel() != ExpectedLabel)
+            {
+                continue;
+            }
 
-    TestTrue(TEXT("Generated level contains CRDD_DoorPreview"), bFoundPlacedDoor);
+            const UStaticMeshComponent* Component =
+                Actor->FindComponentByClass<UStaticMeshComponent>();
+            const UStaticMesh* Mesh = Component ? Component->GetStaticMesh() : nullptr;
+            bFoundPlacedAsset = true;
+            TestTrue(
+                *FString::Printf(TEXT("%s actor references generated mesh"), *Asset.Id),
+                Mesh && Mesh->GetPathName() == ExpectedMesh
+            );
+            TestTrue(
+                *FString::Printf(TEXT("%s actor is at the origin"), *Asset.Id),
+                Actor->GetActorLocation().Equals(FVector::ZeroVector, 0.01)
+            );
+            break;
+        }
+        TestTrue(
+            *FString::Printf(TEXT("%s level contains generated actor"), *Asset.Id),
+            bFoundPlacedAsset
+        );
+    }
     return true;
 }
 
