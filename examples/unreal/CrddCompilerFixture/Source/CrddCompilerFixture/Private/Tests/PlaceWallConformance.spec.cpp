@@ -1,6 +1,6 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
-#include "PlaceWallDomain.h"
+#include "Generated/PlaceWall.generated.h"
 
 #include "Dom/JsonObject.h"
 #include "HAL/FileManager.h"
@@ -133,9 +133,11 @@ bool FCrddPlaceWallConformanceTest::RunTest(const FString& Parameters)
         const TSharedPtr<FJsonObject> Input = Request->GetObjectField(TEXT("input"));
         const TSharedPtr<FJsonObject> Expected = Case->GetObjectField(TEXT("expected"));
 
+        FCrddPlaceWallInput OperationInput;
+        OperationInput.LengthMeters = Input->GetNumberField(TEXT("length"));
+        OperationInput.CostJPY = static_cast<int64>(Input->GetNumberField(TEXT("cost")));
         const FCrddPlaceWallResult Actual = FCrddPlaceWallOperation::Execute(
-            Input->GetNumberField(TEXT("length")),
-            static_cast<int64>(Input->GetNumberField(TEXT("cost"))),
+            OperationInput,
             ReadState(Request->GetObjectField(TEXT("state")))
         );
 

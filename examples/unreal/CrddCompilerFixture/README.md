@@ -1,11 +1,20 @@
 # CRDD Compiler Unreal Fixture
 
-UE 5.8上の`PlaceWall` C++実装へ、CRDD Compilerが生成したConformance Bundleを適用する最小検証Project。
+UE 5.8上で、CRDD Markdownから生成した`PlaceWall` C++実装へConformance Bundleを適用する最小検証Project。
 
 ## Inputs
 
+- `../../../examples/place-wall/05_SPEC/01_Behavior_Specification.md`
 - `../../../generated/place-wall.conformance.json`
 - Protocol: `crdd-ir/conformance-v0.1`
+
+## Generate
+
+```powershell
+node src/cli.ts generate unreal `
+  examples/place-wall/05_SPEC/01_Behavior_Specification.md `
+  --out-dir examples/unreal/CrddCompilerFixture/Source/CrddCompilerFixture/Generated
+```
 
 ## Build
 

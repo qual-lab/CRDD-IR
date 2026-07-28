@@ -142,12 +142,16 @@ for (const [defect, adapter, expectedMessage] of [
   });
 }
 
-test("Unreal skeleton carries CRDD trace IDs and extension points", () => {
+test("Unreal implementation carries contracts, effects, and CRDD trace IDs", () => {
   const generated = generateUnreal(ir);
   const combined = generated.map((file) => file.content).join("\n");
   assert.match(combined, /CRDD-TRACE: REQ-WALL-001/);
-  assert.match(combined, /CRDD-EXTENSION-POINT/);
   assert.match(combined, /WALL_TOO_SHORT/);
+  assert.match(combined, /Input\.LengthMeters >= 0\.3/);
+  assert.match(combined, /Result\.State\.Walls\.Add/);
+  assert.match(combined, /Result\.State\.BudgetRemainingJPY - Input\.CostJPY/);
+  assert.equal(generated.length, 2);
+  assert.ok(generated.every((file) => /^[a-f0-9]{64}$/.test(file.sha256)));
 });
 
 test("reports a requirement that references an undeclared error", () => {

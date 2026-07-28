@@ -7,6 +7,7 @@ import { generateConformanceBundle } from "../src/conformance.ts";
 import { normalizeSourceExpression, parseSourceExpression } from "../src/source-expression.ts";
 import { extractContractFences } from "../src/source-contract.ts";
 import { generateTestManifest } from "../src/test-manifest.ts";
+import { generateUnreal } from "../src/unreal.ts";
 import type { CrddIr, FieldDefinition } from "../src/model.ts";
 
 const sourcePath = new URL(
@@ -88,4 +89,11 @@ test("produces the same conformance semantics from Markdown and legacy IR", asyn
     generateConformanceBundle(compiled.ir, generateTestManifest(compiled.ir)),
     generateConformanceBundle(legacy, generateTestManifest(legacy)),
   );
+});
+
+test("produces byte-identical Unreal C++ from the same CRDD source", async () => {
+  const first = generateUnreal((await compileMarkdown(fileURLToPath(sourcePath))).ir);
+  const second = generateUnreal((await compileMarkdown(fileURLToPath(sourcePath))).ir);
+  assert.deepEqual(first, second);
+  assert.ok(first.some((file) => file.content.includes("Result.State.Walls.Add")));
 });
