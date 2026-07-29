@@ -26,8 +26,8 @@
   "hashes": {
     "irSha256": "958fe9983be73621981e4aada20961d69c42b7d79ed5d8e199338d819d181b26",
     "targetPlanSha256": "3efa4d88d4c2295f27e690c6768dc6f2d783d5c3e5b6154a0516269cccaf099d",
-    "packageSha256": "12d057374d1c7a8451734b8bd38844e76429b8cbc29b36d67ef133b4104e34b7",
-    "identitySha256": "4bd1529586057d436b086f571e8f1346867f2dc68f8b698d1cd142391c95a40e"
+    "packageSha256": "eb23a6e7ae46fad43d804ce6d51e4e9afe020d7cf7b48e5db58f3d7638b227b3",
+    "identitySha256": "ced1fc08f42d5f78a9487cd3560a2a9ab81c9d7ac232621135f0926f31ec5ed4"
   },
   "stages": {
     "uht": "not-required",
@@ -42,6 +42,14 @@
     "notRun": 0,
     "warnings": 0,
     "errors": 0
+  },
+  "verificationLock": {
+    "runId": "66bc38e6ddce4d56b080279ef0030dde",
+    "project": "c:/project/crdd-ir/examples/unreal/crddcompilerfixture/crddcompilerfixture.uproject",
+    "status": "acquired",
+    "waitMilliseconds": 1,
+    "recoveredAbandoned": false,
+    "acquiredAt": "2026-07-29T02:50:28.5155988Z"
   },
   "packageFiles": [
     {
@@ -78,15 +86,15 @@
     },
     {
       "path": "Windows/CrddCompilerFixture/Content/Paks/CrddCompilerFixture-Windows.pak",
-      "sha256": "eef730793e82f55ce6133bd6b44529de8eba6f297643cf847e853a91c130f0a4"
+      "sha256": "7467c6840a7775a97cb4ce3f03a1bd681e6badd2b5403f0ab5639409ed2a2362"
     },
     {
       "path": "Windows/CrddCompilerFixture/Content/Paks/CrddCompilerFixture-Windows.ucas",
-      "sha256": "7e91b9f0466c5026b48efd4799665e7e353591b5b5b478bccd57ece9dc03c53a"
+      "sha256": "666d0bbc4dddeddab7a61df67bd4f51938d1e56c37b2525df4f79f9eb90e7d05"
     },
     {
       "path": "Windows/CrddCompilerFixture/Content/Paks/CrddCompilerFixture-Windows.utoc",
-      "sha256": "9da44e452c9aa2316decee53f3d2d850c856d9df699766fb1e94ab33d30afe55"
+      "sha256": "c419ece86e012316950739273d46219587b1223f3a39e721efdb1fe6a9a4df2f"
     },
     {
       "path": "Windows/CrddCompilerFixture/Content/Paks/global.ucas",
@@ -154,11 +162,11 @@
     },
     {
       "path": "Windows/Manifest_NonUFSFiles_Win64.txt",
-      "sha256": "ead580a730343c35bc449d85ce39bbb543dab85e4391a1885535d1361fa69745"
+      "sha256": "262985b77052828b79117bf6a0268f4dd559325471c6cea042ce26203f02c197"
     },
     {
       "path": "Windows/Manifest_UFSFiles_Win64.txt",
-      "sha256": "4ee8c36437a60208adf6e47dae96179c8b141eb6083798544042566929ace2e7"
+      "sha256": "c29d4f71ef615e5bb8dab545656ddb3af4272852d1440c38c13d905b9093d579"
     },
     {
       "path": "Windows/NOTICES.txt",

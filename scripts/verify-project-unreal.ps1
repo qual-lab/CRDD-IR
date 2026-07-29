@@ -33,6 +33,7 @@ $verifyLock = Enter-CrddVerifyLock `
     -ProjectPath $project `
     -MetadataRoot $resolvedProjectRoot `
     -TimeoutSeconds $LockTimeoutSeconds
+$verifySucceeded = $false
 try {
 $engineRoot = [System.IO.Path]::GetFullPath($config.unreal.engineRoot)
 $buildTool = Join-Path $engineRoot "Engine\Build\BatchFiles\Build.bat"
@@ -194,6 +195,8 @@ foreach ($source in $sources) {
         --profile $shippingProfile `
         --automation-report $reportPath `
         --package-dir $packageDir `
+        --verify-events $verifyLock.EventPath `
+        --verify-run-id $verifyLock.Id `
         --out (Join-Path $evidence "$operationId\unreal-build-evidence.json")
     Assert-ExitCode "Normalized Unreal build evidence for $operationId"
 }
@@ -201,7 +204,10 @@ foreach ($source in $sources) {
 Write-Host "CRDD Unreal project verification succeeded."
 Write-Host "Report: $reportPath"
 Write-Host "Shipping package: $packageDir"
+$verifySucceeded = $true
 }
 finally {
-    Exit-CrddVerifyLock -Lock $verifyLock
+    Exit-CrddVerifyLock `
+        -Lock $verifyLock `
+        -Outcome $(if ($verifySucceeded) { "succeeded" } else { "failed" })
 }

@@ -1,6 +1,6 @@
 {
   "name": "crdd-ir",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "bin": {
@@ -11,6 +11,7 @@
     "schemas",
     "scripts",
     "templates",
+    "docs",
     "README.md"
   ],
   "scripts": {

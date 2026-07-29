@@ -29,7 +29,10 @@ import {
 } from "./unreal-dialect.ts";
 import { applyUnrealConfigToProject } from "./unreal-config.ts";
 import { validateUnrealTargetProfile } from "./unreal-target.ts";
-import { createUnrealBuildEvidence } from "./unreal-build-evidence.ts";
+import {
+  createUnrealBuildEvidence,
+  loadVerificationLockEvidence,
+} from "./unreal-build-evidence.ts";
 import { normalizeUnrealDiagnostics } from "./unreal-diagnostics.ts";
 import { generateUnrealReflection } from "./unreal-uht.ts";
 import type { SimulationRequest, TestManifest } from "./model.ts";
@@ -233,10 +236,21 @@ async function main(argv: string[]): Promise<void> {
       await readFile(reportPath, "utf8"),
       compilation.ir.operation.id,
     );
+    const verifyEventsPath = option(argv, "--verify-events");
+    const verifyRunId = option(argv, "--verify-run-id");
+    if ((verifyEventsPath && !verifyRunId) || (!verifyEventsPath && verifyRunId)) {
+      throw new Error("--verify-events and --verify-run-id must be provided together");
+    }
     const evidence = await createUnrealBuildEvidence(
       plan,
       execution,
       option(argv, "--package-dir"),
+      verifyEventsPath && verifyRunId
+        ? await loadVerificationLockEvidence(
+          verifyEventsPath,
+          verifyRunId,
+        )
+        : undefined,
     );
     await writeJson(out, evidence);
     if (evidence.stages.automation !== "passed") process.exitCode = 1;
@@ -515,7 +529,8 @@ Commands:
   unreal diff <before-plan.json> <after-plan.json>
   unreal config apply <profile.json> --project-root <directory> [--dry-run]
   unreal evidence <spec.md> --profile <profile.json> --automation-report <index.json>
-                  --package-dir <directory> --out <evidence.json>
+                  --package-dir <directory> [--verify-events <events.jsonl>
+                  --verify-run-id <id>] --out <evidence.json>
   unreal diagnostics <unreal.log> [--source <spec.md>]
   unreal generate <spec.md> --profile <profile.json> --out-dir <directory>
                   [--dry-run] [--force]

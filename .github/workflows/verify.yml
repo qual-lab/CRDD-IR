@@ -35,3 +35,4 @@ jobs:
           path: |
             examples/create-entity/07_Quality/CRDD_IR
             .crdd-ir/reports
+            .crdd-ir/verify-events.jsonl
