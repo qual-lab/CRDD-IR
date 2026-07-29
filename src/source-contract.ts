@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { LineCounter, parseDocument } from "yaml";
 import { DiagnosticError } from "./diagnostics.ts";
-import type { Diagnostic, Effect, FieldDefinition, IrExtension } from "./model.ts";
+import type { Diagnostic, Effect, FieldDefinition, IrExtension, PortableRule } from "./model.ts";
 
 export type SourceRequirement = {
   id: string;
@@ -19,6 +19,7 @@ export type SourceContract = {
     state: Record<string, FieldDefinition>;
     output?: FieldDefinition;
     requires: SourceRequirement[];
+    portable_rules?: PortableRule[];
     effects: Effect[];
     errors: Array<{ code: string; traces: string[] }>;
     transaction?: {
@@ -145,7 +146,7 @@ function validateSourceContract(
   rejectUnknown(
     operation,
     ["id", "kind", "traces", "input", "state", "output", "requires", "effects", "errors",
-      "extensions", "transaction", "execution", "emits"],
+      "extensions", "transaction", "execution", "emits", "portable_rules"],
     "$.operation",
     add,
   );
@@ -159,6 +160,10 @@ function validateSourceContract(
   requireArray(operation.requires, "$.operation.requires", add, true);
   requireArray(operation.effects, "$.operation.effects", add, operation.kind === "query");
   requireArray(operation.errors, "$.operation.errors", add, true);
+  if (operation.portable_rules !== undefined) {
+    requireArray(operation.portable_rules, "$.operation.portable_rules", add, true);
+    validatePortableRules(operation.portable_rules, add);
+  }
   if (operation.extensions !== undefined && !isRecord(operation.extensions)) {
     add("CRDD_SOURCE_TYPE", "$.operation.extensions", "must be an object");
   }
@@ -263,6 +268,56 @@ function validateSourceContract(
     }
   }
   return diagnostics;
+}
+
+function validatePortableRules(value: unknown, add: AddDiagnostic): void {
+  if (!Array.isArray(value)) return;
+  const shapes: Record<string, string[]> = {
+    "collection.unique": ["kind", "id", "error", "collection", "key"],
+    "collection.reference": [
+      "kind", "id", "error", "collection", "reference", "target", "targetKey", "targetType",
+    ],
+    "collection.membership": [
+      "kind", "id", "error", "collection", "parentReference", "parents", "parentKey",
+    ],
+    "collection.relation": [
+      "kind", "id", "error", "collection", "from", "to", "elements", "elementKey",
+      "fromType", "toType",
+    ],
+    "collection.not-contains": ["kind", "id", "error", "value", "collection", "targetKey"],
+    "collection.prospective-unique": [
+      "kind", "id", "error", "candidates", "candidateKey", "existing", "existingKey",
+    ],
+    "opaque.integrity": ["kind", "id", "error", "target"],
+    "opaque.immutable-when-inactive": ["kind", "id", "error", "current", "proposed"],
+    "opaque.reject-edit-when-inactive": ["kind", "id", "error", "current", "intent"],
+  };
+  value.forEach((rule, index) => {
+    const path = `$.operation.portable_rules[${index}]`;
+    if (!isRecord(rule)) {
+      add("CRDD_SOURCE_TYPE", path, "must be an object");
+      return;
+    }
+    const allowed = shapes[String(rule.kind)];
+    if (!allowed) {
+      add("CRDD_SOURCE_PORTABLE_RULE", `${path}.kind`, "uses an unsupported portable rule kind");
+      return;
+    }
+    rejectUnknown(rule, allowed, path, add);
+    for (const key of allowed.filter((key) => !["targetType", "fromType", "toType"].includes(key))) {
+      requireString(rule[key], `${path}.${key}`, add);
+    }
+    for (const key of ["targetType", "fromType", "toType"]) {
+      if (rule[key] === undefined) continue;
+      if (!isRecord(rule[key])) {
+        add("CRDD_SOURCE_TYPE", `${path}.${key}`, "must be an object");
+      } else {
+        rejectUnknown(rule[key], ["field", "equals"], `${path}.${key}`, add);
+        requireString(rule[key].field, `${path}.${key}.field`, add);
+        requireString(rule[key].equals, `${path}.${key}.equals`, add);
+      }
+    }
+  });
 }
 
 type AddDiagnostic = (code: string, path: string, message: string) => void;

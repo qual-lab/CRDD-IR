@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://crdd.dev/schema/target-parity/v0.1.json",
-  "title": "CRDD IR Target Parity Report v0.1",
+  "$id": "https://crdd.dev/schema/target-parity/v0.2.json",
+  "title": "CRDD IR Target Parity Report v0.2",
   "type": "object",
   "required": [
     "protocol",
@@ -9,31 +9,35 @@
     "operation",
     "irSha256",
     "conformanceSha256",
+    "portableRulesSha256",
     "targets",
     "numericProjections",
     "checks",
     "equivalent"
   ],
   "properties": {
-    "protocol": { "const": "crdd-ir/target-parity-v0.1" },
+    "protocol": { "const": "crdd-ir/target-parity-v0.2" },
     "requirements": {
-      "const": ["IR-TARGET-001", "IR-PARITY-001"]
+      "type": "array",
+      "contains": { "const": "IR-PARITY-001" }
     },
     "operation": { "type": "string", "minLength": 1 },
     "irSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "conformanceSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "portableRulesSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
     "targets": {
       "type": "array",
       "minItems": 2,
       "maxItems": 2,
       "items": {
         "type": "object",
-        "required": ["id", "profileSha256", "irSha256", "conformanceSha256", "generatedFiles"],
+        "required": ["id", "profileSha256", "irSha256", "conformanceSha256", "portableRulesSha256", "generatedFiles"],
         "properties": {
           "id": { "enum": ["unreal", "unity"] },
           "profileSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
           "irSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
           "conformanceSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "portableRulesSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
           "generatedFiles": {
             "type": "array",
             "minItems": 1,
@@ -71,13 +75,15 @@
         "independentTargetOutputs",
         "sharedSourceIr",
         "sharedConformanceSemantics",
-        "equivalentNumericProjections"
+        "equivalentNumericProjections",
+        "sharedPortableRuleSemantics"
       ],
       "properties": {
         "independentTargetOutputs": { "type": "boolean" },
         "sharedSourceIr": { "type": "boolean" },
         "sharedConformanceSemantics": { "type": "boolean" },
-        "equivalentNumericProjections": { "type": "boolean" }
+        "equivalentNumericProjections": { "type": "boolean" },
+        "sharedPortableRuleSemantics": { "type": "boolean" }
       },
       "additionalProperties": false
     },

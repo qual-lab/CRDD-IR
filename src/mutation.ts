@@ -54,6 +54,11 @@ function createMutants(ir: CrddIr): Mutant[] {
     removed.operation.effects.splice(index, 1);
     mutants.push({ id: `remove-effect:${effect.target}:${index}`, ir: removed });
   });
+  (ir.operation.portableRules ?? []).forEach((rule, index) => {
+    const removed = structuredClone(ir);
+    removed.operation.portableRules!.splice(index, 1);
+    mutants.push({ id: `remove-portable-rule:${rule.id}`, ir: removed });
+  });
   return mutants;
 }
 

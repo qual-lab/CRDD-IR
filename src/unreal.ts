@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
-import type { CrddIr, Effect, FieldDefinition, Operation } from "./model.ts";
+import type { CrddIr, Effect, FieldDefinition, Operation, PortableRule } from "./model.ts";
 import { parseSourceExpression, type ExpressionNode } from "./source-expression.ts";
 import { generateTestManifest } from "./test-manifest.ts";
+import { simulate } from "./simulator.ts";
 import type { UnrealNumericProjection } from "./unreal-target.ts";
 import { generateUnrealBridge } from "./unreal-bridge.ts";
 
@@ -26,6 +27,12 @@ export function generateUnreal(
     { name: `${operationName}.generated.h`, content: generateHeader(operation, metadata) },
     { name: `${operationName}.generated.cpp`, content: generateSource(operation, metadata.numericProjection ?? {}) },
     ...generateUnrealBridge(operation),
+    ...((operation.portableRules?.length ?? 0) > 0
+      ? [{
+          name: `${operationName}Conformance.spec.cpp`,
+          content: generatePortableConformanceFixture(ir, operation),
+        }]
+      : []),
     ...(hasIntegerProjection(operation)
       ? [{
           name: `${operationName}.numeric.generated.spec.cpp`,
@@ -52,9 +59,9 @@ function generateHeader(
   const errorValues = operation.errors
     .map((error) => `    ${pascalCase(error.code)},`)
     .join("\n");
-  const arrayStructs = Object.entries(operation.state)
-    .filter(([, field]) => field.type === "array")
-    .map(([name]) => generateArrayElementStruct(operation, name))
+  const arrayStructs = [...Object.entries(operation.input), ...Object.entries(operation.state)]
+    .filter(([, field]) => field.type === "array" || field.type === "map")
+    .map(([name, field]) => generateCollectionElementStruct(operation, name, field))
     .join("\n");
   const objectStructs = [
     ...Object.entries(operation.input)
@@ -64,12 +71,23 @@ function generateHeader(
       .filter(([, field]) => field.type === "object")
       .map(([name, field]) => generateObjectStruct(operation, "State", name, field)),
   ].join("\n");
+  const opaqueStruct = hasOpaque(operation) ? `struct FCrddOpaqueValue
+{
+    FString Base64;
+    FString Sha256;
+    bool bActive = false;
+};
+` : "";
   const inputFields = Object.entries(operation.input)
     .map(([name, field]) => {
-      const type = field.type === "object"
-        ? objectStructName(operation, "Input", name)
-        : cppType(field);
-      return `    ${type} ${cppField(name, field)} = ${cppDefault(field)};`;
+      const type = field.type === "array"
+        ? `TArray<FCrdd${operationName}${pascalIdentifier(name)}Item>`
+        : field.type === "map"
+          ? `TMap<FString, FCrdd${operationName}${pascalIdentifier(name)}Item>`
+          : field.type === "object"
+            ? objectStructName(operation, "Input", name)
+            : cppType(field);
+      return `    ${type} ${cppField(name, field)}${field.type === "array" || field.type === "map" ? "" : ` = ${cppDefault(field)}`};`;
     })
     .join("\n");
   const stateFields = Object.entries(operation.state)
@@ -77,10 +95,12 @@ function generateHeader(
       const type =
         field.type === "array"
           ? `TArray<FCrdd${operationName}${pascalIdentifier(name)}Item>`
+          : field.type === "map"
+            ? `TMap<FString, FCrdd${operationName}${pascalIdentifier(name)}Item>`
           : field.type === "object"
             ? objectStructName(operation, "State", name)
             : cppType(field);
-      return `    ${type} ${cppField(name, field)}${field.type === "array" ? "" : ` = ${cppDefault(field)}`};`;
+      return `    ${type} ${cppField(name, field)}${field.type === "array" || field.type === "map" ? "" : ` = ${cppDefault(field)}`};`;
     })
     .join("\n");
 
@@ -99,6 +119,7 @@ ${generationIdentity}${numericIdentity ? `${numericIdentity}\n` : ""}${traceComm
 
 #include "CoreMinimal.h"
 
+${opaqueStruct}
 ${arrayStructs}
 ${objectStructs}
 
@@ -193,6 +214,10 @@ ${compiled.statements.map((statement) => `    ${statement}`).join("\n")}${compil
     }`;
     })
     .join("\n\n");
+  const portableChecks = (operation.portableRules ?? [])
+    .map((rule) => cppPortableRule(rule, operation))
+    .join("\n\n");
+  const allChecks = [checks, portableChecks].filter(Boolean).join("\n\n");
 
   const effects = operation.effects.map((effect) => cppEffect(effect, operation)).join("\n");
   const successTraces = operation.traces.map((trace) => `TEXT("${trace}")`).join(", ");
@@ -202,12 +227,92 @@ ${compiled.statements.map((statement) => `    ${statement}`).join("\n")}${compil
         return TEXT("${error.code}");`,
     )
     .join("\n");
+  const opaqueHelpers = hasOpaque(operation) ? `uint32 CrddRotateRight(uint32 Value, uint32 Shift)
+{
+    return (Value >> Shift) | (Value << (32 - Shift));
+}
+
+FString CrddSha256(const TArray<uint8>& Input)
+{
+    static constexpr uint32 K[64] = {
+        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+        0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+        0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+        0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+        0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+        0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+        0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+    };
+    TArray<uint8> Data = Input;
+    const uint64 BitLength = static_cast<uint64>(Data.Num()) * 8;
+    Data.Add(0x80);
+    while ((Data.Num() % 64) != 56) Data.Add(0);
+    for (int32 Shift = 56; Shift >= 0; Shift -= 8) Data.Add(static_cast<uint8>(BitLength >> Shift));
+
+    uint32 H[8] = {
+        0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+        0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
+    };
+    for (int32 Offset = 0; Offset < Data.Num(); Offset += 64)
+    {
+        uint32 W[64] = {};
+        for (int32 Index = 0; Index < 16; ++Index)
+        {
+            const int32 Base = Offset + Index * 4;
+            W[Index] = (static_cast<uint32>(Data[Base]) << 24) |
+                (static_cast<uint32>(Data[Base + 1]) << 16) |
+                (static_cast<uint32>(Data[Base + 2]) << 8) |
+                static_cast<uint32>(Data[Base + 3]);
+        }
+        for (int32 Index = 16; Index < 64; ++Index)
+        {
+            const uint32 S0 = CrddRotateRight(W[Index - 15], 7) ^
+                CrddRotateRight(W[Index - 15], 18) ^ (W[Index - 15] >> 3);
+            const uint32 S1 = CrddRotateRight(W[Index - 2], 17) ^
+                CrddRotateRight(W[Index - 2], 19) ^ (W[Index - 2] >> 10);
+            W[Index] = W[Index - 16] + S0 + W[Index - 7] + S1;
+        }
+        uint32 A = H[0], B = H[1], C = H[2], D = H[3];
+        uint32 E = H[4], F = H[5], G = H[6], HH = H[7];
+        for (int32 Index = 0; Index < 64; ++Index)
+        {
+            const uint32 S1 = CrddRotateRight(E, 6) ^ CrddRotateRight(E, 11) ^ CrddRotateRight(E, 25);
+            const uint32 Choice = (E & F) ^ ((~E) & G);
+            const uint32 Temp1 = HH + S1 + Choice + K[Index] + W[Index];
+            const uint32 S0 = CrddRotateRight(A, 2) ^ CrddRotateRight(A, 13) ^ CrddRotateRight(A, 22);
+            const uint32 Majority = (A & B) ^ (A & C) ^ (B & C);
+            const uint32 Temp2 = S0 + Majority;
+            HH = G; G = F; F = E; E = D + Temp1;
+            D = C; C = B; B = A; A = Temp1 + Temp2;
+        }
+        H[0] += A; H[1] += B; H[2] += C; H[3] += D;
+        H[4] += E; H[5] += F; H[6] += G; H[7] += HH;
+    }
+    FString Result;
+    for (uint32 Part : H) Result += FString::Printf(TEXT("%08x"), Part);
+    return Result;
+}
+
+bool CrddOpaqueValid(const FCrddOpaqueValue& Value)
+{
+    TArray<uint8> Bytes;
+    if (!FBase64::Decode(Value.Base64, Bytes) || FBase64::Encode(Bytes) != Value.Base64)
+    {
+        return false;
+    }
+    return CrddSha256(Bytes) == Value.Sha256;
+}
+` : "";
+  const opaqueIncludes = hasOpaque(operation)
+    ? '#include "Misc/Base64.h"\n'
+    : "";
 
   return `// Generated by crdd-ir. Do not edit.
 ${traces(operation)}
 #include "${operationName}.generated.h"
 
-#include <initializer_list>
+${opaqueIncludes}#include <initializer_list>
 #include <limits>
 
 namespace
@@ -234,7 +339,7 @@ bool CrddTrySubtractInt64(int64 Left, int64 Right, int64& OutValue)
     return true;
 }
 
-FCrdd${operationName}Result Failure(
+${opaqueHelpers}FCrdd${operationName}Result Failure(
     ECrdd${operationName}Error Error,
     const TCHAR* FailedRequirement,
     const FCrdd${operationName}State& InitialState,
@@ -258,7 +363,7 @@ FCrdd${operationName}Result FCrdd${operationName}Operation::Execute(
     const FCrdd${operationName}State& InitialState
 )
 {
-${checks}
+${allChecks}
 
     FCrdd${operationName}Result Result;
     Result.bSucceeded = true;
@@ -301,6 +406,250 @@ FString FCrdd${operationName}Operation::SerializeProjectedInt64(int64 Value)
     return LexToString(Value);
 }
 `;
+}
+
+function cppPortableRule(rule: PortableRule, operation: Operation): string {
+  const operationName = pascalIdentifier(operation.id);
+  const error = operation.errors.find((entry) => entry.code === rule.error);
+  if (!error) throw new Error(`Portable rule "${rule.id}" uses unknown error "${rule.error}"`);
+  const failure = `return Failure(
+            ECrdd${operationName}Error::${pascalCase(rule.error)},
+            TEXT("${rule.id}"),
+            InitialState,
+            {${error.traces.map((trace) => `TEXT("${trace}")`).join(", ")}}
+        );`;
+  const marker = portableSemanticsMarker(rule);
+  if (rule.kind === "opaque.integrity") {
+    return `    // ${rule.id}: ${rule.kind}
+    // CRDD-PORTABLE-SEMANTICS: ${marker}
+    if (!CrddOpaqueValid(${cppPortablePath(rule.target, operation)}))
+    {
+        ${failure}
+    }`;
+  }
+  if (rule.kind === "opaque.immutable-when-inactive") {
+    const current = cppPortablePath(rule.current, operation);
+    const proposed = cppPortablePath(rule.proposed, operation);
+    return `    // ${rule.id}: ${rule.kind}
+    // CRDD-PORTABLE-SEMANTICS: ${marker}
+    if (!CrddOpaqueValid(${current}) || !CrddOpaqueValid(${proposed}) ||
+        (!${current}.bActive &&
+        (${current}.Base64 != ${proposed}.Base64 ||
+         ${current}.Sha256 != ${proposed}.Sha256 ||
+         ${current}.bActive != ${proposed}.bActive)))
+    {
+        ${failure}
+    }`;
+  }
+  if (rule.kind === "opaque.reject-edit-when-inactive") {
+    const current = cppPortablePath(rule.current, operation);
+    const intent = cppPortablePath(rule.intent, operation);
+    return `    // ${rule.id}: ${rule.kind}
+    // CRDD-PORTABLE-SEMANTICS: ${marker}
+    if (!CrddOpaqueValid(${current}) || (!${current}.bActive && ${intent}))
+    {
+        ${failure}
+    }`;
+  }
+  if (rule.kind === "collection.not-contains") {
+    const item = collectionItem(operation, rule.collection);
+    const key = cppField(rule.targetKey, item.properties[rule.targetKey]);
+    const value = cppPortablePath(rule.value, operation);
+    const loop = cppCollectionLoop(rule.collection, operation, "Item");
+    return `    // ${rule.id}: ${rule.kind}
+    // CRDD-PORTABLE-SEMANTICS: ${marker}
+${loop.open}
+        if (Item.${key} == ${value})
+        {
+            ${failure}
+        }
+${loop.close}`;
+  }
+  if (rule.kind === "collection.prospective-unique") {
+    const candidateItem = collectionItem(operation, rule.candidates);
+    const existingItem = collectionItem(operation, rule.existing);
+    const candidateKey = cppField(rule.candidateKey, candidateItem.properties[rule.candidateKey]);
+    const existingKey = cppField(rule.existingKey, existingItem.properties[rule.existingKey]);
+    const candidatesLoop = cppCollectionLoop(rule.candidates, operation, "Candidate");
+    const existingLoop = cppCollectionLoop(rule.existing, operation, "Current", 2);
+    return `    // ${rule.id}: ${rule.kind}
+    // CRDD-PORTABLE-SEMANTICS: ${marker}
+    {
+        TSet<FString> CrddProposed;
+${candidatesLoop.open}
+            const FString CrddKey = LexToString(Candidate.${candidateKey});
+            if (CrddKey.IsEmpty() || CrddProposed.Contains(CrddKey))
+            {
+                ${failure}
+            }
+            CrddProposed.Add(CrddKey);
+${existingLoop.open}
+                if (Current.${existingKey} == Candidate.${candidateKey})
+                {
+                    ${failure}
+                }
+${existingLoop.close}
+${candidatesLoop.close}
+    }`;
+  }
+  const collection = cppPortablePath(rule.collection, operation);
+  const item = collectionItem(operation, rule.collection);
+  const loop = cppCollectionLoop(rule.collection, operation, "Item");
+  if (rule.kind === "collection.unique") {
+    const key = cppField(rule.key, item.properties[rule.key]);
+    return `    // ${rule.id}: ${rule.kind}
+    // CRDD-PORTABLE-SEMANTICS: ${marker}
+    {
+        TSet<FString> CrddSeen;
+${loop.open}
+            const FString CrddKey = LexToString(Item.${key});
+            if (CrddKey.IsEmpty() || CrddSeen.Contains(CrddKey))
+            {
+                ${failure}
+            }
+            CrddSeen.Add(CrddKey);
+${loop.close}
+    }`;
+  }
+  if (rule.kind === "collection.membership") {
+    return cppReferenceRule(rule, collection, item, rule.parentReference,
+      rule.parents, rule.parentKey, undefined, failure, operation);
+  }
+  if (rule.kind === "collection.reference") {
+    return cppReferenceRule(rule, collection, item, rule.reference,
+      rule.target, rule.targetKey, rule.targetType, failure, operation);
+  }
+  const elements = cppPortablePath(rule.elements, operation);
+  const elementItem = collectionItem(operation, rule.elements);
+  const from = cppField(rule.from, item.properties[rule.from]);
+  const to = cppField(rule.to, item.properties[rule.to]);
+  const key = cppField(rule.elementKey, elementItem.properties[rule.elementKey]);
+  const fromType = cppTypePredicate("Element", elementItem, rule.fromType);
+  const toType = cppTypePredicate("Element", elementItem, rule.toType);
+  return `    // ${rule.id}: ${rule.kind}
+    // CRDD-PORTABLE-SEMANTICS: ${marker}
+${cppCollectionLoop(rule.collection, operation, "Relation").open}
+        bool bFromFound = false;
+        bool bToFound = false;
+${cppCollectionLoop(rule.elements, operation, "Element", 2).open}
+            bFromFound = bFromFound || (Element.${key} == Relation.${from}${fromType});
+            bToFound = bToFound || (Element.${key} == Relation.${to}${toType});
+${cppCollectionLoop(rule.elements, operation, "Element", 2).close}
+        if (!bFromFound || !bToFound)
+        {
+            ${failure}
+        }
+${cppCollectionLoop(rule.collection, operation, "Relation").close}`;
+}
+
+function cppReferenceRule(
+  rule: PortableRule,
+  collection: string,
+  item: Extract<FieldDefinition, { type: "object" }>,
+  reference: string,
+  targetPath: string,
+  targetKey: string,
+  type: { field: string; equals: string } | undefined,
+  failure: string,
+  operation: Operation,
+): string {
+  const target = cppPortablePath(targetPath, operation);
+  const targetItem = collectionItem(operation, targetPath);
+  const ref = cppField(reference, item.properties[reference]);
+  const key = cppField(targetKey, targetItem.properties[targetKey]);
+  const predicate = cppTypePredicate("Candidate", targetItem, type);
+  return `    // ${rule.id}: ${rule.kind}
+    // CRDD-PORTABLE-SEMANTICS: ${portableSemanticsMarker(rule)}
+${cppCollectionLoop(ruleCollectionPath(rule, targetPath), operation, "Item").open}
+        bool bCrddFound = false;
+${cppCollectionLoop(targetPath, operation, "Candidate", 2).open}
+            bCrddFound = bCrddFound || (Candidate.${key} == Item.${ref}${predicate});
+${cppCollectionLoop(targetPath, operation, "Candidate", 2).close}
+        if (!bCrddFound)
+        {
+            ${failure}
+        }
+${cppCollectionLoop(ruleCollectionPath(rule, targetPath), operation, "Item").close}`;
+}
+
+function portableSemanticsMarker(rule: PortableRule): string {
+  return Buffer.from(canonicalJson(rule), "utf8").toString("base64");
+}
+
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value as Record<string, unknown>).sort()
+      .map((key) => `${JSON.stringify(key)}:${canonicalJson((value as Record<string, unknown>)[key])}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function ruleCollectionPath(rule: PortableRule, fallback: string): string {
+  return "collection" in rule ? rule.collection : fallback;
+}
+
+function cppTypePredicate(
+  variable: string,
+  item: Extract<FieldDefinition, { type: "object" }>,
+  type?: { field: string; equals: string },
+): string {
+  if (!type) return "";
+  return ` && ${variable}.${cppField(type.field, item.properties[type.field])} == TEXT(${JSON.stringify(type.equals)})`;
+}
+
+function cppPortablePath(path: string, operation: Operation): string {
+  const [scope, name] = path.split(".");
+  const field = (scope === "input" ? operation.input : operation.state)[name];
+  if (!field || path.split(".").length !== 2) {
+    throw new Error(`Portable Unreal paths must address top-level input/state fields: "${path}"`);
+  }
+  return `${scope === "input" ? "Input" : "InitialState"}.${cppField(name, field)}`;
+}
+
+function collectionItem(
+  operation: Operation,
+  path: string,
+): Extract<FieldDefinition, { type: "object" }> {
+  const [scope, name] = path.split(".");
+  const field = (scope === "input" ? operation.input : operation.state)[name];
+  const item = field?.type === "array" ? field.items : field?.type === "map" ? field.values : undefined;
+  if (item?.type !== "object") {
+    throw new Error(`Portable collection "${path}" must be an array or map of objects`);
+  }
+  return item;
+}
+
+function cppCollectionLoop(
+  path: string,
+  operation: Operation,
+  variable: string,
+  indentLevel = 1,
+): { open: string; close: string } {
+  const [scope, name] = path.split(".");
+  const field = (scope === "input" ? operation.input : operation.state)[name];
+  const collection = cppPortablePath(path, operation);
+  const indent = "    ".repeat(indentLevel);
+  if (field?.type === "map") {
+    return {
+      open: `${indent}for (const auto& Crdd${variable}Pair : ${collection})\n${indent}{\n${indent}    const auto& ${variable} = Crdd${variable}Pair.Value;`,
+      close: `${indent}}`,
+    };
+  }
+  return {
+    open: `${indent}for (const auto& ${variable} : ${collection})\n${indent}{`,
+    close: `${indent}}`,
+  };
+}
+
+function hasOpaque(operation: Operation): boolean {
+  const visit = (field: FieldDefinition): boolean =>
+    field.type === "opaque" ||
+    (field.type === "object" && Object.values(field.properties).some(visit)) ||
+    (field.type === "array" && visit(field.items)) ||
+    (field.type === "map" && visit(field.values));
+  return [...Object.values(operation.input), ...Object.values(operation.state)].some(visit);
 }
 
 function hasIntegerProjection(operation: Operation): boolean {
@@ -403,9 +752,140 @@ ${overflowBlock}
     );
     return true;
 }
-
 #endif
 `;
+}
+
+function generatePortableConformanceFixture(ir: CrddIr, operation: Operation): string {
+  const operationName = pascalIdentifier(operation.id);
+  const cases = generateTestManifest(ir).cases.map((testCase, index) => {
+    const expected = simulateForGeneration(ir, testCase.arrange);
+    const inputAssignments = cppFixtureAssignments(
+      testCase.arrange.input,
+      operation.input,
+      "Input",
+      operation,
+    );
+    const stateAssignments = cppFixtureAssignments(
+      testCase.arrange.state,
+      operation.state,
+      "State",
+      operation,
+    );
+    return `    {
+        FCrdd${operationName}Input Input;
+        FCrdd${operationName}State State;
+${[...inputAssignments, ...stateAssignments].map((line) => `        ${line}`).join("\n")}
+        const FCrdd${operationName}Result Result = FCrdd${operationName}Operation::Execute(Input, State);
+        Test${expected.ok ? "True" : "False"}(TEXT("case ${index + 1}: ${testCase.id} success"), Result.bSucceeded);
+        TestEqual(
+            TEXT("case ${index + 1}: ${testCase.id} error"),
+            FCrdd${operationName}Operation::ErrorCode(Result.Error),
+            TEXT("${expected.ok ? "" : escapeCpp(expected.error)}")
+        );
+        if (!Result.bSucceeded)
+        {
+            TestEqual(TEXT("case ${index + 1}: rollback"), Result.FailedRequirement, TEXT("${escapeCpp(expected.ok ? "" : expected.failedRequirement)}"));
+        }
+    }`;
+  }).join("\n\n");
+  return `// Generated by crdd-ir. Do not edit.
+#if WITH_DEV_AUTOMATION_TESTS
+#include "${operationName}.generated.h"
+#include "Misc/AutomationTest.h"
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FCrdd${operationName}PortableConformanceTest,
+    "CRDD.Conformance.${operationName}.Portable",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter
+)
+
+bool FCrdd${operationName}PortableConformanceTest::RunTest(const FString&)
+{
+${cases}
+    return true;
+}
+#endif
+`;
+}
+
+function simulateForGeneration(
+  ir: CrddIr,
+  request: import("./model.ts").SimulationRequest,
+): import("./model.ts").SimulationResult {
+  return simulate(ir, request);
+}
+
+function cppFixtureAssignments(
+  values: Record<string, unknown>,
+  fields: Record<string, FieldDefinition>,
+  root: string,
+  operation: Operation,
+): string[] {
+  return Object.entries(fields).flatMap(([name, field]) =>
+    cppFixtureValue(`${root}.${cppField(name, field)}`, values[name], field, operation)
+  );
+}
+
+function cppFixtureValue(
+  target: string,
+  value: unknown,
+  field: FieldDefinition,
+  operation: Operation,
+): string[] {
+  if (field.type === "object") {
+    const record = value && typeof value === "object" ? value as Record<string, unknown> : {};
+    return Object.entries(field.properties).flatMap(([name, child]) =>
+      cppFixtureValue(`${target}.${cppField(name, child)}`, record[name], child, operation)
+    );
+  }
+  if (field.type === "array") {
+    if (field.items.type !== "object") throw new Error(`Unreal fixture array must contain objects`);
+    return (Array.isArray(value) ? value : []).flatMap((item, index) => {
+      const variable = `CrddItem${fixtureIdentifier(target)}${index}`;
+      return [
+        `auto& ${variable} = ${target}.AddDefaulted_GetRef();`,
+        ...cppFixtureValue(variable, item, field.items, operation),
+      ];
+    });
+  }
+  if (field.type === "map") {
+    if (field.values.type !== "object") throw new Error(`Unreal fixture map must contain objects`);
+    const record = value && typeof value === "object" && !Array.isArray(value)
+      ? value as Record<string, unknown>
+      : {};
+    return Object.keys(record).sort().flatMap((key, index) => {
+      const variable = `CrddMapItem${fixtureIdentifier(target)}${index}`;
+      return [
+        `auto& ${variable} = ${target}.Add(TEXT("${escapeCpp(key)}"));`,
+        ...cppFixtureValue(variable, record[key], field.values, operation),
+      ];
+    });
+  }
+  if (field.type === "opaque") {
+    const opaque = value as Record<string, unknown> | undefined;
+    return [
+      `${target}.Base64 = TEXT("${escapeCpp(String(opaque?.base64 ?? ""))}");`,
+      `${target}.Sha256 = TEXT("${escapeCpp(String(opaque?.sha256 ?? ""))}");`,
+      `${target}.bActive = ${opaque?.active ? "true" : "false"};`,
+    ];
+  }
+  return [`${target} = ${cppLiteral(value, field)};`];
+}
+
+function cppLiteral(value: unknown, field: FieldDefinition): string {
+  if (field.type === "string") return `TEXT("${escapeCpp(String(value ?? ""))}")`;
+  if (field.type === "boolean") return value ? "true" : "false";
+  if (field.type === "number" || field.type === "integer") return String(value ?? 0);
+  throw new Error(`Unsupported Unreal fixture literal "${field.type}"`);
+}
+
+function fixtureIdentifier(value: string): string {
+  return value.replace(/[^A-Za-z0-9]/g, "");
+}
+
+function escapeCpp(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
 function firstCheckedAddition(
@@ -580,11 +1060,19 @@ function cppItemMatch(
     .join(" && ");
 }
 
-function generateArrayElementStruct(operation: Operation, stateName: string): string {
+function generateCollectionElementStruct(
+  operation: Operation,
+  stateName: string,
+  collectionField: FieldDefinition,
+): string {
   const operationName = pascalIdentifier(operation.id);
-  const arrayField = operation.state[stateName];
-  if (arrayField?.type !== "array") throw new Error(`Unreal state "${stateName}" is not an array`);
-  const fields = Object.entries(arrayField.items.properties)
+  const item = collectionField.type === "array"
+    ? collectionField.items
+    : collectionField.type === "map"
+      ? collectionField.values
+      : undefined;
+  if (item?.type !== "object") throw new Error(`Unreal collection "${stateName}" must contain objects`);
+  const fields = Object.entries(item.properties)
     .map(([name, field]) => {
       return `    ${cppType(field)} ${cppField(name, field)} = ${cppDefault(field)};`;
     })
@@ -660,8 +1148,10 @@ function cppType(field: FieldDefinition): string {
   const projected = (field as FieldDefinition & { _crddCppType?: string })._crddCppType;
   if (projected) return projected;
   if (field.type === "number") return "double";
+  if (field.type === "integer") return "int64";
   if (field.type === "boolean") return "bool";
   if (field.type === "string") return "FString";
+  if (field.type === "opaque") return "FCrddOpaqueValue";
   throw new Error(`Unsupported generated field type "${field.type}"`);
 }
 
@@ -674,6 +1164,7 @@ function cppDefault(field: FieldDefinition): string {
   const projected = (field as FieldDefinition & { _crddCppType?: string })._crddCppType;
   if (field.type === "number" && projected?.startsWith("int")) return "0";
   if (field.type === "number") return "0.0";
+  if (field.type === "integer") return "0";
   if (field.type === "boolean") return "false";
   if (field.type === "string") return 'TEXT("")';
   return "{}";
@@ -711,6 +1202,8 @@ function projectNumericTypes(
       Object.values(field.properties).forEach(visit);
     } else if (field.type === "array") {
       visit(field.items);
+    } else if (field.type === "map") {
+      visit(field.values);
     } else if (field.type === "number" && field.unit && projections[field.unit]) {
       (field as FieldDefinition & { _crddCppType?: string })._crddCppType =
         projections[field.unit].cppType;

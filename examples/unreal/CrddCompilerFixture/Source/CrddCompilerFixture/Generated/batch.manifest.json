@@ -27,11 +27,11 @@
         },
         {
           "path": "AppendRecord.generated.h",
-          "sha256": "93093e724c2295454986a605b4df793ea1462f991f7c4a1347f3af760286331c"
+          "sha256": "ffbc85ec6b9935e4599930e56b8a9390840efab99c8f099f4cbcb4074c7b0e62"
         },
         {
           "path": "AppendRecord.numeric.generated.spec.cpp",
-          "sha256": "6a5d47df6251db8929809127896f54dbcde4ad0c3b2484d0044fc0e0c92ea28b"
+          "sha256": "2d560666728133e84a4fcbddb5d0a0b30c2114042999d91dd87b34fb74526f1a"
         }
       ]
     },
@@ -59,7 +59,7 @@
         },
         {
           "path": "ApplyRecord.generated.h",
-          "sha256": "a8984a891fa0ca5f43831e2436381c735c5a129e395a87ff00d73050dae2cf90"
+          "sha256": "d5239f41e487c0fb521de0b0e630f72947bd893565f79ab7f0ed790d71f7cd9d"
         }
       ]
     },
@@ -87,7 +87,39 @@
         },
         {
           "path": "ReviseRecord.generated.h",
-          "sha256": "3bcc15040aeefcfd31f1b4e4a11fce697061bd8693b2adac71ab13de5bb41ade"
+          "sha256": "a0278f5df97cd3b94449586ba3e69cbc10a1adfdac48c8bda38ff859bbc794cc"
+        }
+      ]
+    },
+    {
+      "id": "synchronize-model",
+      "source": "test/fixtures/contracts/portable-contract.md",
+      "digest": "068ec972a1ae9e1058466156af17a9956de4f1ff4552997f045e3445f7b2159c",
+      "outputDirectory": ".",
+      "files": [
+        {
+          "path": "SynchronizeModel.bridge.generated.cpp",
+          "sha256": "75efa31e63099534f32d6f9cadf2eacc6ae71c2631af16c934d437e38780a5dc"
+        },
+        {
+          "path": "SynchronizeModel.bridge.generated.h",
+          "sha256": "176d18aa8a5a0e56e00eca6d6e8f9794ea047eed23ccd8c0cc2cac0f29f51d88"
+        },
+        {
+          "path": "SynchronizeModel.bridge.generated.spec.cpp",
+          "sha256": "4857c019cd0cdfe2226ce972a9fc9a8f050dd7fd8d7764b1b5b0758365dbc3d6"
+        },
+        {
+          "path": "SynchronizeModel.generated.cpp",
+          "sha256": "85f036141fe7690b728a0bd9bf240ab01e0640923aa67177357166981289ff79"
+        },
+        {
+          "path": "SynchronizeModel.generated.h",
+          "sha256": "796a91b0d5b7eb87877483c5dd8d248f8ac98e869686d3597c81e60fba7b2507"
+        },
+        {
+          "path": "SynchronizeModelConformance.spec.cpp",
+          "sha256": "e7675ad775117a1868ea17d41488422b1d23f9f50fbae1bb7941afcb5a5674ed"
         }
       ]
     }

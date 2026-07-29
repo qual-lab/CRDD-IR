@@ -31,3 +31,8 @@ with the corresponding policies. A `number`/`decimal-string` mismatch fails the 
 This is the deterministic static parity gate. Runtime evidence remains target-specific:
 run `verify:unreal` and `verify:unity` to prove the generated implementation in each
 engine/toolchain.
+
+v0.4.0 emits `crdd-ir/target-parity-v0.2`. The v0.2 protocol makes the current
+required fields explicit and intentionally does not reinterpret old v0.1
+Evidence. Consumers should regenerate Evidence and switch schema validation to
+v0.2 in the same change.
