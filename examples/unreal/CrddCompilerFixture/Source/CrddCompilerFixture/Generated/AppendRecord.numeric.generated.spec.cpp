@@ -17,7 +17,7 @@ bool FCrddAppendRecordNumericBoundaryTest::RunTest(const FString& Parameters)
     FCrddAppendRecordInput Input;
     FCrddAppendRecordState State;
     Input.RecordId = TEXT("sample");
-    Input.SpanMm = 300.001;
+    Input.SpanMm = 300;
     Input.ExtentMm = 300;
     Input.DepthMm = 10;
     Input.SegmentSpanMm = 1;

@@ -5,7 +5,11 @@ import { dirname, isAbsolute, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { compileMarkdown } from "./compiler.ts";
 import { loadProjectConfig } from "./project-config.ts";
-import { analyzeTestCoverage, generateTestManifest } from "./test-manifest.ts";
+import {
+  analyzeTestCoverage,
+  BoundaryCaseGenerationError,
+  generateTestManifest,
+} from "./test-manifest.ts";
 import { analyzeMutationCoverage } from "./mutation.ts";
 import { getTargetAdapter, validateTargetProfile } from "./target-registry.ts";
 
@@ -116,7 +120,16 @@ export async function runDoctor(configPath: string): Promise<DoctorReport> {
         ));
     }
   } catch (error) {
-    checks.push(fail("CRDD_SOURCE_INVALID", (error as Error).message));
+    if (error instanceof BoundaryCaseGenerationError) {
+      checks.push(fail(
+        error.classification === "unsupported"
+          ? "CRDD_BOUNDARY_CASE_UNSUPPORTED"
+          : "CRDD_BOUNDARY_CASE_UNSATISFIABLE",
+        error.message,
+      ));
+    } else {
+      checks.push(fail("CRDD_SOURCE_INVALID", (error as Error).message));
+    }
   }
 
   for (const output of [...Object.values(paths.outputs), paths.evidence]) {

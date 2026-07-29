@@ -48,7 +48,9 @@ test("generates deterministic IL2CPP-safe Unity contracts and bridges", async ()
   assert.match(bridge, /interface IAppendRecordProductAdapter/);
   assert.match(bridge, /original\.Revision == ulong\.MaxValue/);
   assert.ok(bridge.indexOf("if (!contract.Succeeded)") < bridge.indexOf("TryCommitSnapshot(candidate"));
-  assert.match(first[3].content, /public void SegmentFitsSpanFalsified/);
+  assert.match(first[3].content, /public void SegmentFitsSpanAtBoundary/);
+  assert.match(first[3].content, /public void SegmentFitsSpanOutsideBoundary/);
+  assert.match(first[3].content, /public void SegmentFitsSpanInsideBoundary/);
   assert.match(first[3].content, /Assert\.That\(result\.State\.Records\.Count/);
   assert.doesNotMatch(first[3].content, /\d+\.\d+L/);
 });

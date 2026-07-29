@@ -1,14 +1,14 @@
-# v0.3.0 release checklist
+# v0.3.1 release checklist
 
-This checklist is for publishing CRDD IR v0.3.0.
+This checklist is for publishing CRDD IR v0.3.1.
 
 ## Source
 
-- [ ] `feature/general-application-ir` is reviewed and merged into `develop`
+- [ ] `feature/composite-arithmetic-boundaries` is reviewed and merged into `develop`
 - [ ] `develop` is merged into `main` through a release PR
 - [ ] the working tree is clean
-- [ ] `package.json` and `package-lock.json` use `0.3.0`
-- [ ] generated target files identify generator `0.3.0`
+- [ ] `package.json` and `package-lock.json` use `0.3.1`
+- [ ] generated target files identify generator `0.3.1`
 - [ ] CRDD Source Contract and Internal IR protocol IDs match the release specification
 - [ ] newly compiled 3D data uses `operation.extensions["crdd.3d-assets"]`
 
@@ -44,24 +44,26 @@ npm.cmd run pack:check
 - [ ] Unreal and Unity generated code remains semantically equivalent
 - [ ] TypeScript query and asynchronous contracts preserve Core semantics
 - [ ] an external Target Adapter loads without modifying Core or CLI dispatch
+- [ ] `IR-TEST-003` kills strict/inclusive mutations for composite arithmetic boundaries
+- [ ] unsatisfiable arithmetic boundaries produce explicit project doctor diagnostics
 
 ## Documentation
 
 - [ ] README states that Core IR is domain- and target-neutral
 - [ ] Core Extension ownership is documented
-- [ ] v0.3.0 release notes contain the supported contract and known boundaries
+- [ ] v0.3.1 release notes contain the supported contract and known boundaries
 - [ ] Submodule users can identify the release tag and verification commands
 
 ## Publish
 
 ```powershell
-git tag -a v0.3.0 -m "CRDD IR v0.3.0"
+git tag -a v0.3.1 -m "CRDD IR v0.3.1"
 git push origin main
-git push origin v0.3.0
+git push origin v0.3.1
 ```
 
 - [ ] tag points to the reviewed `main` release commit
-- [ ] GitHub Release title is `CRDD IR v0.3.0`
-- [ ] release body uses `docs/releases/v0.3.0.md`
+- [ ] GitHub Release title is `CRDD IR v0.3.1`
+- [ ] release body uses `docs/releases/v0.3.1.md`
 - [ ] source archive works from a clean checkout
-- [ ] an adopting repository can pin its Submodule to `v0.3.0`
+- [ ] an adopting repository can pin its Submodule to `v0.3.1`

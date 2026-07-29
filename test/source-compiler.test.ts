@@ -269,6 +269,23 @@ test("derives isolated conformance cases from a baseline satisfying multiple req
       item.sourceRequirement === requirement.id && item.expect.ok === false
     ));
   }
+  for (const requirementId of ["segment-fits-span", "segment-fits-extent"]) {
+    assert.ok(manifest.cases.some((item) =>
+      item.id === `${requirementId}-at-boundary` && item.expect.ok === true
+    ));
+    assert.ok(manifest.cases.some((item) =>
+      item.id === `${requirementId}-outside-boundary` && item.expect.ok === false
+    ));
+    assert.ok(manifest.cases.some((item) =>
+      item.id === `${requirementId}-inside-boundary` && item.expect.ok === true
+    ));
+  }
+  const mutation = (await import("../src/mutation.ts")).analyzeMutationCoverage(
+    compilation.ir,
+    manifest,
+  );
+  assert.equal(mutation.score, 100);
+  assert.deepEqual(mutation.survived, []);
 });
 
 test("fails with requirement IDs when no satisfying conformance baseline exists", async () => {
