@@ -2,7 +2,7 @@
 
 - Protocol: `crdd-ir/traceability-v0.1`
 - Source: `examples/apply-record/contract.md`
-- Internal IR SHA-256: `a1948fea588c69df3f763fb0ad148fe18db234d3347b2150de9f7cbbe13ac06c`
+- Internal IR SHA-256: `82dd4ea090d92c9a0bc628c24db35296843828e3968169ee398764b9bf12756c`
 - Conformance Bundle SHA-256: `2acfb58330257d5d7946bc1c12fd2f7ea496aed216f776080cf6ee87de4b5582`
 - Conformance Cases: 5
 - Requirement Failure Coverage: 2/2 (100%)

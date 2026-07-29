@@ -6,8 +6,8 @@
       "adapterKey": "ApplyRecord",
       "source": {
         "path": "examples/apply-record/contract.md",
-        "sha256": "b0b552bce2bb4d5c73946267a7badf2b77770ce054c22ab439b37b7ee4fe06bb",
-        "irSha256": "a1948fea588c69df3f763fb0ad148fe18db234d3347b2150de9f7cbbe13ac06c"
+        "sha256": "896cee46d31037ddf3c391c362ebf767bb081b9fc61ad6dfe2ac931843f5de06",
+        "irSha256": "82dd4ea090d92c9a0bc628c24db35296843828e3968169ee398764b9bf12756c"
       },
       "conformance": {
         "path": "apply-record.conformance.json",

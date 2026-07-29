@@ -148,7 +148,7 @@ test("owns generated numeric boundary fixtures in the batch manifest", async () 
   ));
   const manifest = await generateBatch([numericSource], outDir, "unreal", {
     layout: "flat",
-    unrealProfile: profile,
+    profile,
   });
   assert.ok(manifest.operations[0].files.some((file) =>
     file.path === "AppendRecord.numeric.generated.spec.cpp" &&

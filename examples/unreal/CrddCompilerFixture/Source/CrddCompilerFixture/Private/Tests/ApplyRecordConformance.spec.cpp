@@ -53,6 +53,15 @@ struct FCrddAssetExpectation
     FString LodGroup;
 };
 
+FString UnrealLodGroup(const FString& Policy)
+{
+    if (Policy == TEXT("none")) return TEXT("None");
+    if (Policy == TEXT("small")) return TEXT("SmallProp");
+    if (Policy == TEXT("large")) return TEXT("LargeProp");
+    if (Policy == TEXT("architectural")) return TEXT("LevelArchitecture");
+    return TEXT("");
+}
+
 bool ReadBundle(
     FAutomationTestBase& Test,
     TSharedPtr<FJsonObject>& OutBundle
@@ -147,7 +156,9 @@ bool ReadAssetManifest(
                 Rotation->GetNumberField(TEXT("yaw")),
                 Rotation->GetNumberField(TEXT("roll"))
             ),
-            Asset->GetObjectField(TEXT("lod"))->GetStringField(TEXT("group")),
+            UnrealLodGroup(
+                Asset->GetObjectField(TEXT("lod"))->GetStringField(TEXT("policy"))
+            ),
         });
     }
     return Test.TestTrue(TEXT("Asset manifest contains assets"), OutAssets.Num() > 0);

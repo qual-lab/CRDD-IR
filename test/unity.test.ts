@@ -57,7 +57,7 @@ test("generates collision-safe Unity batches with owned outputs", async () => {
   const outDir = await mkdtemp(join(tmpdir(), "crdd-unity-batch-"));
   const manifest = await generateBatch([source], outDir, "unity", {
     layout: "flat",
-    unityProfile: profile,
+    profile,
   });
   assert.equal(manifest.target, "unity");
   assert.deepEqual((await readdir(outDir)).sort(), [

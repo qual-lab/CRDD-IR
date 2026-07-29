@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { access, readFile, stat } from "node:fs/promises";
 import { constants } from "node:fs";
 import { dirname, isAbsolute, relative, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { compileMarkdown } from "./compiler.ts";
 import { loadProjectConfig } from "./project-config.ts";
 import { analyzeTestCoverage, generateTestManifest } from "./test-manifest.ts";
@@ -31,6 +32,9 @@ export async function runDoctor(configPath: string): Promise<DoctorReport> {
   const checks: DoctorCheck[] = [];
   const root = dirname(resolve(configPath));
   const config = await loadProjectConfig(configPath);
+  for (const target of Object.values(config.targets)) {
+    if (target.module) await import(pathToFileURL(inside(root, target.module)).href);
+  }
   checks.push(pass("CRDD_CONFIG_VALID", "Project configuration is valid", configPath));
 
   const nodeVersion = Number(process.versions.node.split(".")[0]);

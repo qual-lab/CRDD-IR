@@ -13,6 +13,7 @@ import {
 } from "./unreal-target.ts";
 import { generateUnrealReflection } from "./unreal-uht.ts";
 import { generateTypeScript } from "./typescript.ts";
+import { TOOL_VERSION } from "./version.ts";
 
 export type TargetGeneratedFile = {
   name: string;
@@ -68,7 +69,7 @@ const adapters = new Map<string, TargetAdapter>([
       return [
         ...generateUnreal(compilation.ir, unrealProfile ? {
           irSha256: compilation.digest,
-          generatorVersion: "0.2.1",
+          generatorVersion: TOOL_VERSION,
           numericProjection: unrealProfile.numericProjection,
         } : undefined),
         ...(unrealProfile && operationIndex === 0
@@ -93,7 +94,7 @@ const adapters = new Map<string, TargetAdapter>([
       return generateUnity(
         compilation.ir,
         profile as UnityTargetProfile,
-        { irSha256: compilation.digest, generatorVersion: "0.2.1" },
+        { irSha256: compilation.digest, generatorVersion: TOOL_VERSION },
       );
     },
   }],

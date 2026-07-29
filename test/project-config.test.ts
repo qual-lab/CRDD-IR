@@ -18,13 +18,14 @@ test("accepts a target-neutral project configuration", () => {
   assert.deepEqual(validateProjectConfig(validConfig()), validConfig());
 });
 
-test("accepts independent target outputs, profiles, and options", () => {
+test("accepts independent target outputs, modules, profiles, and options", () => {
   const config = {
     ...validConfig(),
     targets: {
       typescript: { output: "generated/typescript" },
       adapter: {
         output: "generated/adapter",
+        module: "tools/crdd-target-adapter/register.ts",
         profile: "config/adapter.json",
         options: { mode: "strict" },
       },

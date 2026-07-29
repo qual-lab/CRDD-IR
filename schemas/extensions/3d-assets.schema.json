@@ -51,14 +51,14 @@
         "collision": {
           "type": "object",
           "required": ["shape"],
-          "properties": { "shape": { "enum": ["box", "capsule", "sphere", "ndop26"] } },
+          "properties": { "shape": { "enum": ["box", "capsule", "sphere", "convex"] } },
           "additionalProperties": false
         },
         "lod": {
           "type": "object",
-          "required": ["group"],
+          "required": ["policy"],
           "properties": {
-            "group": { "enum": ["None", "SmallProp", "LargeProp", "LevelArchitecture"] }
+            "policy": { "enum": ["none", "small", "large", "architectural"] }
           },
           "additionalProperties": false
         },

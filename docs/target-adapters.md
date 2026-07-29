@@ -41,3 +41,16 @@ Implement `TargetAdapter` and register it with `registerTargetAdapter`. The adap
 The CLI argument parser, batch generator, collision detection, and target discovery do not
 need target-specific branches. Built-in registrations are in
 `src/target-registry.ts`.
+
+An external adapter module registers itself when imported:
+
+```powershell
+node tools/CRDD-IR/src/cli.ts generate python contracts/read.md `
+  --target-module tools/crdd-target-python/register.ts `
+  --out-dir generated/python
+```
+
+`--target-module` may be repeated and accepts a relative/absolute module path or a
+package specifier. Loading a module executes code, so only use reviewed, pinned modules.
+The adapter package depends on the public `TargetAdapter` and
+`registerTargetAdapter` API; adding it does not require a CRDD IR Core or CLI change.

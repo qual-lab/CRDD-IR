@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtemp, readFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
+import { pathToFileURL } from "node:url";
 import { generateBatch } from "../src/batch.ts";
 import {
   describeTarget,
@@ -81,4 +82,33 @@ test("CLI lists targets as machine-readable registry metadata", () => {
     registry.targets.map((target: { id: string }) => target.id),
     ["assets", "ir", "typescript", "unity", "unreal"],
   );
+});
+
+test("CLI loads an external target module without a core registry change", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "crdd-target-module-"));
+  const modulePath = join(directory, "register.mjs");
+  const registryUrl = pathToFileURL(join(process.cwd(), "src", "target-registry.ts")).href;
+  await writeFile(modulePath, `
+import { registerTargetAdapter } from ${JSON.stringify(registryUrl)};
+registerTargetAdapter({
+  id: "external-target",
+  description: "External test adapter",
+  profileRequired: false,
+  supportsFlatBatch: true,
+  generate: ({ compilation }) => [{
+    name: compilation.ir.operation.id + ".external.txt",
+    content: compilation.digest,
+  }],
+});
+`, "utf8");
+
+  const output = execFileSync(
+    process.execPath,
+    [
+      "src/cli.ts", "target", "describe", "external-target",
+      "--target-module", modulePath,
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(JSON.parse(output).id, "external-target");
 });

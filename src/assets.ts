@@ -102,12 +102,12 @@ function validateAssetDefinitions(value: unknown[]): void {
       throw new Error(`${path}.material.baseColor must contain three numbers from 0 to 1`);
     }
     if (!isRecord(asset.collision) ||
-        !["box", "capsule", "sphere", "ndop26"].includes(String(asset.collision.shape))) {
+        !["box", "capsule", "sphere", "convex"].includes(String(asset.collision.shape))) {
       throw new Error(`${path}.collision.shape is unsupported`);
     }
     if (!isRecord(asset.lod) ||
-        !["None", "SmallProp", "LargeProp", "LevelArchitecture"].includes(String(asset.lod.group))) {
-      throw new Error(`${path}.lod.group is unsupported`);
+        !["none", "small", "large", "architectural"].includes(String(asset.lod.policy))) {
+      throw new Error(`${path}.lod.policy is unsupported`);
     }
     validatePlacement(asset.placement, `${path}.placement`);
     if (!Array.isArray(asset.traces) || asset.traces.some((trace) => typeof trace !== "string")) {

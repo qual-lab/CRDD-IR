@@ -35,6 +35,9 @@ function Invoke-Generate {
         if (-not [string]::IsNullOrWhiteSpace([string]$target.profile)) {
             $arguments += @("--profile", (Join-Path $projectRoot ([string]$target.profile)))
         }
+        if (-not [string]::IsNullOrWhiteSpace([string]$target.module)) {
+            $arguments += @("--target-module", (Join-Path $projectRoot ([string]$target.module)))
+        }
         Invoke-CrddIr $arguments
     }
 }

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, extname, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { DiagnosticError, diagnosticEnvelope, unexpectedDiagnostic } from "./diagnostics.ts";
 import { runDoctor } from "./doctor.ts";
 import { loadAdapter } from "./adapter.ts";
@@ -61,6 +62,7 @@ try {
 }
 
 async function main(argv: string[]): Promise<void> {
+  await loadTargetModules(options(argv, "--target-module"));
   const [command, subcommand] = argv;
   if (!command || command === "help" || command === "--help") {
     printHelp();
@@ -468,6 +470,15 @@ async function main(argv: string[]): Promise<void> {
   throw new Error(`Unknown command: ${argv.join(" ")}`);
 }
 
+async function loadTargetModules(moduleSpecifiers: string[]): Promise<void> {
+  for (const specifier of moduleSpecifiers) {
+    const moduleUrl = specifier.startsWith(".") || /^[A-Za-z]:[\\/]/.test(specifier)
+      ? pathToFileURL(resolve(specifier)).href
+      : specifier;
+    await import(moduleUrl);
+  }
+}
+
 async function writeJson(path: string, value: unknown): Promise<void> {
   await mkdir(dirname(resolve(path)), { recursive: true });
   await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
@@ -557,8 +568,10 @@ Commands:
   target parity <spec.md> --unreal-profile <profile.json> --unity-profile <profile.json>
                           [--out <report.json>]
   generate <target> <spec.md> [--profile <profile.json>] [--out-dir <directory>]
+                           [--target-module <adapter-module>...]
                            [--dry-run] [--force]
   batch <target> <spec.md>... [--profile <profile.json>] [--out-dir <directory>]
+                             [--target-module <adapter-module>...]
                              [--flat] [--force]
   check <spec.md> [--format json]
   project check <crdd-ir.config.json>

@@ -3,7 +3,7 @@
   "operation": "ApplyRecord",
   "source": {
     "path": "examples/apply-record/contract.md",
-    "irSha256": "a1948fea588c69df3f763fb0ad148fe18db234d3347b2150de9f7cbbe13ac06c"
+    "irSha256": "82dd4ea090d92c9a0bc628c24db35296843828e3968169ee398764b9bf12756c"
   },
   "generatedFiles": [],
   "requirements": [

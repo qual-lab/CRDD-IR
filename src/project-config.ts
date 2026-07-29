@@ -5,6 +5,7 @@ export const PROJECT_CONFIG_PROTOCOL = "crdd-ir/project-config-v0.2";
 export interface ProjectTargetConfig {
   output: string;
   profile?: string;
+  module?: string;
   options?: Record<string, unknown>;
 }
 
@@ -47,9 +48,10 @@ export function validateProjectConfig(value: unknown): ProjectConfig {
   for (const [id, rawTarget] of Object.entries(targets)) {
     if (!/^[a-z][a-z0-9-]*$/.test(id)) throw new Error(`config.targets.${id} has an invalid target ID`);
     const target = record(rawTarget, `config.targets.${id}`);
-    rejectUnknown(target, ["output", "profile", "options"], `config.targets.${id}`);
+    rejectUnknown(target, ["output", "profile", "module", "options"], `config.targets.${id}`);
     projectPath(target.output, `config.targets.${id}.output`);
     if (target.profile !== undefined) projectPath(target.profile, `config.targets.${id}.profile`);
+    if (target.module !== undefined) projectPath(target.module, `config.targets.${id}.module`);
     if (target.options !== undefined) record(target.options, `config.targets.${id}.options`);
   }
   return value as ProjectConfig;

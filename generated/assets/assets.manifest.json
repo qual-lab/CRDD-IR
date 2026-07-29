@@ -23,7 +23,7 @@
         "shape": "box"
       },
       "lod": {
-        "group": "LevelArchitecture"
+        "policy": "architectural"
       },
       "placement": {
         "location": {
@@ -54,7 +54,7 @@
         "shape": "box"
       },
       "lod": {
-        "group": "LargeProp"
+        "policy": "large"
       },
       "placement": {
         "location": {

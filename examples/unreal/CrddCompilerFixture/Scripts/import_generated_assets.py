@@ -77,7 +77,14 @@ collision_shapes = {
     "box": unreal.ScriptCollisionShapeType.BOX,
     "capsule": unreal.ScriptCollisionShapeType.CAPSULE,
     "sphere": unreal.ScriptCollisionShapeType.SPHERE,
-    "ndop26": unreal.ScriptCollisionShapeType.NDOP26,
+    "convex": unreal.ScriptCollisionShapeType.NDOP26,
+}
+
+lod_groups = {
+    "none": "None",
+    "small": "SmallProp",
+    "large": "LargeProp",
+    "architectural": "LevelArchitecture",
 }
 
 for asset_definition in asset_definitions:
@@ -117,7 +124,10 @@ for asset_definition in asset_definitions:
     if collision_index < 0:
         raise RuntimeError(f"Failed to add {collision_shape} collision to {asset_path}")
 
-    lod_group = asset_definition["lod"]["group"]
+    lod_policy = asset_definition["lod"]["policy"]
+    if lod_policy not in lod_groups:
+        raise RuntimeError(f"Unsupported LOD policy: {lod_policy}")
+    lod_group = lod_groups[lod_policy]
     if not static_mesh_subsystem.set_lod_group(mesh, unreal.Name(lod_group), True):
         raise RuntimeError(f"Failed to set LOD group {lod_group} on {asset_path}")
     unreal.EditorAssetLibrary.save_asset(asset_path, only_if_is_dirty=False)

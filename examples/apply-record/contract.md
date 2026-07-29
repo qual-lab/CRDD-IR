@@ -56,7 +56,7 @@ operation:
               height: { value: 2.4, unit: m }
             material: { baseColor: [0.65, 0.68, 0.72] }
             collision: { shape: box }
-            lod: { group: LevelArchitecture }
+            lod: { policy: architectural }
             placement:
               location:
                 x: { value: 0, unit: m }
@@ -75,7 +75,7 @@ operation:
               height: { value: 2.0, unit: m }
             material: { baseColor: [0.4, 0.2, 0.1] }
             collision: { shape: box }
-            lod: { group: LargeProp }
+            lod: { policy: large }
             placement:
               location:
                 x: { value: 1.5, unit: m }

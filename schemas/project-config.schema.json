@@ -28,6 +28,7 @@
       "properties": {
         "output": { "$ref": "#/$defs/path" },
         "profile": { "$ref": "#/$defs/path" },
+        "module": { "$ref": "#/$defs/path" },
         "options": { "type": "object" }
       },
       "additionalProperties": false

@@ -31,6 +31,15 @@ struct FAssetExpectation
     FString LodGroup;
 };
 
+FString UnrealLodGroup(const FString& Policy)
+{
+    if (Policy == TEXT("none")) return TEXT("None");
+    if (Policy == TEXT("small")) return TEXT("SmallProp");
+    if (Policy == TEXT("large")) return TEXT("LargeProp");
+    if (Policy == TEXT("architectural")) return TEXT("LevelArchitecture");
+    return TEXT("");
+}
+
 bool ReadManifest(
     FAutomationTestBase& Test,
     FString& OutScene,
@@ -89,7 +98,9 @@ bool ReadManifest(
                 Rotation->GetNumberField(TEXT("yaw")),
                 Rotation->GetNumberField(TEXT("roll"))
             ),
-            Asset->GetObjectField(TEXT("lod"))->GetStringField(TEXT("group"))
+            UnrealLodGroup(
+                Asset->GetObjectField(TEXT("lod"))->GetStringField(TEXT("policy"))
+            )
         });
     }
     return Test.TestTrue(TEXT("Manifest declares assets"), OutAssets.Num() > 0);

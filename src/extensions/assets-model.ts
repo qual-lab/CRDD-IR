@@ -10,10 +10,10 @@ export type AssetDefinition = {
     baseColor: [number, number, number];
   };
   collision: {
-    shape: "box" | "capsule" | "sphere" | "ndop26";
+    shape: "box" | "capsule" | "sphere" | "convex";
   };
   lod: {
-    group: "None" | "SmallProp" | "LargeProp" | "LevelArchitecture";
+    policy: "none" | "small" | "large" | "architectural";
   };
   placement: {
     location: {

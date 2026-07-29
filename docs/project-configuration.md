@@ -12,6 +12,10 @@ and output isolation. Every platform is configured under `targets`.
   "targets": {
     "typescript": {
       "output": "generated/typescript"
+    },
+    "python": {
+      "module": "tools/crdd-target-python/register.ts",
+      "output": "generated/python"
     }
   }
 }
@@ -20,6 +24,9 @@ and output isolation. Every platform is configured under `targets`.
 Each target owns its optional `profile` and `options`. Core does not define
 engine roots, application project files, asset directories, server frameworks,
 or transport channels.
+
+External targets set a project-relative `module`. The wrapper and Doctor load
+that module before target discovery, profile validation, or generation.
 
 The installer accepts a list of target IDs:
 
