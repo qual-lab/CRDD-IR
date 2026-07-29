@@ -43,6 +43,7 @@ import {
   listTargetAdapters,
   validateTargetProfile,
 } from "./target-registry.ts";
+import { verifyTargetParity } from "./target-parity.ts";
 import type { SimulationRequest, TestManifest } from "./model.ts";
 
 const args = process.argv.slice(2);
@@ -310,6 +311,30 @@ async function main(argv: string[]): Promise<void> {
     console.log(JSON.stringify(describeTarget(
       getTargetAdapter(required(argv[2], "target ID")),
     ), null, 2));
+    return;
+  }
+
+  if (command === "target" && subcommand === "parity") {
+    const sourcePath = required(argv[2], "CRDD Markdown file");
+    const unrealProfilePath = option(argv, "--unreal-profile");
+    const unityProfilePath = option(argv, "--unity-profile");
+    if (!unrealProfilePath || !unityProfilePath) {
+      throw new Error("target parity requires --unreal-profile and --unity-profile");
+    }
+    const compilation = await compileMarkdown(sourcePath);
+    const report = verifyTargetParity(
+      compilation,
+      validateUnrealTargetProfile(JSON.parse(await readFile(unrealProfilePath, "utf8"))),
+      validateUnityTargetProfile(JSON.parse(await readFile(unityProfilePath, "utf8"))),
+    );
+    const out = option(argv, "--out");
+    if (out) {
+      await writeJson(out, report);
+      console.log(`Generated ${out}`);
+    } else {
+      console.log(JSON.stringify(report, null, 2));
+    }
+    if (!report.equivalent) process.exitCode = 1;
     return;
   }
 
@@ -623,6 +648,8 @@ Commands:
   compile <spec.md> [--out <debug-ir.json>]
   target list
   target describe <target>
+  target parity <spec.md> --unreal-profile <profile.json> --unity-profile <profile.json>
+                          [--out <report.json>]
   generate <target> <spec.md> [--profile <profile.json>] [--out-dir <directory>]
                            [--dry-run] [--force]
   batch <target> <spec.md>... [--profile <profile.json>] [--out-dir <directory>]

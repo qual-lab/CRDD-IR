@@ -127,6 +127,7 @@ CRDD Markdownが正本です。Internal IR instanceを`30_IR`などへ恒久保�
 - [Unreal product bridge](docs/unreal-product-bridge.md)
 - [Unity integration](docs/unity-integration.md)
 - [Target adapter registry](docs/target-adapters.md)
+- [Unreal and Unity target parity](docs/target-parity.md)
 - [Verify lock events](docs/verify-events.md)
 - [v0.1.2 release notes](docs/releases/v0.1.2.md)
 - [v0.2.0 release notes](docs/releases/v0.2.0.md)
