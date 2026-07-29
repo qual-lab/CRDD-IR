@@ -341,6 +341,10 @@ test("projects a unit to an explicit integer C++ and JSON representation", async
   });
   const header = generated.find((file) => file.name.endsWith(".h"))!.content;
   const cpp = generated.find((file) => file.name.endsWith(".cpp"))!.content;
+  const numericFixture = generated.find((file) =>
+    file.name.endsWith(".numeric.generated.spec.cpp")
+  )!;
+  assert.ok(numericFixture);
   assert.match(header, /CRDD-IR Numeric Projection: mm -> int64/);
   assert.match(header, /int64 Length = 0;/);
   assert.match(header, /TryParseProjectedInt64/);
@@ -349,6 +353,10 @@ test("projects a unit to an explicit integer C++ and JSON representation", async
   assert.match(cpp, /if \(!LexTryParseString\(OutValue, \*Decimal\)\)/);
   assert.match(cpp, /return LexToString\(OutValue\) == Decimal/);
   assert.match(cpp, /return LexToString\(Value\)/);
+  assert.match(numericFixture.content, /NumericBoundary\.Generated/);
+  assert.match(numericFixture.content, /std::numeric_limits<int64>::max\(\)/);
+  assert.match(numericFixture.content, /opening-fits-width/);
+  assert.match(numericFixture.content, /9223372036854775808/);
 
   const changed = buildUnrealTargetPlan(compilation.ir, compilation.digest, {
     ...profile,
