@@ -9,25 +9,25 @@ import test from "node:test";
 import { generateBatch } from "../src/batch.ts";
 
 const source = fileURLToPath(
-  new URL("../examples/create-entity/05_SPEC/01_Behavior_Specification.md", import.meta.url),
+  new URL("../examples/apply-record/contract.md", import.meta.url),
 );
 const secondSource = fileURLToPath(
-  new URL("../examples/update-entity/05_SPEC/01_Behavior_Specification.md", import.meta.url),
+  new URL("../examples/revise-record/contract.md", import.meta.url),
 );
 
 test("generates an operation-scoped deterministic batch", async () => {
   const outDir = await mkdtemp(join(tmpdir(), "crdd-batch-"));
   const manifest = await generateBatch([source], outDir, "unreal");
   assert.equal(manifest.layout, "operation-directories");
-  assert.equal(manifest.operations[0].id, "CreateEntity");
+  assert.equal(manifest.operations[0].id, "ApplyRecord");
   assert.deepEqual(
     manifest.operations[0].files.map((file) => file.path),
     [
-      "CreateEntity.bridge.generated.cpp",
-      "CreateEntity.bridge.generated.h",
-      "CreateEntity.bridge.generated.spec.cpp",
-      "CreateEntity.generated.cpp",
-      "CreateEntity.generated.h",
+      "ApplyRecord.bridge.generated.cpp",
+      "ApplyRecord.bridge.generated.h",
+      "ApplyRecord.bridge.generated.spec.cpp",
+      "ApplyRecord.generated.cpp",
+      "ApplyRecord.generated.h",
     ],
   );
   assert.ok(manifest.operations[0].files.every((file) => /^[a-f0-9]{64}$/.test(file.sha256)));
@@ -42,23 +42,23 @@ test("generates multiple Unreal operations into one collision-safe directory", a
   });
   assert.equal(manifest.layout, "flat");
   assert.deepEqual(manifest.operations.map((operation) => operation.id), [
-    "CreateEntity",
-    "UpdateEntity",
+    "ApplyRecord",
+    "ReviseRecord",
   ]);
   assert.ok(manifest.operations.every((operation) => operation.outputDirectory === "."));
   assert.deepEqual(
     (await readdir(outDir)).sort(),
     [
-      "CreateEntity.bridge.generated.cpp",
-      "CreateEntity.bridge.generated.h",
-      "CreateEntity.bridge.generated.spec.cpp",
-      "CreateEntity.generated.cpp",
-      "CreateEntity.generated.h",
-      "UpdateEntity.bridge.generated.cpp",
-      "UpdateEntity.bridge.generated.h",
-      "UpdateEntity.bridge.generated.spec.cpp",
-      "UpdateEntity.generated.cpp",
-      "UpdateEntity.generated.h",
+      "ApplyRecord.bridge.generated.cpp",
+      "ApplyRecord.bridge.generated.h",
+      "ApplyRecord.bridge.generated.spec.cpp",
+      "ApplyRecord.generated.cpp",
+      "ApplyRecord.generated.h",
+      "ReviseRecord.bridge.generated.cpp",
+      "ReviseRecord.bridge.generated.h",
+      "ReviseRecord.bridge.generated.spec.cpp",
+      "ReviseRecord.generated.cpp",
+      "ReviseRecord.generated.h",
       "batch.manifest.json",
     ],
   );
@@ -70,8 +70,8 @@ test("rejects case-insensitive generated filename collisions before writing", as
   const contract = await readFile(source, "utf8");
   const upper = join(sourceDir, "upper.md");
   const lower = join(sourceDir, "lower.md");
-  await writeFile(upper, contract.replace("id: CreateEntity", "id: Entity"), "utf8");
-  await writeFile(lower, contract.replace("id: CreateEntity", "id: entity"), "utf8");
+  await writeFile(upper, contract.replace("id: ApplyRecord", "id: Record"), "utf8");
+  await writeFile(lower, contract.replace("id: ApplyRecord", "id: record"), "utf8");
   await assert.rejects(
     generateBatch([upper, lower], outDir, "unreal", { layout: "flat" }),
     /Generated file collision\(s\)/,
@@ -82,7 +82,7 @@ test("rejects case-insensitive generated filename collisions before writing", as
 test("reuses verified outputs and recovers a corrupt batch manifest", async () => {
   const outDir = await mkdtemp(join(tmpdir(), "crdd-batch-"));
   const first = await generateBatch([source], outDir, "ir");
-  const output = join(outDir, "CreateEntity", first.operations[0].files[0].path);
+  const output = join(outDir, "ApplyRecord", first.operations[0].files[0].path);
   const before = await stat(output);
   await new Promise((resolve) => setTimeout(resolve, 20));
   await generateBatch([source], outDir, "ir");
@@ -98,12 +98,12 @@ test("reuses verified outputs and recovers a corrupt batch manifest", async () =
 test("reuses batch outputs after a Windows CRLF checkout", async () => {
   const outDir = await mkdtemp(join(tmpdir(), "crdd-batch-crlf-"));
   await generateBatch([source], outDir, "unreal");
-  const output = join(outDir, "CreateEntity", "CreateEntity.generated.h");
+  const output = join(outDir, "ApplyRecord", "ApplyRecord.generated.h");
   const lf = await readFile(output, "utf8");
   await writeFile(output, lf.replace(/\n/g, "\r\n"), "utf8");
 
   const manifest = await generateBatch([source], outDir, "unreal");
-  assert.equal(manifest.operations[0].id, "CreateEntity");
+  assert.equal(manifest.operations[0].id, "ApplyRecord");
   assert.equal(await readFile(output, "utf8"), lf.replace(/\n/g, "\r\n"));
 });
 
@@ -141,21 +141,21 @@ test("invalidates a verified cache entry when generated content changes", async 
 
 test("owns generated numeric boundary fixtures in the batch manifest", async () => {
   const outDir = await mkdtemp(join(tmpdir(), "crdd-batch-numeric-"));
-  const numericSource = fileURLToPath(new URL("./fixtures/create-wall.md", import.meta.url));
+  const numericSource = fileURLToPath(new URL("./fixtures/contracts/numeric-boundary.md", import.meta.url));
   const profile = JSON.parse(await readFile(
     fileURLToPath(new URL("../examples/unreal/profiles/ue-5.8-editor.json", import.meta.url)),
     "utf8",
   ));
   const manifest = await generateBatch([numericSource], outDir, "unreal", {
     layout: "flat",
-    unrealProfile: profile,
+    profile,
   });
   assert.ok(manifest.operations[0].files.some((file) =>
-    file.path === "CreateWall.numeric.generated.spec.cpp" &&
+    file.path === "AppendRecord.numeric.generated.spec.cpp" &&
     /^[a-f0-9]{64}$/.test(file.sha256)
   ));
   assert.match(
-    await readFile(join(outDir, "CreateWall.numeric.generated.spec.cpp"), "utf8"),
+    await readFile(join(outDir, "AppendRecord.numeric.generated.spec.cpp"), "utf8"),
     /Generated by crdd-ir\. Do not edit\./,
   );
 });
@@ -164,6 +164,6 @@ test("rejects duplicate operation IDs before writing outputs", async () => {
   const outDir = await mkdtemp(join(tmpdir(), "crdd-batch-"));
   await assert.rejects(
     generateBatch([source, source], outDir, "ir"),
-    /Duplicate operation ID\(s\) in batch: CreateEntity/,
+    /Duplicate operation ID\(s\) in batch: ApplyRecord/,
   );
 });

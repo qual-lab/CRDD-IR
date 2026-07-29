@@ -19,17 +19,17 @@ RunnerはContract Caseごとに新しいProcessを起動する。シェルは使
 ```json
 {
   "protocol": "crdd-ir/adapter-v0.1",
-  "operation": "CreateEntity",
+  "operation": "ApplyRecord",
   "request": {
     "input": {
       "length": 0.3,
-      "cost": 12000
+      "amount": 12000
     },
     "state": {
-      "budget": {
+      "capacity": {
         "remaining": 50000
       },
-      "entities": []
+      "records": []
     }
   }
 }
@@ -40,21 +40,21 @@ RunnerはContract Caseごとに新しいProcessを起動する。シェルは使
 ```json
 {
   "ok": true,
-  "operation": "CreateEntity",
+  "operation": "ApplyRecord",
   "state": {
-    "budget": {
+    "capacity": {
       "remaining": 38000
     },
-    "entities": [
+    "records": [
       {
         "length": 0.3,
-        "cost": 12000
+        "amount": 12000
       }
     ]
   },
   "traces": [
-    "REQ-ENTITY-001",
-    "DEC-ENTITY-003"
+    "REQ-RECORD-001",
+    "DEC-CAPACITY-001"
   ]
 }
 ```
@@ -64,17 +64,17 @@ RunnerはContract Caseごとに新しいProcessを起動する。シェルは使
 ```json
 {
   "ok": false,
-  "operation": "CreateEntity",
-  "error": "ENTITY_TOO_SHORT",
-  "failedRequirement": "minimum-entity-length",
+  "operation": "ApplyRecord",
+  "error": "RECORD_TOO_SMALL",
+  "failedRequirement": "minimum-record-length",
   "state": {
-    "budget": {
+    "capacity": {
       "remaining": 50000
     },
-    "entities": []
+    "records": []
   },
   "traces": [
-    "REQ-ENTITY-001"
+    "REQ-RECORD-001"
   ]
 }
 ```

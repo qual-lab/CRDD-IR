@@ -2,24 +2,24 @@
   "protocol": "crdd-ir/generation-v0.1",
   "files": [
     {
-      "path": "CreateEntity.bridge.generated.cpp",
-      "sha256": "cc9d97c29ba10dc22b855dc55c440706cfdfb529bac4384cc5aad5ae86885c31"
+      "path": "ApplyRecord.bridge.generated.cpp",
+      "sha256": "7c5f305a0a3c49c774ea63a37a2c6f3c1a650e6651a7e200326fd532a0fcfd83"
     },
     {
-      "path": "CreateEntity.bridge.generated.h",
-      "sha256": "1fbc3889f5dceca2e578517fb4c592aeae7a17346225ae0ee7979cc36563df13"
+      "path": "ApplyRecord.bridge.generated.h",
+      "sha256": "7a9d9c699592406c064990bdc925a204b2128bd0a542aebe4f14fb7b2d21d5cf"
     },
     {
-      "path": "CreateEntity.bridge.generated.spec.cpp",
-      "sha256": "2a90652783c13c929094b0c42b9facf94873d12df7cc088f2632969cd89d3557"
+      "path": "ApplyRecord.bridge.generated.spec.cpp",
+      "sha256": "cab83c3401a19377d4a2f0e423650368a38b2168cb07644fa589220ec0bc71ce"
     },
     {
-      "path": "CreateEntity.generated.cpp",
-      "sha256": "cca122e2679818fcd4d41d3faf32547306c560d1dd9d79611ee4fdb0177650b2"
+      "path": "ApplyRecord.generated.cpp",
+      "sha256": "7615eaf0169f01305956f8e9e6991f99440017a02757401a631d56768e3ec436"
     },
     {
-      "path": "CreateEntity.generated.h",
-      "sha256": "33a1346572b32274849092eb58ea1a077b2ac50aa8f76cb6af142781bb1bb2ea"
+      "path": "ApplyRecord.generated.h",
+      "sha256": "22be6214ac460a69d18c3c3ac217781995479fd3ce58cd42ecee8ec3059689bd"
     }
   ]
 }

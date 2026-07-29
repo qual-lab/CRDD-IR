@@ -33,6 +33,6 @@ jobs:
         with:
           name: crdd-unreal-evidence
           path: |
-            examples/create-entity/07_Quality/CRDD_IR
+            examples/apply-record/evidence
             .crdd-ir/reports
             .crdd-ir/verify-events.jsonl

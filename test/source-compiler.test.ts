@@ -9,6 +9,7 @@ import { compileMarkdown } from "../src/compiler.ts";
 import { generateAssets, getAssetDefinitions, removeStaleGeneratedAssets } from "../src/assets.ts";
 import { generateConformanceBundle } from "../src/conformance.ts";
 import { normalizeSourceExpression, parseSourceExpression } from "../src/source-expression.ts";
+import { UnitRegistry } from "../src/unit-registry.ts";
 import { extractContractFences } from "../src/source-contract.ts";
 import { analyzeTestCoverage, generateTestManifest } from "../src/test-manifest.ts";
 import { simulate } from "../src/simulator.ts";
@@ -23,11 +24,11 @@ import { validateIr } from "../src/ir.ts";
 import type { CrddIr, FieldDefinition } from "../src/model.ts";
 
 const sourcePath = new URL(
-  "../examples/create-entity/05_SPEC/01_Behavior_Specification.md",
+  "../examples/apply-record/contract.md",
   import.meta.url,
 );
-const updateEntitySourcePath = new URL(
-  "../examples/update-entity/05_SPEC/01_Behavior_Specification.md",
+const revisionSourcePath = new URL(
+  "../examples/revise-record/contract.md",
   import.meta.url,
 );
 
@@ -55,7 +56,7 @@ test("rejects an unterminated CRDD contract fence with a source line", () => {
 
 test("parses the allowed expression language without eval", () => {
   const ast = parseSourceExpression(
-    "input.length >= 0.3m && state.budget.remaining >= input.cost",
+    "input.length >= 0.3m && state.capacity.remaining >= input.amount",
   );
   assert.equal(ast.kind, "binary");
   if (ast.kind === "binary") assert.equal(ast.operator, "&&");
@@ -69,14 +70,29 @@ test("normalizes compatible unit literals", () => {
   assert.equal(normalizeSourceExpression("input.length >= 30cm", fields), "input.length >= 0.3");
 });
 
+test("normalizes project-defined units through an explicit registry", () => {
+  const registry = new UnitRegistry({
+    base: { dimension: "custom", factor: 1 },
+    sub: { dimension: "custom", factor: 0.01 },
+  });
+  assert.equal(
+    normalizeSourceExpression(
+      "input.value >= 25sub",
+      { "input.value": { type: "number", unit: "base" } },
+      registry,
+    ),
+    "input.value >= 0.25",
+  );
+});
+
 test("supports string and boolean literals in deterministic expressions", () => {
   const fields: Record<string, FieldDefinition> = {
     "input.label": { type: "string" },
     "input.enabled": { type: "boolean" },
   };
   assert.equal(
-    normalizeSourceExpression('input.label == "entity" && input.enabled == true', fields),
-    'input.label == "entity" && input.enabled == true',
+    normalizeSourceExpression('input.label == "record" && input.enabled == true', fields),
+    'input.label == "record" && input.enabled == true',
   );
 });
 
@@ -85,15 +101,15 @@ test("rejects incompatible units", () => {
     "input.length": { type: "number", unit: "m" },
   };
   assert.throws(
-    () => normalizeSourceExpression("input.length >= 100JPY", fields),
-    /incompatible units "m" and "JPY"/,
+    () => normalizeSourceExpression("input.length >= 100credit", fields),
+    /incompatible units "m" and "credit"/,
   );
 });
 
 test("compiles CRDD Markdown into the existing Internal IR", async () => {
   const compiled = await compileMarkdown(fileURLToPath(sourcePath));
   const expected = JSON.parse(
-    await readFile(new URL("../examples/create-entity/create-entity.ir.json", import.meta.url), "utf8"),
+    await readFile(new URL("../examples/apply-record/apply-record.ir.json", import.meta.url), "utf8"),
   ) as CrddIr;
   assert.deepEqual(compiled.ir, expected);
   assert.match(compiled.digest, /^[a-f0-9]{64}$/);
@@ -107,14 +123,14 @@ test("produces byte-identical IR and digest from the same CRDD source", async ()
   assert.equal(first.digest, second.digest);
 });
 
-test("produces the same conformance semantics from Markdown and legacy IR", async () => {
+test("produces the same conformance semantics from Markdown and its IR snapshot", async () => {
   const compiled = await compileMarkdown(fileURLToPath(sourcePath));
-  const legacy = JSON.parse(
-    await readFile(new URL("../examples/create-entity/create-entity.ir.json", import.meta.url), "utf8"),
+  const snapshot = JSON.parse(
+    await readFile(new URL("../examples/apply-record/apply-record.ir.json", import.meta.url), "utf8"),
   ) as CrddIr;
   assert.deepEqual(
     generateConformanceBundle(compiled.ir, generateTestManifest(compiled.ir)),
-    generateConformanceBundle(legacy, generateTestManifest(legacy)),
+    generateConformanceBundle(snapshot, generateTestManifest(snapshot)),
   );
 });
 
@@ -122,22 +138,22 @@ test("produces byte-identical Unreal C++ from the same CRDD source", async () =>
   const first = generateUnreal((await compileMarkdown(fileURLToPath(sourcePath))).ir);
   const second = generateUnreal((await compileMarkdown(fileURLToPath(sourcePath))).ir);
   assert.deepEqual(first, second);
-  assert.ok(first.some((file) => file.content.includes("Result.State.Entities.Add")));
+  assert.ok(first.some((file) => file.content.includes("Result.State.Records.Add")));
 });
 
 test("generates Unreal append values for references and typed literals", async () => {
   const ir = structuredClone((await compileMarkdown(fileURLToPath(sourcePath))).ir);
-  const entities = ir.operation.state.entities;
-  assert.equal(entities.type, "array");
-  if (entities.type !== "array") return;
-  entities.items.properties.label = { type: "string" };
-  entities.items.properties.enabled = { type: "boolean" };
+  const records = ir.operation.state.records;
+  assert.equal(records.type, "array");
+  if (records.type !== "array") return;
+  records.items.properties.label = { type: "string" };
+  records.items.properties.enabled = { type: "boolean" };
   ir.operation.effects[0] = {
-    target: "state.entities",
+    target: "state.records",
     action: "append",
     value: {
       length: "$input.length",
-      cost: "$input.cost",
+      amount: "$input.amount",
       label: "generated",
       enabled: true,
     },
@@ -149,18 +165,18 @@ test("generates Unreal append values for references and typed literals", async (
 test("validates and generates numeric increment effects end to end", async () => {
   const ir = structuredClone((await compileMarkdown(fileURLToPath(sourcePath))).ir);
   ir.operation.effects = [{
-    target: "state.budget.remaining",
+    target: "state.capacity.remaining",
     action: "increment",
-    expression: "-input.cost",
+    expression: "-input.amount",
   }];
   const result = simulate(ir, {
-    input: { length: 1, cost: 100 },
-    state: { entities: [], budget: { remaining: 1_000 } },
+    input: { length: 1, amount: 100 },
+    state: { records: [], capacity: { remaining: 1_000 } },
   });
   assert.equal(result.ok, true);
-  assert.deepEqual(result.state, { entities: [], budget: { remaining: 900 } });
+  assert.deepEqual(result.state, { records: [], capacity: { remaining: 900 } });
   const source = generateUnreal(ir).find((file) => file.name.endsWith(".cpp"))?.content ?? "";
-  assert.match(source, /Result\.State\.BudgetRemainingJPY \+= -Input\.CostJPY/);
+  assert.match(source, /Result\.State\.CapacityRemainingCredit \+= -Input\.AmountCredit/);
 });
 
 test("derives deterministic counterexamples for non-boundary requirements", async () => {
@@ -169,7 +185,7 @@ test("derives deterministic counterexamples for non-boundary requirements", asyn
   ir.operation.requires = [{
     id: "must-be-enabled",
     expression: "input.enabled == true",
-    error: "ENTITY_TOO_SHORT",
+    error: "RECORD_TOO_SMALL",
   }];
   const manifest = generateTestManifest(ir);
   const counterexample = manifest.cases.find((item) => item.sourceRequirement === "must-be-enabled");
@@ -184,51 +200,51 @@ test("derives deterministic counterexamples for non-boundary requirements", asyn
 test("validates, simulates, and generates typed array update/remove effects", async () => {
   const base = (await compileMarkdown(fileURLToPath(sourcePath))).ir;
   const request = {
-    input: { length: 1, cost: 100 },
+    input: { length: 1, amount: 100 },
     state: {
-      budget: { remaining: 1_000 },
-      entities: [
-        { length: 1, cost: 100 },
-        { length: 3, cost: 300 },
+      capacity: { remaining: 1_000 },
+      records: [
+        { length: 1, amount: 100 },
+        { length: 3, amount: 300 },
       ],
     },
   };
 
   const update = structuredClone(base);
   update.operation.effects = [{
-    target: "state.entities",
+    target: "state.records",
     action: "update",
-    where: { cost: "$input.cost" },
+    where: { amount: "$input.amount" },
     set: { length: 2 },
   }];
   assert.deepEqual(validateIr(update).filter((item) => item.severity === "error"), []);
   const updated = simulate(update, structuredClone(request));
   assert.equal(updated.ok, true);
-  assert.deepEqual(updated.state.entities, [
-    { length: 2, cost: 100 },
-    { length: 3, cost: 300 },
+  assert.deepEqual(updated.state.records, [
+    { length: 2, amount: 100 },
+    { length: 3, amount: 300 },
   ]);
   const updateCpp = generateUnreal(update).find((file) => file.name.endsWith(".cpp"))?.content ?? "";
-  assert.match(updateCpp, /for \(FCrddCreateEntityEntitiesItem& Item/);
-  assert.match(updateCpp, /Item\.CostJPY == Input\.CostJPY/);
-  assert.match(updateCpp, /Item\.LengthMeters = 2/);
+  assert.match(updateCpp, /for \(FCrddApplyRecordRecordsItem& Item/);
+  assert.match(updateCpp, /Item\.AmountCredit == Input\.AmountCredit/);
+  assert.match(updateCpp, /Item\.LengthUnit = 2/);
 
   const remove = structuredClone(base);
   remove.operation.effects = [{
-    target: "state.entities",
+    target: "state.records",
     action: "remove",
-    where: { cost: "$input.cost" },
+    where: { amount: "$input.amount" },
   }];
   assert.deepEqual(validateIr(remove).filter((item) => item.severity === "error"), []);
   const removed = simulate(remove, structuredClone(request));
   assert.equal(removed.ok, true);
-  assert.deepEqual(removed.state.entities, [{ length: 3, cost: 300 }]);
+  assert.deepEqual(removed.state.records, [{ length: 3, amount: 300 }]);
   const removeCpp = generateUnreal(remove).find((file) => file.name.endsWith(".cpp"))?.content ?? "";
   assert.match(removeCpp, /RemoveAll/);
 });
 
-test("compiles the UpdateEntity source contract and exercises its generated case", async () => {
-  const ir = (await compileMarkdown(fileURLToPath(updateEntitySourcePath))).ir;
+test("compiles the ReviseRecord source contract and exercises its generated case", async () => {
+  const ir = (await compileMarkdown(fileURLToPath(revisionSourcePath))).ir;
   assert.deepEqual(validateIr(ir).filter((item) => item.severity === "error"), []);
   const manifest = generateTestManifest(ir);
   const success = manifest.cases.find((item) => item.expect.ok);
@@ -236,18 +252,18 @@ test("compiles the UpdateEntity source contract and exercises its generated case
   if (!success) return;
   const result = simulate(ir, structuredClone(success.arrange));
   assert.equal(result.ok, true);
-  assert.equal((result.state.entities as Array<{ length: number }>)[0].length, 1);
+  assert.equal((result.state.records as Array<{ length: number }>)[0].length, 1);
   const mutation = (await import("../src/mutation.ts")).analyzeMutationCoverage(ir, manifest);
   assert.equal(mutation.score, 100);
 });
 
 test("derives isolated conformance cases from a baseline satisfying multiple requirements", async () => {
-  const compilation = await compileMarkdown("test/fixtures/create-wall.md");
+  const compilation = await compileMarkdown("test/fixtures/contracts/numeric-boundary.md");
   const manifest = generateTestManifest(compilation.ir);
   const report = await runTestManifest(compilation.ir, manifest);
   assert.equal(report.failed, 0);
   assert.equal(report.passed, report.total);
-  assert.ok(manifest.cases.find((item) => item.id === "create-wall-success")?.expect.ok);
+  assert.ok(manifest.cases.find((item) => item.id === "append-record-success")?.expect.ok);
   for (const requirement of compilation.ir.operation.requires) {
     assert.ok(manifest.cases.some((item) =>
       item.sourceRequirement === requirement.id && item.expect.ok === false
@@ -258,28 +274,28 @@ test("derives isolated conformance cases from a baseline satisfying multiple req
 test("fails with requirement IDs when no satisfying conformance baseline exists", async () => {
   const directory = await mkdtemp(join(tmpdir(), "crdd-unsatisfied-"));
   const path = join(directory, "impossible.md");
-  const source = await readFile("test/fixtures/create-wall.md", "utf8");
+  const source = await readFile("test/fixtures/contracts/numeric-boundary.md", "utf8");
   await writeFile(path, source.replace(
-    "condition: input.length >= 300mm",
-    "condition: input.length >= 300mm",
+    "condition: input.span >= 300mm",
+    "condition: input.span >= 300mm",
   ).replace(
-    "    - { id: minimum-wall-height",
-    "    - { id: impossible-maximum, condition: input.length <= 10mm, error: WALL_TOO_SHORT }\n    - { id: minimum-wall-height",
+    "    - { id: minimum-extent",
+    "    - { id: impossible-maximum, condition: input.span <= 10mm, error: SPAN_TOO_SMALL }\n    - { id: minimum-extent",
   ));
   const compilation = await compileMarkdown(path);
   assert.throws(
     () => generateTestManifest(compilation.ir),
-    /Cannot derive a satisfying conformance baseline.*minimum-wall-length|impossible-maximum/,
+    /Cannot derive a satisfying conformance baseline.*minimum-span|impossible-maximum/,
   );
 });
 
 test("materializes optional enum defaults and rejects unknown values", async () => {
-  const compiled = await compileMarkdown(fileURLToPath(updateEntitySourcePath));
+  const compiled = await compileMarkdown(fileURLToPath(revisionSourcePath));
   const request = {
-    input: { entity_id: "entity-1", new_length: 2, options: {} },
+    input: { record_id: "record-1", new_length: 2, options: {} },
     state: {
       audit: { mode: "preserve_metadata" },
-      entities: [{ entity_id: "entity-1", length: 1 }],
+      records: [{ record_id: "record-1", length: 1 }],
     },
   };
   const result = simulate(compiled.ir, request);
@@ -294,15 +310,15 @@ test("materializes optional enum defaults and rejects unknown values", async () 
     /must be one of: replace, preserve_metadata/,
   );
   const header = generateUnreal(compiled.ir).find((file) => file.name.endsWith(".h"))?.content ?? "";
-  assert.match(header, /struct FCrddUpdateEntityInputOptions/);
-  assert.match(header, /struct FCrddUpdateEntityStateAudit/);
+  assert.match(header, /struct FCrddReviseRecordInputOptions/);
+  assert.match(header, /struct FCrddReviseRecordStateAudit/);
   assert.match(header, /FString Mode = TEXT\("replace"\);/);
   const source = generateUnreal(compiled.ir).find((file) => file.name.endsWith(".cpp"))?.content ?? "";
   assert.match(source, /Result\.State\.Audit\.Mode = Input\.Options\.Mode;/);
 });
 
 test("rejects invalid optional defaults and enums", async () => {
-  const compiled = await compileMarkdown(fileURLToPath(updateEntitySourcePath));
+  const compiled = await compileMarkdown(fileURLToPath(revisionSourcePath));
   const ir = structuredClone(compiled.ir);
   const options = ir.operation.input.options;
   assert.equal(options.type, "object");
@@ -320,19 +336,24 @@ test("produces deterministic traceability evidence from CRDD source", async () =
   const tests = generateTestManifest(compiled.ir);
   const bundle = generateConformanceBundle(compiled.ir, tests);
   const unreal = generateUnreal(compiled.ir);
+  const artifacts = unreal.map((file) => ({
+    path: `unreal/${file.name}`,
+    sha256: file.sha256,
+    traces: [...compiled.ir.operation.traces],
+  }));
   const first = generateTraceabilityManifest(
     compiled.ir,
-    "05_SPEC/01_Behavior_Specification.md",
+    "contracts/contract.md",
     compiled.digest,
-    unreal,
+    artifacts,
     tests,
     bundle,
   );
   const second = generateTraceabilityManifest(
     compiled.ir,
-    "05_SPEC/01_Behavior_Specification.md",
+    "contracts/contract.md",
     compiled.digest,
-    unreal,
+    artifacts,
     tests,
     bundle,
   );
@@ -341,10 +362,10 @@ test("produces deterministic traceability evidence from CRDD source", async () =
   assert.match(first.source.irSha256, /^[a-f0-9]{64}$/);
   assert.ok(first.generatedFiles.every((file) => /^[a-f0-9]{64}$/.test(file.sha256)));
   assert.deepEqual(
-    first.requirements.find((requirement) => requirement.id === "minimum-entity-length")?.traces,
-    ["REQ-ENTITY-001"],
+    first.requirements.find((requirement) => requirement.id === "minimum-record-length")?.traces,
+    ["REQ-RECORD-001"],
   );
-  assert.match(generateEvidenceMarkdown(first), /REQ-ENTITY-001/);
+  assert.match(generateEvidenceMarkdown(first), /REQ-RECORD-001/);
   assert.doesNotMatch(generateEvidenceMarkdown(first), /Generated at|timestamp/i);
 });
 
@@ -360,14 +381,14 @@ test("normalizes Unreal Automation results without device identity", async () =>
     reportCreatedOn: "2026.07.28-09.23.02",
     tests: [
       {
-        fullTestPath: "CRDD.CreateEntity.Conformance",
+        fullTestPath: "CRDD.ApplyRecord.Conformance",
         state: "Success",
         duration: 0.016,
         warnings: 0,
         errors: 0,
       },
       {
-        fullTestPath: "CRDD.Assets.EntityPreview",
+        fullTestPath: "CRDD.Assets.PrimaryPreview",
         state: "Success",
         duration: 0.02,
         warnings: 0,
@@ -382,7 +403,7 @@ test("normalizes Unreal Automation results without device identity", async () =>
       },
     ],
   });
-  const execution = parseUnrealAutomationReport(`\uFEFF${raw}`, "CreateEntity");
+  const execution = parseUnrealAutomationReport(`\uFEFF${raw}`, "ApplyRecord");
   assert.deepEqual(execution.summary, { succeeded: 3, failed: 0, notRun: 0 });
   assert.deepEqual(execution.platforms, ["WindowsEditor"]);
   assert.doesNotMatch(JSON.stringify(execution), /developer-machine|private-instance-id/);
@@ -390,28 +411,45 @@ test("normalizes Unreal Automation results without device identity", async () =>
   const compiled = await compileMarkdown(fileURLToPath(sourcePath));
   const tests = generateTestManifest(compiled.ir);
   const bundle = generateConformanceBundle(compiled.ir, tests);
+  const unrealArtifacts = generateUnreal(compiled.ir).map((file) => ({
+    path: `unreal/${file.name}`,
+    sha256: file.sha256,
+    traces: [...compiled.ir.operation.traces],
+  }));
+  const assetArtifacts = generateAssets(compiled.ir).map((file) => ({
+    path: `assets/${file.name}`,
+    sha256: file.sha256,
+    traces: [...compiled.ir.operation.traces],
+  }));
+  const executionArtifact = {
+    path: "unreal-execution.json",
+    sha256: createHash("sha256").update(`${JSON.stringify(execution, null, 2)}\n`).digest("hex"),
+    status: execution.summary.failed === 0 && execution.summary.notRun === 0
+      ? "passed" as const
+      : "failed" as const,
+    tests: execution.tests.map((test) => test.path),
+  };
   const traceability = generateTraceabilityManifest(
     compiled.ir,
-    "05_SPEC/01_Behavior_Specification.md",
+    "contracts/contract.md",
     compiled.digest,
-    generateUnreal(compiled.ir),
+    [...unrealArtifacts, ...assetArtifacts],
     tests,
     bundle,
-    execution,
-    generateAssets(compiled.ir),
+    executionArtifact,
   );
   assert.equal(traceability.execution?.status, "passed");
   assert.equal(
     traceability.execution?.sha256,
     createHash("sha256").update(`${JSON.stringify(execution, null, 2)}\n`).digest("hex"),
   );
-  assert.match(generateEvidenceMarkdown(traceability), /Unreal Execution[\s\S]*PASSED/);
+  assert.match(generateEvidenceMarkdown(traceability), /Execution[\s\S]*PASSED/);
   assert.ok(
-    traceability.generatedFiles.some((file) => file.path === "assets/EntityPreview.generated.obj"),
+    traceability.generatedFiles.some((file) => file.path === "assets/PrimaryPreview.generated.obj"),
   );
 });
 
-test("generates deterministic Unreal-scale 3D assets from CRDD", async () => {
+test("generates deterministic unit-declared 3D assets from CRDD", async () => {
   const ir = (await compileMarkdown(fileURLToPath(sourcePath))).ir;
   const first = generateAssets(ir);
   const second = generateAssets(ir);
@@ -419,8 +457,8 @@ test("generates deterministic Unreal-scale 3D assets from CRDD", async () => {
   assert.deepEqual(
     first.map((file) => file.name),
     [
-      "EntityPreview.generated.obj",
-      "EntityPreview.generated.mtl",
+      "PrimaryPreview.generated.obj",
+      "PrimaryPreview.generated.mtl",
       "SecondaryPreview.generated.obj",
       "SecondaryPreview.generated.mtl",
       "assets.manifest.json",
@@ -432,56 +470,54 @@ test("generates deterministic Unreal-scale 3D assets from CRDD", async () => {
   assert.match(obj, /v 50 10 240/);
   assert.match(obj, /vt 1 1/);
   assert.match(obj, /f 1\/1 4\/4 3\/3 2\/2/);
-  assert.match(obj, /CRDD-TRACE: REQ-ENTITY-001/);
+  assert.match(obj, /CRDD-TRACE: REQ-RECORD-001/);
   const manifest = JSON.parse(
     first.find((file) => file.name === "assets.manifest.json")?.content ?? "",
   );
   assert.deepEqual(manifest, {
-    protocol: "crdd-ir/assets-v0.1",
-    operation: "CreateEntity",
-    scene: {
-      unrealLevel: "/Game/CRDD/Generated/CreateEntityScene",
-    },
+    protocol: "crdd-ir/assets-v0.2",
+    operation: "ApplyRecord",
+    coordinateSystem: "right-handed-z-up",
+    units: { distance: "cm", angle: "deg" },
+    scene: { id: "ApplyRecordScene" },
     assets: [
       {
-        id: "EntityPreview",
-        source: "EntityPreview.generated.obj",
-        unrealDestination: "/Game/CRDD/Generated",
-        previewLevel: "/Game/CRDD/Generated/EntityPreviewLevel",
-        dimensionsCm: { length: 100, width: 20, height: 240 },
+        id: "PrimaryPreview",
+        source: "PrimaryPreview.generated.obj",
+        previewScene: "PrimaryPreviewScene",
+        dimensions: { length: 100, width: 20, height: 240 },
         collision: { shape: "box" },
-        lod: { group: "LevelArchitecture" },
+        lod: { policy: "architectural" },
         placement: {
-          locationCm: { x: 0, y: 0, z: 0 },
-          rotationDeg: { pitch: 0, yaw: 0, roll: 0 },
+          location: { x: 0, y: 0, z: 0 },
+          rotation: { pitch: 0, yaw: 0, roll: 0 },
         },
-        traces: ["REQ-ENTITY-001"],
+        traces: ["REQ-RECORD-001"],
       },
       {
         id: "SecondaryPreview",
         source: "SecondaryPreview.generated.obj",
-        unrealDestination: "/Game/CRDD/Generated",
-        previewLevel: "/Game/CRDD/Generated/SecondaryPreviewLevel",
-        dimensionsCm: { length: 90, width: 10, height: 200 },
+        previewScene: "SecondaryPreviewScene",
+        dimensions: { length: 90, width: 10, height: 200 },
         collision: { shape: "box" },
-        lod: { group: "LargeProp" },
+        lod: { policy: "large" },
         placement: {
-          locationCm: { x: 150, y: 25, z: 0 },
-          rotationDeg: { pitch: 0, yaw: 90, roll: 0 },
+          location: { x: 150, y: 25, z: 0 },
+          rotation: { pitch: 0, yaw: 90, roll: 0 },
         },
-        traces: ["REQ-ENTITY-001"],
+        traces: ["REQ-RECORD-001"],
       },
     ],
   });
 });
 
-test("rejects unsupported collision shapes and LOD groups", async () => {
+test("rejects unsupported collision shapes and LOD policies", async () => {
   const ir = structuredClone((await compileMarkdown(fileURLToPath(sourcePath))).ir);
   const asset = getAssetDefinitions(ir)[0];
   assert.ok(asset);
   if (!asset) return;
   asset.collision.shape = "triangle-mesh" as typeof asset.collision.shape;
-  asset.lod.group = "Cinematic" as typeof asset.lod.group;
+  asset.lod.policy = "cinematic" as typeof asset.lod.policy;
   assert.throws(() => generateAssets(ir), /collision\.shape is unsupported/);
 });
 
@@ -497,7 +533,7 @@ test("generates one manifest entry for every declared 3D asset", async () => {
     },
     material: { baseColor: [0.4, 0.2, 0.1] },
     collision: { shape: "box" },
-    lod: { group: "LargeProp" },
+    lod: { policy: "large" },
     placement: {
       location: {
         x: { value: 2, unit: "m" },
@@ -510,7 +546,7 @@ test("generates one manifest entry for every declared 3D asset", async () => {
         roll: { value: 0, unit: "deg" },
       },
     },
-    traces: ["REQ-ENTITY-001"],
+    traces: ["REQ-RECORD-001"],
   });
 
   const files = generateAssets(ir);
@@ -520,7 +556,7 @@ test("generates one manifest entry for every declared 3D asset", async () => {
   );
   assert.deepEqual(
     manifest.assets.map((asset: { id: string }) => asset.id),
-    ["EntityPreview", "SecondaryPreview", "SecondaryPreview2"],
+    ["PrimaryPreview", "SecondaryPreview", "SecondaryPreview2"],
   );
 });
 
@@ -543,7 +579,7 @@ test("generates deterministic cylinder geometry with UVs and normals", async () 
   assert.equal((obj.match(/^vn /gm) ?? []).length, 26);
   assert.equal((obj.match(/^vt /gm) ?? []).length, 50);
   assert.equal((obj.match(/^f /gm) ?? []).length, 72);
-  assert.match(obj, /CRDD-TRACE: REQ-ENTITY-001/);
+  assert.match(obj, /CRDD-TRACE: REQ-RECORD-001/);
 });
 
 test("removes only obsolete generated 3D source files", async () => {

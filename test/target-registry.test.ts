@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtemp, readFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
+import { pathToFileURL } from "node:url";
 import { generateBatch } from "../src/batch.ts";
 import {
   describeTarget,
@@ -15,7 +16,7 @@ import {
 test("built-in targets expose generation capabilities through one registry", () => {
   assert.deepEqual(
     listTargetAdapters().map((target) => target.id),
-    ["assets", "ir", "unity", "unreal"],
+    ["assets", "ir", "typescript", "unity", "unreal"],
   );
   assert.deepEqual(describeTarget(getTargetAdapter("unity")), {
     id: "unity",
@@ -40,7 +41,7 @@ test("built-in targets expose generation capabilities through one registry", () 
 test("unknown target reports all registered alternatives", () => {
   assert.throws(
     () => getTargetAdapter("godot"),
-    /Unsupported target: godot\. Available targets: assets, ir, unity, unreal/,
+    /Unsupported target: godot\. Available targets: assets, ir, typescript, unity, unreal/,
   );
 });
 
@@ -58,13 +59,13 @@ test("a new target is added without changing CLI or batch dispatch", async () =>
   assert.equal(getTargetAdapter("test-target").id, "test-target");
   const outDir = await mkdtemp(join(tmpdir(), "crdd-target-registry-"));
   const manifest = await generateBatch(
-    ["examples/create-entity/05_SPEC/01_Behavior_Specification.md"],
+    ["examples/apply-record/contract.md"],
     outDir,
     "test-target",
   );
   assert.equal(manifest.target, "test-target");
   assert.equal(
-    await readFile(join(outDir, "CreateEntity", "CreateEntity.txt"), "utf8"),
+    await readFile(join(outDir, "ApplyRecord", "ApplyRecord.txt"), "utf8"),
     manifest.operations[0].digest,
   );
 });
@@ -79,6 +80,35 @@ test("CLI lists targets as machine-readable registry metadata", () => {
   assert.equal(registry.protocol, "crdd-ir/target-registry-v0.1");
   assert.deepEqual(
     registry.targets.map((target: { id: string }) => target.id),
-    ["assets", "ir", "unity", "unreal"],
+    ["assets", "ir", "typescript", "unity", "unreal"],
   );
+});
+
+test("CLI loads an external target module without a core registry change", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "crdd-target-module-"));
+  const modulePath = join(directory, "register.mjs");
+  const registryUrl = pathToFileURL(join(process.cwd(), "src", "target-registry.ts")).href;
+  await writeFile(modulePath, `
+import { registerTargetAdapter } from ${JSON.stringify(registryUrl)};
+registerTargetAdapter({
+  id: "external-target",
+  description: "External test adapter",
+  profileRequired: false,
+  supportsFlatBatch: true,
+  generate: ({ compilation }) => [{
+    name: compilation.ir.operation.id + ".external.txt",
+    content: compilation.digest,
+  }],
+});
+`, "utf8");
+
+  const output = execFileSync(
+    process.execPath,
+    [
+      "src/cli.ts", "target", "describe", "external-target",
+      "--target-module", modulePath,
+    ],
+    { encoding: "utf8" },
+  );
+  assert.equal(JSON.parse(output).id, "external-target");
 });

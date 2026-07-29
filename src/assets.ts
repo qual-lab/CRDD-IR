@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import { readdir, unlink } from "node:fs/promises";
 import { resolve } from "node:path";
-import type { AssetDefinition, CrddIr } from "./model.ts";
+import type { CrddIr } from "./model.ts";
+import type { AssetDefinition } from "./extensions/assets-model.ts";
 import type { GeneratedFile } from "./unreal.ts";
 
 export const ASSET_EXTENSION_ID = "crdd.3d-assets";
@@ -18,17 +19,16 @@ export function generateAssets(ir: CrddIr): GeneratedFile[] {
       "assets.manifest.json",
       `${JSON.stringify(
         {
-          protocol: "crdd-ir/assets-v0.1",
+          protocol: "crdd-ir/assets-v0.2",
           operation: ir.operation.id,
-          scene: {
-            unrealLevel: `/Game/CRDD/Generated/${ir.operation.id}Scene`,
-          },
+          coordinateSystem: "right-handed-z-up",
+          units: { distance: "cm", angle: "deg" },
+          scene: { id: `${ir.operation.id}Scene` },
           assets: assets.map((asset) => ({
             id: asset.id,
             source: `${asset.id}.generated.obj`,
-            unrealDestination: "/Game/CRDD/Generated",
-            previewLevel: `/Game/CRDD/Generated/${asset.id}Level`,
-            dimensionsCm: {
+            previewScene: `${asset.id}Scene`,
+            dimensions: {
               length: metersToCentimeters(asset.dimensions.length.value),
               width: metersToCentimeters(asset.dimensions.width.value),
               height: metersToCentimeters(asset.dimensions.height.value),
@@ -36,12 +36,12 @@ export function generateAssets(ir: CrddIr): GeneratedFile[] {
             collision: structuredClone(asset.collision),
             lod: structuredClone(asset.lod),
             placement: {
-              locationCm: {
+              location: {
                 x: metersToCentimeters(asset.placement.location.x.value),
                 y: metersToCentimeters(asset.placement.location.y.value),
                 z: metersToCentimeters(asset.placement.location.z.value),
               },
-              rotationDeg: {
+              rotation: {
                 pitch: asset.placement.rotation.pitch.value,
                 yaw: asset.placement.rotation.yaw.value,
                 roll: asset.placement.rotation.roll.value,
@@ -72,10 +72,7 @@ export function getAssetDefinitions(ir: CrddIr): AssetDefinition[] {
     return extension.data.assets as AssetDefinition[];
   }
 
-  // v0.1 IR compatibility. New compilations always use the versioned extension.
-  const legacy = ir.operation.assets ?? [];
-  validateAssetDefinitions(legacy);
-  return legacy;
+  return [];
 }
 
 function validateAssetDefinitions(value: unknown[]): void {
@@ -105,12 +102,12 @@ function validateAssetDefinitions(value: unknown[]): void {
       throw new Error(`${path}.material.baseColor must contain three numbers from 0 to 1`);
     }
     if (!isRecord(asset.collision) ||
-        !["box", "capsule", "sphere", "ndop26"].includes(String(asset.collision.shape))) {
+        !["box", "capsule", "sphere", "convex"].includes(String(asset.collision.shape))) {
       throw new Error(`${path}.collision.shape is unsupported`);
     }
     if (!isRecord(asset.lod) ||
-        !["None", "SmallProp", "LargeProp", "LevelArchitecture"].includes(String(asset.lod.group))) {
-      throw new Error(`${path}.lod.group is unsupported`);
+        !["none", "small", "large", "architectural"].includes(String(asset.lod.policy))) {
+      throw new Error(`${path}.lod.policy is unsupported`);
     }
     validatePlacement(asset.placement, `${path}.placement`);
     if (!Array.isArray(asset.traces) || asset.traces.some((trace) => typeof trace !== "string")) {

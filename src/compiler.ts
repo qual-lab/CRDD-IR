@@ -23,9 +23,11 @@ export async function compileMarkdown(path: string): Promise<CompilationResult> 
     irVersion: "0.1",
     operation: {
       id: contract.operation.id,
+      kind: contract.operation.kind,
       traces: contract.operation.traces,
       input: contract.operation.input,
       state: contract.operation.state,
+      ...(contract.operation.output ? { output: contract.operation.output } : {}),
       requires: contract.operation.requires.map((requirement) => ({
         id: requirement.id,
         expression: normalizeWithContext(requirement.condition, fields, requirement.id),
@@ -40,30 +42,27 @@ export async function compileMarkdown(path: string): Promise<CompilationResult> 
           : structuredClone(effect),
       ),
       errors: contract.operation.errors,
-      transaction: {
-        atomic: contract.operation.transaction.atomic,
-        rollbackOnFailure: contract.operation.transaction.rollback_on_failure,
-      },
-      ...(contract.operation.extensions || contract.operation.assets
+      ...(contract.operation.transaction ? {
+        transaction: {
+          atomic: contract.operation.transaction.atomic,
+          rollbackOnFailure: contract.operation.transaction.rollback_on_failure,
+        },
+      } : {}),
+      ...(contract.operation.execution ? {
+        execution: {
+          mode: contract.operation.execution.mode,
+          ...(contract.operation.execution.cancelable === undefined
+            ? {} : { cancelable: contract.operation.execution.cancelable }),
+          ...(contract.operation.execution.timeout_ms === undefined
+            ? {} : { timeoutMs: contract.operation.execution.timeout_ms }),
+          ...(contract.operation.execution.idempotency === undefined
+            ? {} : { idempotency: contract.operation.execution.idempotency }),
+        },
+      } : {}),
+      ...(contract.operation.emits ? { emits: structuredClone(contract.operation.emits) } : {}),
+      ...(contract.operation.extensions
         ? {
-            extensions: {
-              ...structuredClone(contract.operation.extensions ?? {}),
-              ...(contract.operation.assets ? { "crdd.3d-assets": {
-                protocol: "crdd-ir/3d-assets-v0.1",
-                data: {
-                  assets: contract.operation.assets.map((asset) => ({
-                    id: asset.id,
-                    type: asset.type,
-                    dimensions: structuredClone(asset.dimensions),
-                    material: { baseColor: [...asset.material.base_color] as [number, number, number] },
-                    collision: structuredClone(asset.collision),
-                    lod: structuredClone(asset.lod),
-                    placement: structuredClone(asset.placement),
-                    traces: [...asset.traces],
-                  })),
-                },
-              } } : {}),
-            },
+            extensions: structuredClone(contract.operation.extensions),
           }
         : {}),
     },

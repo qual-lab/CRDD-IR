@@ -3,23 +3,23 @@
   "files": [
     {
       "path": "assets.manifest.json",
-      "sha256": "20005ccf92c91efddcf4dc62c3e6417f0039e35e9fc8c41b217089ff86b11f3a"
+      "sha256": "efa3a2ede005494fbad7b6f086dd031d3d171c8f7400c255da9294f7eef592b0"
     },
     {
-      "path": "EntityPreview.generated.mtl",
-      "sha256": "75fd255dfafcf433ffe9555e602569be2dbed9dff76c90badd9d8dc492909792"
+      "path": "PrimaryPreview.generated.mtl",
+      "sha256": "9ca5cda6b0fa2e297fdd9c8ab6024f77b5b9c137acfbadcacaf559a41640c3c6"
     },
     {
-      "path": "EntityPreview.generated.obj",
-      "sha256": "a8cbc7e791cef05227bae119f4e561af4747f8740f75586778871c7978718f7a"
+      "path": "PrimaryPreview.generated.obj",
+      "sha256": "ea55edc37e9ca3d4f39ee14f7117ae8ebb8c1950bcf931909af10341e2c1808c"
     },
     {
       "path": "SecondaryPreview.generated.mtl",
-      "sha256": "8ce01a862f958517dde3d50e4cb855cefad9fc75c1f23a31670746f4d493732f"
+      "sha256": "79906a53c10a97e0098ac907cb009c71a7d83f350507e98e4912599fd8313c8a"
     },
     {
       "path": "SecondaryPreview.generated.obj",
-      "sha256": "d186e821dffacccb1a1ca8db42c95faf20f1ce868d631ca2399d93af0b079023"
+      "sha256": "77a418a8585d13203acf309e42cc4a593f2831a283b6d4e40d17030438b41a10"
     }
   ]
 }

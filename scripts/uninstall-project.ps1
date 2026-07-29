@@ -12,7 +12,7 @@ if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
     throw "CRDD-IR installation manifest not found: $manifestPath"
 }
 $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
-if ($manifest.protocol -ne "crdd-ir/install-manifest-v0.1") {
+if ($manifest.protocol -ne "crdd-ir/install-manifest-v0.2") {
     throw "Unsupported CRDD-IR installation manifest: $($manifest.protocol)"
 }
 $backupRoot = Join-Path $root (

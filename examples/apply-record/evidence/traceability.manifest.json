@@ -1,0 +1,87 @@
+{
+  "protocol": "crdd-ir/traceability-v0.1",
+  "operation": "ApplyRecord",
+  "source": {
+    "path": "examples/apply-record/contract.md",
+    "irSha256": "82dd4ea090d92c9a0bc628c24db35296843828e3968169ee398764b9bf12756c"
+  },
+  "generatedFiles": [],
+  "requirements": [
+    {
+      "id": "minimum-record-length",
+      "error": "RECORD_TOO_SMALL",
+      "traces": [
+        "REQ-RECORD-001"
+      ],
+      "testCases": [
+        "minimum-record-length-at-boundary",
+        "minimum-record-length-below-boundary"
+      ]
+    },
+    {
+      "id": "sufficient-capacity",
+      "error": "INSUFFICIENT_CAPACITY",
+      "traces": [
+        "DEC-CAPACITY-001"
+      ],
+      "testCases": [
+        "sufficient-capacity-exact",
+        "sufficient-capacity-insufficient"
+      ]
+    }
+  ],
+  "conformance": {
+    "protocol": "crdd-ir/conformance-v0.1",
+    "sha256": "2acfb58330257d5d7946bc1c12fd2f7ea496aed216f776080cf6ee87de4b5582",
+    "cases": [
+      {
+        "id": "apply-record-success",
+        "traces": [
+          "REQ-RECORD-001",
+          "DEC-CAPACITY-001"
+        ]
+      },
+      {
+        "id": "minimum-record-length-at-boundary",
+        "sourceRequirement": "minimum-record-length",
+        "traces": [
+          "REQ-RECORD-001"
+        ]
+      },
+      {
+        "id": "minimum-record-length-below-boundary",
+        "sourceRequirement": "minimum-record-length",
+        "traces": [
+          "REQ-RECORD-001"
+        ]
+      },
+      {
+        "id": "sufficient-capacity-exact",
+        "sourceRequirement": "sufficient-capacity",
+        "traces": [
+          "DEC-CAPACITY-001"
+        ]
+      },
+      {
+        "id": "sufficient-capacity-insufficient",
+        "sourceRequirement": "sufficient-capacity",
+        "traces": [
+          "DEC-CAPACITY-001"
+        ]
+      }
+    ]
+  },
+  "coverage": {
+    "requirements": 2,
+    "covered": 2,
+    "uncovered": [],
+    "percentage": 100
+  },
+  "mutation": {
+    "protocol": "crdd-ir/mutation-v0.1",
+    "total": 6,
+    "killed": 6,
+    "survived": [],
+    "score": 100
+  }
+}

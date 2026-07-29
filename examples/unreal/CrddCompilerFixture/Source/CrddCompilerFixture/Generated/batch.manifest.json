@@ -4,90 +4,90 @@
   "layout": "flat",
   "operations": [
     {
-      "id": "CreateEntity",
-      "source": "examples/create-entity/05_SPEC/01_Behavior_Specification.md",
-      "digest": "6eb598a96c896437db816f4992bca751e98f62e5f9e01f24007f8cbc3e09e3aa",
+      "id": "AppendRecord",
+      "source": "test/fixtures/contracts/numeric-boundary.md",
+      "digest": "4eda4128ad14b3f01584557f29fc6a5f14fd941bb261b42ba4bcaba76bb12987",
       "outputDirectory": ".",
       "files": [
         {
-          "path": "CreateEntity.bridge.generated.cpp",
-          "sha256": "cc9d97c29ba10dc22b855dc55c440706cfdfb529bac4384cc5aad5ae86885c31"
+          "path": "AppendRecord.bridge.generated.cpp",
+          "sha256": "10314dcf9e922d5f784930537ef73e5ed61405e43473b9826f6224bf7a01a712"
         },
         {
-          "path": "CreateEntity.bridge.generated.h",
-          "sha256": "1fbc3889f5dceca2e578517fb4c592aeae7a17346225ae0ee7979cc36563df13"
+          "path": "AppendRecord.bridge.generated.h",
+          "sha256": "5710709c1ef3ff8429333d31a98630b0eff6b4b5f047bc8f70b2f7868224cc6e"
         },
         {
-          "path": "CreateEntity.bridge.generated.spec.cpp",
-          "sha256": "2a90652783c13c929094b0c42b9facf94873d12df7cc088f2632969cd89d3557"
+          "path": "AppendRecord.bridge.generated.spec.cpp",
+          "sha256": "50b6b707943afc3791819c4a77f0449321ec436098e588936611efc707cc4533"
         },
         {
-          "path": "CreateEntity.generated.cpp",
-          "sha256": "cca122e2679818fcd4d41d3faf32547306c560d1dd9d79611ee4fdb0177650b2"
+          "path": "AppendRecord.generated.cpp",
+          "sha256": "d3933a11b3416e22497c463c0efac548a39d3f8bff544b42ff299247936ffd02"
         },
         {
-          "path": "CreateEntity.generated.h",
-          "sha256": "33a1346572b32274849092eb58ea1a077b2ac50aa8f76cb6af142781bb1bb2ea"
+          "path": "AppendRecord.generated.h",
+          "sha256": "613a2d74faaf37938f2a1cf43592601cb72663eb656f18aec5f61db87c3a4a3f"
+        },
+        {
+          "path": "AppendRecord.numeric.generated.spec.cpp",
+          "sha256": "e60c9827ae2897503ab9d9e6335ad7d0dc51c4e16abb7f8a8dc8fe1b2f9c6323"
         }
       ]
     },
     {
-      "id": "CreateWall",
-      "source": "test/fixtures/create-wall.md",
-      "digest": "eb68492132bb28b21bdf6d6fbf30c4d8b80130f7a8fbb628266d1bb5627bb696",
+      "id": "ApplyRecord",
+      "source": "examples/apply-record/contract.md",
+      "digest": "82dd4ea090d92c9a0bc628c24db35296843828e3968169ee398764b9bf12756c",
       "outputDirectory": ".",
       "files": [
         {
-          "path": "CreateWall.bridge.generated.cpp",
-          "sha256": "e9cc9b4ffd21f6ca40327a4c633aa4a8bf912ee15606e373a33d02b6706c635e"
+          "path": "ApplyRecord.bridge.generated.cpp",
+          "sha256": "7c5f305a0a3c49c774ea63a37a2c6f3c1a650e6651a7e200326fd532a0fcfd83"
         },
         {
-          "path": "CreateWall.bridge.generated.h",
-          "sha256": "cc090f3020b634ceca433923e585f02fe5c821afd26a243b787b3a1660482ea5"
+          "path": "ApplyRecord.bridge.generated.h",
+          "sha256": "7a9d9c699592406c064990bdc925a204b2128bd0a542aebe4f14fb7b2d21d5cf"
         },
         {
-          "path": "CreateWall.bridge.generated.spec.cpp",
-          "sha256": "23685886e4274de31b73b3f02de47e155b379bc99db52361ca6e9fc0fa37dafd"
+          "path": "ApplyRecord.bridge.generated.spec.cpp",
+          "sha256": "cab83c3401a19377d4a2f0e423650368a38b2168cb07644fa589220ec0bc71ce"
         },
         {
-          "path": "CreateWall.generated.cpp",
-          "sha256": "b7f336e449f9e507332dbf16bc88688ade670b4636b4a6ea003c0782f9b73c8a"
+          "path": "ApplyRecord.generated.cpp",
+          "sha256": "7615eaf0169f01305956f8e9e6991f99440017a02757401a631d56768e3ec436"
         },
         {
-          "path": "CreateWall.generated.h",
-          "sha256": "1554317acd110b472b00e5384949044ae8357fb7060c209798d3cb1e7bbe4ae0"
-        },
-        {
-          "path": "CreateWall.numeric.generated.spec.cpp",
-          "sha256": "a2b2b6b9960177091a2d65bbcfcfbadb7270e72a26ab745ff6a9228f2d17973b"
+          "path": "ApplyRecord.generated.h",
+          "sha256": "22be6214ac460a69d18c3c3ac217781995479fd3ce58cd42ecee8ec3059689bd"
         }
       ]
     },
     {
-      "id": "UpdateEntity",
-      "source": "examples/update-entity/05_SPEC/01_Behavior_Specification.md",
-      "digest": "c01d756a4e911e9bf13ffe51b18ce82597359e20ac2543931aaf9721184074e4",
+      "id": "ReviseRecord",
+      "source": "examples/revise-record/contract.md",
+      "digest": "5a1f6ae8c91b8a9fa8d45d3e0ccf168a7d1eb698c25f4694e7d491065d0c222d",
       "outputDirectory": ".",
       "files": [
         {
-          "path": "UpdateEntity.bridge.generated.cpp",
-          "sha256": "5d99fa6e059152657fcbb3fb66505cf9e3f5e858f5f124cd1cc4b271a1154a7a"
+          "path": "ReviseRecord.bridge.generated.cpp",
+          "sha256": "b94020488363c808504e5ff831402376ae1d10c6d04fb309c47df543bdd7e0cc"
         },
         {
-          "path": "UpdateEntity.bridge.generated.h",
-          "sha256": "995a7c063ca150c4f210c6ec2fbb3d1be762658e4bbf1d33acdd2095d2ee04ae"
+          "path": "ReviseRecord.bridge.generated.h",
+          "sha256": "ce5df027b948e9c470a31d12ab271b4208f645c953c8419aa62ded384d665bb8"
         },
         {
-          "path": "UpdateEntity.bridge.generated.spec.cpp",
-          "sha256": "f294b9f5bc4690ef9e9336c973015cc404a98309b2400f67d5f27fd66bbfbf85"
+          "path": "ReviseRecord.bridge.generated.spec.cpp",
+          "sha256": "94e21b705d820b746f256310dd378952963adb46542a61fb61d4c9e2de6b79b6"
         },
         {
-          "path": "UpdateEntity.generated.cpp",
-          "sha256": "806823d458e55c85684b65f32b9a1eb6cf9665cd8699a824e380a7499e1d8fca"
+          "path": "ReviseRecord.generated.cpp",
+          "sha256": "ef6414a5b451d36a0ebb7413518dcfb3a0667249397309b617822782f7190dce"
         },
         {
-          "path": "UpdateEntity.generated.h",
-          "sha256": "ca8c823adc1c3991cc73b288fcfc2c9a92b1303a14d4432efe18f8ff5db20bba"
+          "path": "ReviseRecord.generated.h",
+          "sha256": "e2a25dfdeb1254eb7613ecd4f5ab7b52250f2e1b8309d4e134e45aefdb8da49f"
         }
       ]
     }
