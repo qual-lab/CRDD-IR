@@ -1,14 +1,17 @@
 import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { generateAssets } from "./assets.ts";
 import { compileMarkdown, type CompilationResult } from "./compiler.ts";
-import { generateUnreal } from "./unreal.ts";
-import { buildUnrealTargetPlan, type UnrealTargetProfile } from "./unreal-target.ts";
-import { generateUnrealReflection } from "./unreal-uht.ts";
 import { withInterprocessLock } from "./interprocess-lock.ts";
 import { generatedTextSha256 } from "./content-hash.ts";
+import {
+  getTargetAdapter,
+  validateTargetProfile,
+  type TargetAdapter,
+} from "./target-registry.ts";
+import type { UnrealTargetProfile } from "./unreal-target.ts";
+import type { UnityTargetProfile } from "./unity-target.ts";
 
-export type BatchTarget = "ir" | "unreal" | "assets";
+export type BatchTarget = string;
 export type BatchLayout = "operation-directories" | "flat";
 
 export type BatchManifest = {
@@ -28,7 +31,13 @@ export async function generateBatch(
   sources: string[],
   outDir: string,
   target: BatchTarget,
-  options: { layout?: BatchLayout; force?: boolean; unrealProfile?: UnrealTargetProfile } = {},
+  options: {
+    layout?: BatchLayout;
+    force?: boolean;
+    profile?: unknown;
+    unrealProfile?: UnrealTargetProfile;
+    unityProfile?: UnityTargetProfile;
+  } = {},
 ): Promise<BatchManifest> {
   return withInterprocessLock(resolve(outDir), () =>
     generateBatchLocked(sources, outDir, target, options)
@@ -39,16 +48,27 @@ async function generateBatchLocked(
   sources: string[],
   outDir: string,
   target: BatchTarget,
-  options: { layout?: BatchLayout; force?: boolean; unrealProfile?: UnrealTargetProfile } = {},
+  options: {
+    layout?: BatchLayout;
+    force?: boolean;
+    profile?: unknown;
+    unrealProfile?: UnrealTargetProfile;
+    unityProfile?: UnityTargetProfile;
+  } = {},
 ): Promise<BatchManifest> {
   const layout = options.layout ?? "operation-directories";
-  if (layout === "flat" && target !== "unreal") {
-    throw new Error('Flat batch layout is supported only for target "unreal"');
+  const adapter = getTargetAdapter(target);
+  if (layout === "flat" && !adapter.supportsFlatBatch) {
+    throw new Error(`Flat batch layout is not supported for target "${target}"`);
   }
   if (sources.length === 0) throw new Error("Batch requires at least one CRDD Markdown source");
   const compilations = await Promise.all(sources.map((source) => compileMarkdown(source)));
   rejectDuplicateOperations(compilations);
-  rejectOutputCollisions(compilations, target, layout);
+  const profileValue = options.profile ?? options.unrealProfile ?? options.unityProfile;
+  const profile = profileValue === undefined
+    ? undefined
+    : validateTargetProfile(adapter, profileValue);
+  rejectOutputCollisions(compilations, adapter, layout, profile);
   const operations: BatchManifest["operations"] = [];
   const manifestPath = resolve(outDir, "batch.manifest.json");
   const previous = await loadPreviousManifest(manifestPath);
@@ -64,24 +84,7 @@ async function generateBatchLocked(
       ? resolve(outDir)
       : resolve(outDir, compilation.ir.operation.id);
     await mkdir(operationDir, { recursive: true });
-    const files = target === "ir"
-      ? [{ name: `${compilation.ir.operation.id}.ir.json`, content: compilation.canonicalJson }]
-      : target === "unreal"
-        ? [
-            ...generateUnreal(compilation.ir, options.unrealProfile ? {
-              irSha256: compilation.digest,
-              generatorVersion: "0.1.0",
-              numericProjection: options.unrealProfile.numericProjection,
-            } : undefined),
-            ...(options.unrealProfile && compilationIndex === 0
-              ? generateUnrealReflection(buildUnrealTargetPlan(
-                  compilation.ir,
-                  compilation.digest,
-                  options.unrealProfile,
-                ))
-              : []),
-          ]
-        : generateAssets(compilation.ir);
+    const files = adapter.generate({ compilation, profile, operationIndex: compilationIndex });
     if (target === "assets" && files.length === 0) {
       throw new Error(`Operation "${compilation.ir.operation.id}" declares no assets`);
     }
@@ -232,15 +235,14 @@ function rejectDuplicateOperations(compilations: CompilationResult[]): void {
 
 function rejectOutputCollisions(
   compilations: CompilationResult[],
-  target: BatchTarget,
+  adapter: TargetAdapter,
   layout: BatchLayout,
+  profile?: unknown,
 ): void {
   if (layout !== "flat") return;
   const owners = new Map<string, string[]>();
-  for (const compilation of compilations) {
-    const names = target === "unreal"
-      ? generateUnreal(compilation.ir).map((file) => file.name)
-      : [];
+  for (const [operationIndex, compilation] of compilations.entries()) {
+    const names = adapter.generate({ compilation, profile, operationIndex }).map((file) => file.name);
     for (const name of names) {
       const key = name.toLowerCase();
       owners.set(key, [...(owners.get(key) ?? []), compilation.ir.operation.id]);

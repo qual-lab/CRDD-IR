@@ -6,7 +6,7 @@ CRDD Markdown内の構造化契約に事前条件、Effect、Error、Transaction
 
 CRDD Markdownが正本であり、CRDD IRインスタンスはCompiler処理中またはDebug出力としてだけ存在する。IR SchemaはVersion管理するが、再生成可能なIRインスタンスを正本としてGit管理しない。
 
-## v0.1の範囲
+## v0.2の範囲
 
 Compiler本体は、CRDD Structured Contractに適合する任意ドメインのOperationを扱う。
 
@@ -17,7 +17,10 @@ Compiler本体は、CRDD Structured Contractに適合する任意ドメインの
 - Error Code
 - 境界Test Manifest
 - Test Manifestの実行と契約判定
-- Unreal C++骨格
+- Unreal C++ Contract／Bridge／Automation fixture
+- Unity C# Contract／Bridge／NUnit fixture
+- Target Registryによる独立生成
+- Unreal／Unityの静的意味同値性gate
 - CRDD Requirement／Decisionとの対応
 
 ## CRDD Markdown Frontend
@@ -63,9 +66,10 @@ Validatorは構造検証に加えて次を拒否する。
 - 任意コードの実行
 - Round-trip同期
 - Unrealの描画、入力、Actor Lifecycle
-- 完全なC++コンパイル可能性
-- 生成されたUnrealコードに対するContract Test実行
-- 複数Target
+- UnityのGameObject、Scene、Addressables、入力、描画
+- 製品固有World／Scene Projection
+- Target間で異なるEngine lifecycleの同一化
+- 静的Parityだけによる製品実行結果の保証
 
 ## 成功判定
 
@@ -77,9 +81,10 @@ Validatorは構造検証に加えて次を拒否する。
 
 ## 次の判断ゲート
 
-MVPの比較実験後にのみ、次を判断する。
+v0.2の製品適用後に次を判断する。
 
 - JSONより人間向けの構文が必要か
 - Schema Validatorを外部ライブラリへ置き換えるか
-- Unreal Adapterをコンパイル可能なPluginへ拡張するか
+- Unity適用先scaffoldをInstallerへ統合するか
+- Runtime parity evidenceを単一reportへ統合するか
 - UI／Server／Game Dialectを分離するか
