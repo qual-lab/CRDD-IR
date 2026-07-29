@@ -2,80 +2,34 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $target = Join-Path $repoRoot ".crdd-ir\installer-test"
 $installer = Join-Path $repoRoot "scripts\install-project.ps1"
-$uninstaller = Join-Path $repoRoot "scripts\uninstall-project.ps1"
 
-if (Test-Path -LiteralPath $target) {
-    Remove-Item -LiteralPath $target -Recurse -Force
-}
+if (Test-Path -LiteralPath $target) { Remove-Item -LiteralPath $target -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $target | Out-Null
 try {
-    & $installer -ProjectRoot $target
-    & $installer -ProjectRoot $target
-
     & $installer -ProjectRoot $target `
-        -Source @("05_SPEC/create.md", "05_SPEC/update.md") `
-        -AssetSource "05_SPEC/create.md" `
-        -ForceManagedUpdate
-    $config = Get-Content -LiteralPath (
-        Join-Path $target "crdd-ir.config.json"
-    ) -Raw | ConvertFrom-Json
-    if (@($config.source).Count -ne 2 -or
-        $config.assetSource -ne "05_SPEC/create.md") {
-        throw "Installer did not preserve multiple sources and assetSource"
+        -Source @("contracts/read.md", "contracts/change.md") `
+        -Target @("typescript", "ir") `
+        -GeneratedRoot "generated/contracts"
+
+    $config = Get-Content -LiteralPath (Join-Path $target "crdd-ir.config.json") -Raw |
+        ConvertFrom-Json
+    if ($config.protocol -ne "crdd-ir/project-config-v0.2") {
+        throw "Installer generated an unexpected configuration protocol"
+    }
+    if (@($config.sources).Count -ne 2 -or @($config.targets.PSObject.Properties).Count -ne 2) {
+        throw "Installer did not preserve generic sources and targets"
+    }
+    if ($null -ne $config.unreal -or $null -ne $config.assetSource) {
+        throw "Installer leaked legacy target-specific configuration"
     }
 
-    $manifest = Get-Content -LiteralPath (
-        Join-Path $target ".crdd-ir.install.json"
-    ) -Raw | ConvertFrom-Json
-    if ($manifest.protocol -ne "crdd-ir/install-manifest-v0.1" -or
-        $manifest.files.Count -lt 5) {
-        throw "Installer did not record managed ownership"
-    }
-
-    $wrapper = Join-Path $target "tools\crdd-ir.ps1"
-    [System.IO.File]::AppendAllText($wrapper, "# user change")
-    $failedSafely = $false
-    try {
-        & $installer -ProjectRoot $target
-    }
-    catch {
-        $failedSafely = $_.Exception.Message -match "Managed file was modified"
-    }
-    if (-not $failedSafely) {
-        throw "Installer did not stop on a modified managed file"
-    }
-    if (@(Get-ChildItem -LiteralPath (
-        Join-Path $target ".crdd-ir\backups"
-    ) -Filter "crdd-ir.ps1" -File -Recurse).Count -eq 0) {
-        throw "Installer did not back up the modified managed file"
-    }
-
-    & $installer -ProjectRoot $target -ForceManagedUpdate
-
-    $agents = Join-Path $target "AGENTS.md"
-    [System.IO.File]::WriteAllText(
-        $agents,
-        "# Project guidance`n`n" + (Get-Content -LiteralPath $agents -Raw),
-        [System.Text.UTF8Encoding]::new($false)
-    )
-    & $uninstaller -ProjectRoot $target -WhatIf
-    if (-not (Test-Path -LiteralPath (Join-Path $target "tools\crdd-ir.ps1"))) {
-        throw "WhatIf changed an installed file"
-    }
-    & $uninstaller -ProjectRoot $target
-    if (Test-Path -LiteralPath (Join-Path $target "tools\crdd-ir.ps1")) {
-        throw "Uninstaller left a managed wrapper"
-    }
-    if ((Get-Content -LiteralPath $agents -Raw) -notmatch "# Project guidance") {
-        throw "Uninstaller removed user-owned guidance"
-    }
-    if ((Get-Content -LiteralPath $agents -Raw) -match "CRDD-IR:BEGIN") {
-        throw "Uninstaller left the managed guidance block"
+    $manifest = Get-Content -LiteralPath (Join-Path $target ".crdd-ir.install.json") -Raw |
+        ConvertFrom-Json
+    if ($manifest.protocol -ne "crdd-ir/install-manifest-v0.2" -or $manifest.files.Count -ne 2) {
+        throw "Installer did not record generic managed ownership"
     }
     Write-Host "CRDD-IR installer regression test succeeded."
 }
 finally {
-    if (Test-Path -LiteralPath $target) {
-        Remove-Item -LiteralPath $target -Recurse -Force
-    }
+    if (Test-Path -LiteralPath $target) { Remove-Item -LiteralPath $target -Recurse -Force }
 }

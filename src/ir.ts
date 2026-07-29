@@ -3,7 +3,7 @@ import { extractReferences } from "./expression.ts";
 import { DiagnosticError, formatDiagnosticText } from "./diagnostics.ts";
 import type { CrddIr, Diagnostic, FieldDefinition } from "./model.ts";
 
-const allowedFieldTypes = new Set(["number", "string", "boolean", "array", "object"]);
+const allowedFieldTypes = new Set(["number", "integer", "string", "boolean", "array", "object", "map", "union"]);
 const allowedEffectActions = new Set(["assign", "append", "increment", "remove", "update"]);
 
 export async function loadIr(path: string): Promise<CrddIr> {
@@ -41,6 +41,10 @@ export function validateIr(value: unknown): Diagnostic[] {
 
   const operation = value.operation;
   requireString(operation, "id", "$.operation", diagnostics);
+  const kind = operation.kind;
+  if (!["command", "query"].includes(String(kind))) {
+    diagnostics.push(error("$.operation.kind", 'must be "command" or "query"'));
+  }
   const traces = requireStringArray(operation, "traces", "$.operation", diagnostics);
   if (traces && traces.length === 0) {
     diagnostics.push(error("$.operation.traces", "must contain at least one CRDD ID"));
@@ -48,9 +52,13 @@ export function validateIr(value: unknown): Diagnostic[] {
 
   validateFields(operation.input, "$.operation.input", diagnostics);
   validateFields(operation.state, "$.operation.state", diagnostics);
+  if (operation.output !== undefined) {
+    if (!isRecord(operation.output)) diagnostics.push(error("$.operation.output", "must be a field definition"));
+    else validateField(operation.output, "$.operation.output", diagnostics);
+  }
 
-  if (!Array.isArray(operation.requires) || operation.requires.length === 0) {
-    diagnostics.push(error("$.operation.requires", "must be a non-empty array"));
+  if (!Array.isArray(operation.requires)) {
+    diagnostics.push(error("$.operation.requires", "must be an array"));
   } else {
     operation.requires.forEach((requirement, index) => {
       const path = `$.operation.requires[${index}]`;
@@ -64,9 +72,12 @@ export function validateIr(value: unknown): Diagnostic[] {
     });
   }
 
-  if (!Array.isArray(operation.effects) || operation.effects.length === 0) {
-    diagnostics.push(error("$.operation.effects", "must be a non-empty array"));
+  if (!Array.isArray(operation.effects) || (kind !== "query" && operation.effects.length === 0)) {
+    diagnostics.push(error("$.operation.effects", kind === "query" ? "must be an array" : "must be a non-empty array"));
   } else {
+    if (kind === "query" && operation.effects.length > 0) {
+      diagnostics.push(error("$.operation.effects", "query operations must not declare state effects"));
+    }
     operation.effects.forEach((effect, index) => {
       const path = `$.operation.effects[${index}]`;
       if (!isRecord(effect)) {
@@ -93,8 +104,8 @@ export function validateIr(value: unknown): Diagnostic[] {
   }
 
   const errorCodes = new Set<string>();
-  if (!Array.isArray(operation.errors) || operation.errors.length === 0) {
-    diagnostics.push(error("$.operation.errors", "must be a non-empty array"));
+  if (!Array.isArray(operation.errors)) {
+    diagnostics.push(error("$.operation.errors", "must be an array"));
   } else {
     operation.errors.forEach((entry, index) => {
       const path = `$.operation.errors[${index}]`;
@@ -118,9 +129,9 @@ export function validateIr(value: unknown): Diagnostic[] {
     }
   }
 
-  if (!isRecord(operation.transaction)) {
+  if (kind !== "query" && !isRecord(operation.transaction)) {
     diagnostics.push(error("$.operation.transaction", "must be an object"));
-  } else {
+  } else if (isRecord(operation.transaction)) {
     requireBoolean(operation.transaction, "atomic", "$.operation.transaction", diagnostics);
     requireBoolean(operation.transaction, "rollbackOnFailure", "$.operation.transaction", diagnostics);
     if (operation.transaction.atomic === true && operation.transaction.rollbackOnFailure !== true) {
@@ -130,10 +141,65 @@ export function validateIr(value: unknown): Diagnostic[] {
     }
   }
 
+  validateExecution(operation.execution, diagnostics);
+  validateEvents(operation.emits, diagnostics);
   warnForDuplicates(operation.traces, "$.operation.traces", diagnostics);
   validateExtensions(operation.extensions, diagnostics);
   validateSemantics(operation, diagnostics);
   return diagnostics;
+}
+
+function validateExecution(value: unknown, diagnostics: Diagnostic[]): void {
+  if (value === undefined) return;
+  if (!isRecord(value)) {
+    diagnostics.push(error("$.operation.execution", "must be an object"));
+    return;
+  }
+  if (!["sync", "async"].includes(String(value.mode))) {
+    diagnostics.push(error("$.operation.execution.mode", 'must be "sync" or "async"'));
+  }
+  if (value.cancelable !== undefined && typeof value.cancelable !== "boolean") {
+    diagnostics.push(error("$.operation.execution.cancelable", "must be a boolean"));
+  }
+  if (value.timeoutMs !== undefined && (!Number.isInteger(value.timeoutMs) || value.timeoutMs <= 0)) {
+    diagnostics.push(error("$.operation.execution.timeoutMs", "must be a positive integer"));
+  }
+  if (value.idempotency !== undefined &&
+      !["none", "optional", "required"].includes(String(value.idempotency))) {
+    diagnostics.push(error("$.operation.execution.idempotency",
+      'must be "none", "optional", or "required"'));
+  }
+  if (value.mode === "sync" && value.cancelable === true) {
+    diagnostics.push(error("$.operation.execution.cancelable", "is supported only for async execution"));
+  }
+}
+
+function validateEvents(value: unknown, diagnostics: Diagnostic[]): void {
+  if (value === undefined) return;
+  if (!Array.isArray(value)) {
+    diagnostics.push(error("$.operation.emits", "must be an array"));
+    return;
+  }
+  const types: string[] = [];
+  value.forEach((event, index) => {
+    const path = `$.operation.emits[${index}]`;
+    if (!isRecord(event)) {
+      diagnostics.push(error(path, "must be an object"));
+      return;
+    }
+    const type = requireString(event, "type", path, diagnostics);
+    if (type) types.push(type);
+    requireStringArray(event, "traces", path, diagnostics);
+    if (event.delivery !== undefined &&
+        !["at-most-once", "at-least-once"].includes(String(event.delivery))) {
+      diagnostics.push(error(`${path}.delivery`, 'must be "at-most-once" or "at-least-once"'));
+    }
+    if (event.payload !== undefined) {
+      if (!isRecord(event.payload)) diagnostics.push(error(`${path}.payload`, "must be a field definition"));
+      else validateField(event.payload, `${path}.payload`, diagnostics);
+    }
+  });
+  reportDuplicateIds(types, "$.operation.emits", "event type", diagnostics);
 }
 
 function validateExtensions(value: unknown, diagnostics: Diagnostic[]): void {
@@ -204,7 +270,7 @@ function validateSemantics(operation: Record<string, unknown>, diagnostics: Diag
           `${effect.action} requires an array target, got "${targetField.type}"`,
         ));
       }
-      if (effect.action === "increment" && targetField.type !== "number") {
+      if (effect.action === "increment" && !["number", "integer"].includes(targetField.type)) {
         diagnostics.push(error(`${path}.target`, `increment requires a number target, got "${targetField.type}"`));
       }
       if ((effect.action === "assign" || effect.action === "increment") &&
@@ -231,6 +297,13 @@ function validateSemantics(operation: Record<string, unknown>, diagnostics: Diag
       }
       if ((effect.action === "remove" || effect.action === "update") &&
           targetField.type === "array") {
+        if (targetField.items.type !== "object") {
+          diagnostics.push(error(
+            `${path}.target`,
+            `${effect.action} requires an array with object items`,
+          ));
+          return;
+        }
         validateObjectValue(
           effect.where,
           targetField.items.properties,
@@ -312,7 +385,7 @@ function validateObjectValue(
         ));
       }
     } else if (
-      (expected.type === "number" && typeof candidate !== "number") ||
+      ((expected.type === "number" || expected.type === "integer") && typeof candidate !== "number") ||
       (expected.type === "string" && typeof candidate !== "string") ||
       (expected.type === "boolean" && typeof candidate !== "boolean")
     ) {
@@ -455,6 +528,44 @@ function validateField(rawField: Record<string, unknown>, path: string, diagnost
   if (rawField.minimum !== undefined && typeof rawField.minimum !== "number") {
     diagnostics.push(error(`${path}.minimum`, "must be a number"));
   }
+  if (rawField.maximum !== undefined && typeof rawField.maximum !== "number") {
+    diagnostics.push(error(`${path}.maximum`, "must be a number"));
+  }
+  if (typeof rawField.minimum === "number" && typeof rawField.maximum === "number" &&
+      rawField.minimum > rawField.maximum) {
+    diagnostics.push(error(path, "minimum must be <= maximum"));
+  }
+  if (!["number", "integer"].includes(String(rawField.type)) &&
+      (rawField.minimum !== undefined || rawField.maximum !== undefined)) {
+    diagnostics.push(error(path, "minimum and maximum are supported only for numeric fields"));
+  }
+  for (const key of ["minLength", "maxLength"] as const) {
+    if (rawField[key] !== undefined && (!Number.isInteger(rawField[key]) || rawField[key] < 0)) {
+      diagnostics.push(error(`${path}.${key}`, "must be a non-negative integer"));
+    }
+  }
+  if (typeof rawField.minLength === "number" && typeof rawField.maxLength === "number" &&
+      rawField.minLength > rawField.maxLength) {
+    diagnostics.push(error(path, "minLength must be <= maxLength"));
+  }
+  if (rawField.type !== "string" &&
+      (rawField.minLength !== undefined || rawField.maxLength !== undefined || rawField.pattern !== undefined)) {
+    diagnostics.push(error(path, "length and pattern constraints are supported only for string fields"));
+  }
+  if (rawField.pattern !== undefined) {
+    if (typeof rawField.pattern !== "string") {
+      diagnostics.push(error(`${path}.pattern`, "must be a string"));
+    } else {
+      try {
+        new RegExp(rawField.pattern, "u");
+      } catch {
+        diagnostics.push(error(`${path}.pattern`, "must be a valid regular expression"));
+      }
+    }
+  }
+  if (rawField.nullable !== undefined && typeof rawField.nullable !== "boolean") {
+    diagnostics.push(error(`${path}.nullable`, "must be a boolean"));
+  }
   if (rawField.enum !== undefined) {
     if (rawField.type !== "string") {
       diagnostics.push(error(`${path}.enum`, "is supported only for string fields"));
@@ -467,16 +578,20 @@ function validateField(rawField: Record<string, unknown>, path: string, diagnost
   if (rawField.optional !== undefined && typeof rawField.optional !== "boolean") {
     diagnostics.push(error(`${path}.optional`, "must be a boolean"));
   }
-  if (rawField.optional === true && rawField.default === undefined) {
+  const scalarType = ["number", "integer", "string", "boolean"].includes(String(rawField.type));
+  if (scalarType && rawField.optional === true && rawField.default === undefined) {
     diagnostics.push(error(`${path}.default`, "is required when optional is true"));
   }
   if (rawField.optional !== true && rawField.default !== undefined) {
     diagnostics.push(error(`${path}.default`, "requires optional to be true"));
   }
+  if (!scalarType && rawField.default !== undefined) {
+    diagnostics.push(error(`${path}.default`, "is supported only for scalar fields"));
+  }
   if (rawField.default !== undefined) {
     const expected = rawField.type;
     if (
-      (expected === "number" && typeof rawField.default !== "number") ||
+      ((expected === "number" || expected === "integer") && typeof rawField.default !== "number") ||
       (expected === "string" && typeof rawField.default !== "string") ||
       (expected === "boolean" && typeof rawField.default !== "boolean")
     ) {
@@ -486,27 +601,67 @@ function validateField(rawField: Record<string, unknown>, path: string, diagnost
         !rawField.enum.includes(rawField.default)) {
       diagnostics.push(error(`${path}.default`, "must be one of the declared enum values"));
     }
-    if (rawField.type === "number" && typeof rawField.default === "number" &&
+    if ((rawField.type === "number" || rawField.type === "integer") && typeof rawField.default === "number" &&
         typeof rawField.minimum === "number" && rawField.default < rawField.minimum) {
       diagnostics.push(error(`${path}.default`, `must be >= ${rawField.minimum}`));
     }
+    if (rawField.type === "integer" && typeof rawField.default === "number" &&
+        !Number.isInteger(rawField.default)) {
+      diagnostics.push(error(`${path}.default`, "must be an integer"));
+    }
   }
   if (rawField.type === "array") {
-    if (!isRecord(rawField.items) || rawField.items.type !== "object") {
-      diagnostics.push(error(`${path}.items`, 'must define an object item schema'));
+    if (!isRecord(rawField.items)) {
+      diagnostics.push(error(`${path}.items`, "must define an object item schema or another field schema"));
       return;
     }
-    if (!isRecord(rawField.items.properties) || Object.keys(rawField.items.properties).length === 0) {
-      diagnostics.push(error(`${path}.items.properties`, "must be a non-empty object"));
+    validateField(rawField.items, `${path}.items`, diagnostics);
+    for (const key of ["minItems", "maxItems"] as const) {
+      if (rawField[key] !== undefined && (!Number.isInteger(rawField[key]) || rawField[key] < 0)) {
+        diagnostics.push(error(`${path}.${key}`, "must be a non-negative integer"));
+      }
+    }
+    if (typeof rawField.minItems === "number" && typeof rawField.maxItems === "number" &&
+        rawField.minItems > rawField.maxItems) {
+      diagnostics.push(error(path, "minItems must be <= maxItems"));
+    }
+  } else if (rawField.type === "map") {
+    if (!isRecord(rawField.values)) {
+      diagnostics.push(error(`${path}.values`, "must define a field schema"));
       return;
     }
-    validateFields(rawField.items.properties, `${path}.items.properties`, diagnostics);
+    validateField(rawField.values, `${path}.values`, diagnostics);
   } else if (rawField.type === "object") {
     if (!isRecord(rawField.properties) || Object.keys(rawField.properties).length === 0) {
       diagnostics.push(error(`${path}.properties`, "must be a non-empty object"));
       return;
     }
     validateFields(rawField.properties, `${path}.properties`, diagnostics);
+  } else if (rawField.type === "union") {
+    if (typeof rawField.discriminator !== "string" || rawField.discriminator.length === 0) {
+      diagnostics.push(error(`${path}.discriminator`, "must be a non-empty string"));
+    }
+    if (!Array.isArray(rawField.variants) || rawField.variants.length < 2) {
+      diagnostics.push(error(`${path}.variants`, "must contain at least two object variants"));
+      return;
+    }
+    rawField.variants.forEach((variant, index) => {
+      if (!isRecord(variant) || variant.type !== "object") {
+        diagnostics.push(error(`${path}.variants[${index}]`, "must define an object field"));
+        return;
+      }
+      validateField(variant, `${path}.variants[${index}]`, diagnostics);
+      if (typeof rawField.discriminator === "string" && isRecord(variant.properties)) {
+        const discriminator = variant.properties[rawField.discriminator];
+        if (!isRecord(discriminator) || discriminator.type !== "string" ||
+            !Array.isArray(discriminator.enum) || discriminator.enum.length !== 1) {
+          diagnostics.push(error(
+            `${path}.variants[${index}].properties.${rawField.discriminator}`,
+            "must be a string field with exactly one enum value",
+          ));
+        }
+      }
+    });
   }
 }
 

@@ -566,7 +566,7 @@ function csValue(value: unknown, operation: Operation, stateRoot: string): strin
 function csType(field: FieldDefinition, operation: string, scope: string, name: string): string {
   const projected = (field as FieldDefinition & { _crddCsharpType?: string })._crddCsharpType;
   if (projected) return projected;
-  if (field.type === "number") return field.unit === "JPY" ? "long" : "double";
+  if (field.type === "number") return "double";
   if (field.type === "string") return "string";
   if (field.type === "boolean") return "bool";
   if (field.type === "object") return `${operation}${scope}${identifier(name)}`;
@@ -588,10 +588,7 @@ function csDefault(field: FieldDefinition): string {
 
 function csField(name: string, field: FieldDefinition): string {
   const base = identifier(name);
-  if (field.unit === "m") return `${base}Meters`;
-  if (field.unit === "mm") return `${base}Millimeters`;
-  if (field.unit === "JPY") return `${base}JPY`;
-  return base;
+  return field.unit ? `${base}${identifier(field.unit)}` : base;
 }
 
 function projectNumericTypes(operation: Operation, profile: UnityTargetProfile): Operation {

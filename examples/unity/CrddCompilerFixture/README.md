@@ -11,7 +11,7 @@ npm.cmd run verify:unity
 
 The verification:
 
-1. generates the Unity target from `test/fixtures/create-wall.md`;
+1. generates the Unity target from `test/fixtures/contracts/numeric-boundary.md`;
 2. separates runtime and generated test assemblies;
 3. runs all EditMode bridge and conformance tests;
 4. builds a Windows x64 IL2CPP Player;

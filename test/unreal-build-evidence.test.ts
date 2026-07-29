@@ -13,7 +13,7 @@ import { buildUnrealTargetPlan } from "../src/unreal-target.ts";
 import type { UnrealExecutionEvidence } from "../src/unreal-report.ts";
 
 const source = fileURLToPath(new URL(
-  "../examples/create-entity/05_SPEC/01_Behavior_Specification.md",
+  "../examples/apply-record/contract.md",
   import.meta.url,
 ));
 

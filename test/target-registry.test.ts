@@ -15,7 +15,7 @@ import {
 test("built-in targets expose generation capabilities through one registry", () => {
   assert.deepEqual(
     listTargetAdapters().map((target) => target.id),
-    ["assets", "ir", "unity", "unreal"],
+    ["assets", "ir", "typescript", "unity", "unreal"],
   );
   assert.deepEqual(describeTarget(getTargetAdapter("unity")), {
     id: "unity",
@@ -40,7 +40,7 @@ test("built-in targets expose generation capabilities through one registry", () 
 test("unknown target reports all registered alternatives", () => {
   assert.throws(
     () => getTargetAdapter("godot"),
-    /Unsupported target: godot\. Available targets: assets, ir, unity, unreal/,
+    /Unsupported target: godot\. Available targets: assets, ir, typescript, unity, unreal/,
   );
 });
 
@@ -58,13 +58,13 @@ test("a new target is added without changing CLI or batch dispatch", async () =>
   assert.equal(getTargetAdapter("test-target").id, "test-target");
   const outDir = await mkdtemp(join(tmpdir(), "crdd-target-registry-"));
   const manifest = await generateBatch(
-    ["examples/create-entity/05_SPEC/01_Behavior_Specification.md"],
+    ["examples/apply-record/contract.md"],
     outDir,
     "test-target",
   );
   assert.equal(manifest.target, "test-target");
   assert.equal(
-    await readFile(join(outDir, "CreateEntity", "CreateEntity.txt"), "utf8"),
+    await readFile(join(outDir, "ApplyRecord", "ApplyRecord.txt"), "utf8"),
     manifest.operations[0].digest,
   );
 });
@@ -79,6 +79,6 @@ test("CLI lists targets as machine-readable registry metadata", () => {
   assert.equal(registry.protocol, "crdd-ir/target-registry-v0.1");
   assert.deepEqual(
     registry.targets.map((target: { id: string }) => target.id),
-    ["assets", "ir", "unity", "unreal"],
+    ["assets", "ir", "typescript", "unity", "unreal"],
   );
 });

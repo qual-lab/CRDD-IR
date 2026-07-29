@@ -9,12 +9,12 @@
 
 | 対象 | 推奨例 | Git管理 |
 |---|---|---|
-| CRDD Markdown | `05_SPEC/operations/*.md` | する・正本 |
+| CRDD Markdown | `contracts/operations/*.md` | する・正本 |
 | Compiler Submodule | `tools/CRDD-IR` | pointerを管理 |
-| Unreal生成C++ | `40_Develop/MyGame/Source/MyGame/Generated` | Target方針による |
+| Unreal生成C++ | `generated/unreal` | Target方針による |
 | Unity生成C# | `Assets/CRDD/Runtime/Generated` | Target方針による |
-| 3D source asset | `40_Develop/Generated/Assets` | Target方針による |
-| 検証Evidence | `07_Quality/CRDD_IR` | する |
+| 3D source asset | `generated/assets` | Target方針による |
+| 検証Evidence | `evidence/crdd-ir` | する |
 | Internal IR/cache/package | `.crdd-ir` | しない |
 
 生成C++の出力先は、`.uproject`があるディレクトリではなく、コンパイル対象Module
@@ -42,17 +42,12 @@ Submodule追加によって、適用先には`.gitmodules`とSubmodule commit po
 .\tools\CRDD-IR\scripts\install-project.ps1 `
   -ProjectRoot . `
   -Source @(
-    "05_SPEC/operations/create-entity.md",
-    "05_SPEC/operations/update-entity.md"
+    "contracts/operations/apply-record.md",
+    "contracts/operations/revise-record.md"
   ) `
-  -AssetSource "05_SPEC/operations/create-entity.md" `
-  -GeneratedSource "40_Develop/MyGame/Source/MyGame/Generated" `
-  -GeneratedAssets "40_Develop/Generated/Assets" `
-  -Evidence "07_Quality/CRDD_IR" `
-  -UnrealProject "40_Develop/MyGame/MyGame.uproject" `
-  -UnrealEngineRoot "C:/Program Files/Epic Games/UE_5.8" `
-  -UnrealEditorTarget "MyGameEditor" `
-  -UnrealGameTarget "MyGame"
+  -Target @("typescript", "unreal") `
+  -GeneratedRoot "generated" `
+  -Evidence "evidence/crdd-ir"
 ```
 
 Target名を省略した場合、Editorは`<ProjectName>Editor`、Gameは
@@ -78,25 +73,27 @@ Installerが所有するもの:
 
 ```json
 {
-  "protocol": "crdd-ir/project-config-v0.1",
+  "protocol": "crdd-ir/project-config-v0.2",
   "toolRoot": "tools/CRDD-IR",
-  "source": [
-    "05_SPEC/operations/create-entity.md",
-    "05_SPEC/operations/update-entity.md"
+  "sources": [
+    "contracts/first-operation.md",
+    "contracts/second-operation.md"
   ],
-  "assetSource": "05_SPEC/operations/create-entity.md",
-  "generatedSource": "40_Develop/MyGame/Source/MyGame/Generated",
-  "generatedAssets": "40_Develop/Generated/Assets",
-  "evidence": "07_Quality/CRDD_IR",
-  "unreal": {
-    "project": "40_Develop/MyGame/MyGame.uproject",
-    "engineRoot": "C:/Program Files/Epic Games/UE_5.8",
-    "editorTarget": "MyGameEditor",
-    "gameTarget": "MyGame",
-    "configuration": "Development",
-    "integrationPlugin": "CRDDIRIntegration",
-    "editorProfile": "Config/CRDD/ue-5.8-editor.json",
-    "shippingProfile": "Config/CRDD/ue-5.8-shipping.json"
+  "evidence": "quality/crdd-ir",
+  "targets": {
+    "typescript": {
+      "output": "generated/typescript"
+    },
+    "unreal": {
+      "output": "generated/unreal",
+      "profile": "config/unreal-editor.json",
+      "options": {
+        "project": "application/Application.uproject",
+        "engineRoot": "C:/Program Files/Epic Games/UE_5.8",
+        "shippingProfile": "config/unreal-shipping.json",
+        "assetsOutput": "generated/assets"
+      }
+    }
   }
 }
 ```
@@ -157,7 +154,7 @@ Plugins/CRDDIRIntegration/
 AGENTS.md
 CLAUDE.md
 .github/copilot-instructions.md
-07_Quality/CRDD_IR/
+evidence/crdd-ir/
 ```
 
 生成C++と生成3D source assetをコミットするかはTarget repositoryの方針で
@@ -165,7 +162,7 @@ CLAUDE.md
 生成忘れを検出できます。
 
 `.crdd-ir/`はcache、raw report、backup、Shipping packageを含むため、
-Git管理しません。`30_IR`もInternal IR instanceの恒久置場にはしません。
+Git管理しません。Internal IR instance用の恒久置場も作りません。
 
 ## 7. Clone・CI
 
@@ -197,7 +194,6 @@ Unityのasmdefと生成物振り分けは[Unity integration](unity-integration.m
 git -C tools/CRDD-IR fetch origin
 git -C tools/CRDD-IR checkout <tested-commit-or-tag>
 npm.cmd ci --prefix tools/CRDD-IR
-.\tools\CRDD-IR\scripts\repair-project.ps1 -ProjectRoot .
 .\tools\crdd-ir.ps1 doctor
 .\tools\crdd-ir.ps1 verify
 git status --short
@@ -206,7 +202,6 @@ git commit -m "Update CRDD IR"
 ```
 
 Target ProfileやPlugin templateが変わるため、Submodule pointerだけを更新せず、
-必ず`repair-project.ps1`を実行します。管理対象へ利用者の変更があればbackup後に
 明示的な確認を要求します。
 
 ## 9. よくある問題
@@ -236,7 +231,6 @@ npm.cmd ci --prefix tools/CRDD-IR
 ### Installer管理ファイルを変更してしまった
 
 ```powershell
-.\tools\CRDD-IR\scripts\repair-project.ps1 -ProjectRoot .
 ```
 
 変更内容は`.crdd-ir/backups/`へ退避されます。

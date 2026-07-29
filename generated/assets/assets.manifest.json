@@ -1,16 +1,20 @@
 {
-  "protocol": "crdd-ir/assets-v0.1",
-  "operation": "CreateEntity",
+  "protocol": "crdd-ir/assets-v0.2",
+  "operation": "ApplyRecord",
+  "coordinateSystem": "right-handed-z-up",
+  "units": {
+    "distance": "cm",
+    "angle": "deg"
+  },
   "scene": {
-    "unrealLevel": "/Game/CRDD/Generated/CreateEntityScene"
+    "id": "ApplyRecordScene"
   },
   "assets": [
     {
-      "id": "EntityPreview",
-      "source": "EntityPreview.generated.obj",
-      "unrealDestination": "/Game/CRDD/Generated",
-      "previewLevel": "/Game/CRDD/Generated/EntityPreviewLevel",
-      "dimensionsCm": {
+      "id": "PrimaryPreview",
+      "source": "PrimaryPreview.generated.obj",
+      "previewScene": "PrimaryPreviewScene",
+      "dimensions": {
         "length": 100,
         "width": 20,
         "height": 240
@@ -22,27 +26,26 @@
         "group": "LevelArchitecture"
       },
       "placement": {
-        "locationCm": {
+        "location": {
           "x": 0,
           "y": 0,
           "z": 0
         },
-        "rotationDeg": {
+        "rotation": {
           "pitch": 0,
           "yaw": 0,
           "roll": 0
         }
       },
       "traces": [
-        "REQ-ENTITY-001"
+        "REQ-RECORD-001"
       ]
     },
     {
       "id": "SecondaryPreview",
       "source": "SecondaryPreview.generated.obj",
-      "unrealDestination": "/Game/CRDD/Generated",
-      "previewLevel": "/Game/CRDD/Generated/SecondaryPreviewLevel",
-      "dimensionsCm": {
+      "previewScene": "SecondaryPreviewScene",
+      "dimensions": {
         "length": 90,
         "width": 10,
         "height": 200
@@ -54,19 +57,19 @@
         "group": "LargeProp"
       },
       "placement": {
-        "locationCm": {
+        "location": {
           "x": 150,
           "y": 25,
           "z": 0
         },
-        "rotationDeg": {
+        "rotation": {
           "pitch": 0,
           "yaw": 90,
           "roll": 0
         }
       },
       "traces": [
-        "REQ-ENTITY-001"
+        "REQ-RECORD-001"
       ]
     }
   ]

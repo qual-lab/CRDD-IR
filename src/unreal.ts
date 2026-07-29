@@ -653,15 +653,12 @@ function cppReference(reference: string, operation: Operation, stateRoot: string
 
 function cppField(name: string, field: FieldDefinition): string {
   const base = name.split(".").map(pascalCase).join("");
-  if (field.unit === "m") return `${base}Meters`;
-  if (field.unit === "JPY") return `${base}JPY`;
-  return base;
+  return field.unit ? `${base}${pascalCase(field.unit)}` : base;
 }
 
 function cppType(field: FieldDefinition): string {
   const projected = (field as FieldDefinition & { _crddCppType?: string })._crddCppType;
   if (projected) return projected;
-  if (field.type === "number" && field.unit === "JPY") return "int64";
   if (field.type === "number") return "double";
   if (field.type === "boolean") return "bool";
   if (field.type === "string") return "FString";
@@ -675,7 +672,7 @@ function cppDefault(field: FieldDefinition): string {
     return field.default.toString();
   }
   const projected = (field as FieldDefinition & { _crddCppType?: string })._crddCppType;
-  if (field.type === "number" && (field.unit === "JPY" || projected?.startsWith("int"))) return "0";
+  if (field.type === "number" && projected?.startsWith("int")) return "0";
   if (field.type === "number") return "0.0";
   if (field.type === "boolean") return "false";
   if (field.type === "string") return 'TEXT("")';

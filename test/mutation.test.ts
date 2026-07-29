@@ -6,7 +6,7 @@ import { analyzeMutationCoverage } from "../src/mutation.ts";
 import { generateTestManifest } from "../src/test-manifest.ts";
 
 const source = fileURLToPath(
-  new URL("../examples/create-entity/05_SPEC/01_Behavior_Specification.md", import.meta.url),
+  new URL("../examples/apply-record/contract.md", import.meta.url),
 );
 
 test("conformance cases kill requirement, boundary, and effect mutants", async () => {

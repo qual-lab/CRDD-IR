@@ -54,23 +54,26 @@ bool ReadManifest(
         Test.AddError(TEXT("Invalid CRDD asset manifest JSON"));
         return false;
     }
-    if (Root->GetStringField(TEXT("protocol")) != TEXT("crdd-ir/assets-v0.1"))
+    if (Root->GetStringField(TEXT("protocol")) != TEXT("crdd-ir/assets-v0.2"))
     {
         Test.AddError(TEXT("Unsupported CRDD asset manifest protocol"));
         return false;
     }
 
-    OutScene = Root->GetObjectField(TEXT("scene"))->GetStringField(TEXT("unrealLevel"));
+    OutScene = FString::Printf(
+        TEXT("/Game/CRDD/Generated/%s"),
+        *Root->GetObjectField(TEXT("scene"))->GetStringField(TEXT("id"))
+    );
     for (const TSharedPtr<FJsonValue>& Value : Root->GetArrayField(TEXT("assets")))
     {
         const TSharedPtr<FJsonObject> Asset = Value->AsObject();
-        const TSharedPtr<FJsonObject> Dimensions = Asset->GetObjectField(TEXT("dimensionsCm"));
+        const TSharedPtr<FJsonObject> Dimensions = Asset->GetObjectField(TEXT("dimensions"));
         const TSharedPtr<FJsonObject> Placement = Asset->GetObjectField(TEXT("placement"));
-        const TSharedPtr<FJsonObject> Location = Placement->GetObjectField(TEXT("locationCm"));
-        const TSharedPtr<FJsonObject> Rotation = Placement->GetObjectField(TEXT("rotationDeg"));
+        const TSharedPtr<FJsonObject> Location = Placement->GetObjectField(TEXT("location"));
+        const TSharedPtr<FJsonObject> Rotation = Placement->GetObjectField(TEXT("rotation"));
         OutAssets.Add({
             Asset->GetStringField(TEXT("id")),
-            Asset->GetStringField(TEXT("unrealDestination")),
+            TEXT("/Game/CRDD/Generated"),
             FVector(
                 Dimensions->GetNumberField(TEXT("length")),
                 Dimensions->GetNumberField(TEXT("width")),

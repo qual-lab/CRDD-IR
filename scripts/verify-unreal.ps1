@@ -29,11 +29,11 @@ $integrationPluginSource = Join-Path $repoRoot "templates\unreal\CRDDIRIntegrati
 $integrationPluginTarget = Join-Path (
     Split-Path -Parent $project
 ) "Plugins\CRDDIRIntegration"
-$spec = "examples/create-entity/05_SPEC/01_Behavior_Specification.md"
-$updateEntitySpec = "examples/update-entity/05_SPEC/01_Behavior_Specification.md"
-$numericProjectionSpec = "test/fixtures/create-wall.md"
+$spec = "examples/apply-record/contract.md"
+$revisionSpec = "examples/revise-record/contract.md"
+$numericProjectionSpec = "test/fixtures/contracts/numeric-boundary.md"
 $fixtureGenerated = "examples/unreal/CrddCompilerFixture/Source/CrddCompilerFixture/Generated"
-$evidenceDir = "examples/create-entity/07_Quality/CRDD_IR"
+$evidenceDir = "examples/apply-record/evidence"
 $editorProfile = "examples/unreal/profiles/ue-5.8-editor.json"
 $shippingProfile = "examples/unreal/profiles/ue-5.8-shipping.json"
 $runId = [Guid]::NewGuid().ToString("N")
@@ -72,16 +72,16 @@ Write-Host "[2/10] Compile and validate CRDD Markdown"
 Assert-LastExitCode "CRDD source validation"
 
 Write-Host "[3/10] Generate Conformance Bundle"
-& node src/cli.ts test bundle $spec --out generated/create-entity.conformance.json
+& node src/cli.ts test bundle $spec --out generated/apply-record.conformance.json
 Assert-LastExitCode "Conformance Bundle generation"
-& node src/cli.ts test regression $spec $updateEntitySpec `
+& node src/cli.ts test regression $spec $revisionSpec `
     --out-dir generated/regression
 Assert-LastExitCode "Product regression manifest generation"
 
 Write-Host "[4/10] Generate Unreal C++ and 3D assets"
-& node src/cli.ts unreal generate $spec --profile $editorProfile --out-dir generated/unreal --force
+& node src/cli.ts generate unreal $spec --profile $editorProfile --out-dir generated/unreal --force
 Assert-LastExitCode "Unreal reference generation"
-& node src/cli.ts batch unreal $spec $updateEntitySpec $numericProjectionSpec --out-dir $fixtureGenerated --flat --profile $editorProfile --force
+& node src/cli.ts batch unreal $spec $revisionSpec $numericProjectionSpec --out-dir $fixtureGenerated --flat --profile $editorProfile --force
 Assert-LastExitCode "Multi-operation Unreal fixture generation"
 & node src/cli.ts generate assets $spec --out-dir generated/assets --force
 Assert-LastExitCode "3D asset generation"
@@ -149,12 +149,12 @@ Write-Host "[9/10] Cook and package generated runtime assets"
     -pak `
     -archive `
     "-archivedirectory=$packageDir" `
-    "-map=/Game/CRDD/Generated/CreateEntityScene" `
+    "-map=/Game/CRDD/Generated/ApplyRecordScene" `
     -utf8output
 Assert-LastExitCode "Unreal Shipping cook and package"
 
 Write-Host "[10/10] Generate traceability and execution evidence"
-& node src/cli.ts generate evidence $spec --out-dir $evidenceDir --unreal-report $reportPath
+& node src/cli.ts generate evidence $spec --out-dir $evidenceDir
 Assert-LastExitCode "Evidence generation"
 & node src/cli.ts unreal evidence $spec `
     --profile $shippingProfile `

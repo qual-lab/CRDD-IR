@@ -13,21 +13,21 @@ CRDD Markdown -> Compiler -> Target Registry -> Target Adapter -> Generated file
 node tools/CRDD-IR/src/cli.ts target list
 node tools/CRDD-IR/src/cli.ts target describe unity
 
-node tools/CRDD-IR/src/cli.ts generate unity 05_SPEC/MyOperation.md `
+node tools/CRDD-IR/src/cli.ts generate unity contracts/MyOperation.md `
   --profile Config/CRDD/unity-target.json `
-  --out-dir 40_Develop/MyGame/Assets/Generated/CRDD
+  --out-dir generated/unity
 
 node tools/CRDD-IR/src/cli.ts batch unity `
-  05_SPEC/operations/create-entity.md `
-  05_SPEC/operations/update-entity.md `
+  contracts/operations/apply-record.md `
+  contracts/operations/revise-record.md `
   --profile Config/CRDD/unity-target.json `
-  --out-dir 40_Develop/MyGame/Assets/Generated/CRDD `
+  --out-dir generated/unity `
   --flat
 ```
 
 `target list` and `target describe` return JSON so CI and wrappers can discover supported
-targets and their profile requirements. Existing `unreal generate` and `unity generate`
-commands remain compatibility aliases.
+targets and their profile requirements. All targets use the same `generate <target>`
+command shape.
 
 ## Adding a target
 

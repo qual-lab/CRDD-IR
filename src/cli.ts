@@ -4,7 +4,6 @@ import { dirname, extname, resolve } from "node:path";
 import { DiagnosticError, diagnosticEnvelope, unexpectedDiagnostic } from "./diagnostics.ts";
 import { runDoctor } from "./doctor.ts";
 import { loadAdapter } from "./adapter.ts";
-import { generateAssets } from "./assets.ts";
 import { generateBatch, type BatchTarget } from "./batch.ts";
 import { compileMarkdown } from "./compiler.ts";
 import { generateConformanceBundle } from "./conformance.ts";
@@ -16,7 +15,6 @@ import { generateTestManifest } from "./test-manifest.ts";
 import { runTestManifest } from "./test-runner.ts";
 import { generateEvidenceMarkdown, generateTraceabilityManifest } from "./traceability.ts";
 import { generateTransactionally } from "./generation.ts";
-import { generateUnreal } from "./unreal.ts";
 import { parseUnrealAutomationReport } from "./unreal-report.ts";
 import {
   buildUnrealTargetPlan,
@@ -35,7 +33,6 @@ import {
 } from "./unreal-build-evidence.ts";
 import { normalizeUnrealDiagnostics } from "./unreal-diagnostics.ts";
 import { generateRegressionManifest } from "./regression-manifest.ts";
-import { generateUnity } from "./unity.ts";
 import { validateUnityTargetProfile } from "./unity-target.ts";
 import {
   describeTarget,
@@ -278,27 +275,6 @@ async function main(argv: string[]): Promise<void> {
     return;
   }
 
-  if (command === "unreal" && subcommand === "generate") {
-    const sourcePath = required(argv[2], "CRDD Markdown file");
-    const profilePath = option(argv, "--profile");
-    const outDir = option(argv, "--out-dir");
-    if (!profilePath || !outDir) {
-      throw new Error("unreal generate requires --profile and --out-dir");
-    }
-    const target = getTargetAdapter("unreal");
-    const compilation = await compileMarkdown(sourcePath);
-    const profile = validateTargetProfile(
-      target,
-      JSON.parse(await readFile(profilePath, "utf8")),
-    );
-    await runGeneration(
-      outDir,
-      target.generate({ compilation, profile, operationIndex: 0 }),
-      argv,
-    );
-    return;
-  }
-
   if (command === "target" && subcommand === "list") {
     console.log(JSON.stringify({
       protocol: "crdd-ir/target-registry-v0.1",
@@ -335,24 +311,6 @@ async function main(argv: string[]): Promise<void> {
       console.log(JSON.stringify(report, null, 2));
     }
     if (!report.equivalent) process.exitCode = 1;
-    return;
-  }
-
-  if (command === "unity" && subcommand === "generate") {
-    const sourcePath = required(argv[2], "CRDD Markdown file");
-    const profilePath = option(argv, "--profile");
-    const outDir = option(argv, "--out-dir");
-    if (!profilePath || !outDir) {
-      throw new Error("unity generate requires --profile and --out-dir");
-    }
-    const compilation = await compileMarkdown(sourcePath);
-    const profile = validateUnityTargetProfile(
-      JSON.parse(await readFile(profilePath, "utf8")),
-    );
-    await runGeneration(outDir, generateUnity(compilation.ir, profile, {
-      irSha256: compilation.digest,
-      generatorVersion: "0.2.1",
-    }), argv);
     return;
   }
 
@@ -445,45 +403,6 @@ async function main(argv: string[]): Promise<void> {
     return;
   }
 
-  if (command === "generate" && subcommand === "unreal") {
-    const irPath = required(argv[2], "IR file");
-    const outDir = option(argv, "--out-dir") ?? "generated/unreal";
-    const profilePath = option(argv, "--profile");
-    if (profilePath) {
-      if (extname(irPath).toLowerCase() !== ".md") {
-        throw new Error("Profiled target generation requires CRDD Markdown source");
-      }
-      const target = getTargetAdapter("unreal");
-      const compilation = await compileMarkdown(irPath);
-      const profile = validateTargetProfile(
-        target,
-        JSON.parse(await readFile(profilePath, "utf8")),
-      );
-      await runGeneration(
-        outDir,
-        target.generate({ compilation, profile, operationIndex: 0 }),
-        argv,
-      );
-      return;
-    }
-    const ir = await loadInput(irPath);
-    console.warn(
-      "Unprofiled Unreal generation is preview-only; use `unreal generate --profile` for distributable builds.",
-    );
-    await runGeneration(outDir, generateUnreal(ir), argv);
-    return;
-  }
-
-  if (command === "generate" && subcommand === "assets") {
-    const irPath = required(argv[2], "IR file");
-    const ir = await loadInput(irPath);
-    const outDir = option(argv, "--out-dir") ?? "generated/assets";
-    const files = generateAssets(ir);
-    if (files.length === 0) throw new Error(`Operation "${ir.operation.id}" declares no assets`);
-    await runGeneration(outDir, files, argv);
-    return;
-  }
-
   if (command === "generate" && subcommand === "evidence") {
     const sourcePath = required(argv[2], "CRDD Markdown file");
     if (extname(sourcePath).toLowerCase() !== ".md") {
@@ -492,32 +411,19 @@ async function main(argv: string[]): Promise<void> {
     const compilation = await compileMarkdown(sourcePath);
     const testManifest = generateTestManifest(compilation.ir);
     const bundle = generateConformanceBundle(compilation.ir, testManifest);
-    const generatedFiles = generateUnreal(compilation.ir);
-    const assetFiles = generateAssets(compilation.ir);
-    const unrealReportPath = option(argv, "--unreal-report");
-    const execution = unrealReportPath
-      ? parseUnrealAutomationReport(await readFile(unrealReportPath, "utf8"), compilation.ir.operation.id)
-      : undefined;
     const traceability = generateTraceabilityManifest(
       compilation.ir,
       sourcePath,
       compilation.digest,
-      generatedFiles,
+      [],
       testManifest,
       bundle,
-      execution,
-      assetFiles,
     );
-    const outDir = option(argv, "--out-dir") ?? "07_Quality/CRDD_IR";
-    if (execution) await writeJson(resolve(outDir, "unreal-execution.json"), execution);
+    const outDir = option(argv, "--out-dir") ?? "evidence/crdd-ir";
     await writeJson(resolve(outDir, "traceability.manifest.json"), traceability);
     await writeText(resolve(outDir, "evidence.md"), generateEvidenceMarkdown(traceability));
     console.log(`Generated ${resolve(outDir, "traceability.manifest.json")}`);
     console.log(`Generated ${resolve(outDir, "evidence.md")}`);
-    if (execution) console.log(`Generated ${resolve(outDir, "unreal-execution.json")}`);
-    if (execution && (execution.summary.failed > 0 || execution.summary.notRun > 0)) {
-      process.exitCode = 1;
-    }
     return;
   }
 
@@ -539,8 +445,8 @@ async function main(argv: string[]): Promise<void> {
     const compilation = await compileMarkdown(sourcePath);
     const outDir = option(argv, "--out-dir") ?? `generated/${target.id}`;
     const files = target.generate({ compilation, profile, operationIndex: 0 });
-    if (target.id === "assets" && files.length === 0) {
-      throw new Error(`Operation "${compilation.ir.operation.id}" declares no assets`);
+    if (files.length === 0) {
+      throw new Error(`Target "${target.id}" produced no files for operation "${compilation.ir.operation.id}"`);
     }
     await runGeneration(outDir, files, argv);
     return;
@@ -665,9 +571,6 @@ Commands:
                   --package-dir <directory> [--verify-events <events.jsonl>
                   --verify-run-id <id>] --out <evidence.json>
   unreal diagnostics <unreal.log> [--source <spec.md>]
-  unreal generate <spec.md> --profile <profile.json> --out-dir <directory>
-  unity generate <spec.md> --profile <profile.json> --out-dir <directory>
-                  [--dry-run] [--force]
   lint <ir.json> [--format json]
   simulate <ir.json> --input <input.json>
   test generate <ir.json> [--out <file>]
@@ -677,8 +580,6 @@ Commands:
   test run <ir.json> [--manifest <file>] [--adapter <module>]
                                       [--command <executable> [--arg <value>...]]
                                       [--timeout-ms <milliseconds>]
-  generate unreal <ir.json> [--out-dir <directory>] [--dry-run] [--force]
-  generate assets <ir.json> [--out-dir <directory>] [--dry-run] [--force]
-  generate evidence <spec.md> [--out-dir <directory>] [--unreal-report <index.json>]
+  generate evidence <spec.md> [--out-dir <directory>]
   view trace <ir.json>`);
 }

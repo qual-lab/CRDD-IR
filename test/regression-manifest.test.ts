@@ -8,11 +8,11 @@ import test from "node:test";
 import { generateRegressionManifest } from "../src/regression-manifest.ts";
 
 const createSource = fileURLToPath(new URL(
-  "../examples/create-entity/05_SPEC/01_Behavior_Specification.md",
+  "../examples/apply-record/contract.md",
   import.meta.url,
 ));
 const updateSource = fileURLToPath(new URL(
-  "../examples/update-entity/05_SPEC/01_Behavior_Specification.md",
+  "../examples/revise-record/contract.md",
   import.meta.url,
 ));
 
@@ -32,7 +32,7 @@ test("generates a deterministic multi-operation product regression manifest", as
   assert.equal(firstBytes, secondBytes);
   assert.deepEqual(
     first.manifest.operations.map((operation) => operation.id),
-    ["CreateEntity", "UpdateEntity"],
+    ["ApplyRecord", "ReviseRecord"],
   );
   assert.deepEqual(second.changes.map((change) => change.action), [
     "unchanged",
@@ -75,8 +75,8 @@ test("regenerates unchanged after a Windows CRLF checkout", async () => {
   const outDir = await mkdtemp(join(tmpdir(), "crdd-regression-crlf-"));
   await generateRegressionManifest([createSource, updateSource], outDir);
   for (const name of [
-    "create-entity.conformance.json",
-    "update-entity.conformance.json",
+    "apply-record.conformance.json",
+    "revise-record.conformance.json",
     "regression.manifest.json",
     ".crdd-generation.json",
   ]) {

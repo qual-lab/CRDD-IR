@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { LineCounter, parseDocument } from "yaml";
 import { DiagnosticError } from "./diagnostics.ts";
-import type { AssetDefinition, Diagnostic, Effect, FieldDefinition, IrExtension } from "./model.ts";
+import type { Diagnostic, Effect, FieldDefinition, IrExtension } from "./model.ts";
 
 export type SourceRequirement = {
   id: string;
@@ -13,18 +13,29 @@ export type SourceContract = {
   schema: "crdd-source-contract/v0.1";
   operation: {
     id: string;
+    kind: "command" | "query";
     traces: string[];
     input: Record<string, FieldDefinition>;
     state: Record<string, FieldDefinition>;
+    output?: FieldDefinition;
     requires: SourceRequirement[];
     effects: Effect[];
     errors: Array<{ code: string; traces: string[] }>;
-    transaction: {
+    transaction?: {
       atomic: boolean;
       rollback_on_failure: boolean;
     };
-    assets?: Array<Omit<AssetDefinition, "material"> & {
-      material: { base_color: [number, number, number] };
+    execution?: {
+      mode: "sync" | "async";
+      cancelable?: boolean;
+      timeout_ms?: number;
+      idempotency?: "none" | "optional" | "required";
+    };
+    emits?: Array<{
+      type: string;
+      payload?: FieldDefinition;
+      delivery?: "at-most-once" | "at-least-once";
+      traces: string[];
     }>;
     extensions?: Record<string, IrExtension>;
   };
@@ -133,26 +144,27 @@ function validateSourceContract(
   const operation = value.operation;
   rejectUnknown(
     operation,
-    ["id", "traces", "input", "state", "requires", "effects", "errors", "assets", "extensions", "transaction"],
+    ["id", "kind", "traces", "input", "state", "output", "requires", "effects", "errors",
+      "extensions", "transaction", "execution", "emits"],
     "$.operation",
     add,
   );
   requireString(operation.id, "$.operation.id", add);
+  if (!["command", "query"].includes(String(operation.kind))) {
+    add("CRDD_SOURCE_TYPE", "$.operation.kind", 'must be "command" or "query"');
+  }
   requireStringArray(operation.traces, "$.operation.traces", add);
   requireRecord(operation.input, "$.operation.input", add);
   requireRecord(operation.state, "$.operation.state", add);
-  requireArray(operation.requires, "$.operation.requires", add);
-  requireArray(operation.effects, "$.operation.effects", add);
-  requireArray(operation.errors, "$.operation.errors", add);
-  if (operation.assets !== undefined && !Array.isArray(operation.assets)) {
-    add("CRDD_SOURCE_TYPE", "$.operation.assets", "must be an array");
-  }
+  requireArray(operation.requires, "$.operation.requires", add, true);
+  requireArray(operation.effects, "$.operation.effects", add, operation.kind === "query");
+  requireArray(operation.errors, "$.operation.errors", add, true);
   if (operation.extensions !== undefined && !isRecord(operation.extensions)) {
     add("CRDD_SOURCE_TYPE", "$.operation.extensions", "must be an object");
   }
-  if (!isRecord(operation.transaction)) {
+  if (operation.kind !== "query" && !isRecord(operation.transaction)) {
     add("CRDD_SOURCE_REQUIRED", "$.operation.transaction", "must be an object");
-  } else {
+  } else if (isRecord(operation.transaction)) {
     rejectUnknown(operation.transaction, ["atomic", "rollback_on_failure"], "$.operation.transaction", add);
     requireBoolean(operation.transaction.atomic, "$.operation.transaction.atomic", add);
     requireBoolean(
@@ -160,6 +172,35 @@ function validateSourceContract(
       "$.operation.transaction.rollback_on_failure",
       add,
     );
+  }
+  if (operation.kind === "query" && Array.isArray(operation.effects) && operation.effects.length > 0) {
+    add("CRDD_SOURCE_EFFECT", "$.operation.effects", "query operations must not declare state effects");
+  }
+  if (operation.execution !== undefined) {
+    if (!isRecord(operation.execution)) {
+      add("CRDD_SOURCE_TYPE", "$.operation.execution", "must be an object");
+    } else {
+      rejectUnknown(operation.execution, ["mode", "cancelable", "timeout_ms", "idempotency"],
+        "$.operation.execution", add);
+      if (!["sync", "async"].includes(String(operation.execution.mode))) {
+        add("CRDD_SOURCE_TYPE", "$.operation.execution.mode", 'must be "sync" or "async"');
+      }
+      if (operation.execution.cancelable !== undefined) {
+        requireBoolean(operation.execution.cancelable, "$.operation.execution.cancelable", add);
+      }
+      if (operation.execution.timeout_ms !== undefined &&
+          (!Number.isInteger(operation.execution.timeout_ms) || operation.execution.timeout_ms <= 0)) {
+        add("CRDD_SOURCE_TYPE", "$.operation.execution.timeout_ms", "must be a positive integer");
+      }
+      if (operation.execution.idempotency !== undefined &&
+          !["none", "optional", "required"].includes(String(operation.execution.idempotency))) {
+        add("CRDD_SOURCE_TYPE", "$.operation.execution.idempotency",
+          'must be "none", "optional", or "required"');
+      }
+    }
+  }
+  if (operation.emits !== undefined && !Array.isArray(operation.emits)) {
+    add("CRDD_SOURCE_TYPE", "$.operation.emits", "must be an array");
   }
   if (Array.isArray(operation.requires)) {
     for (const [index, requirement] of operation.requires.entries()) {
@@ -249,8 +290,10 @@ function requireStringArray(value: unknown, path: string, add: AddDiagnostic): v
 function requireRecord(value: unknown, path: string, add: AddDiagnostic): void {
   if (!isRecord(value)) add("CRDD_SOURCE_TYPE", path, "must be an object");
 }
-function requireArray(value: unknown, path: string, add: AddDiagnostic): void {
-  if (!Array.isArray(value) || value.length === 0) add("CRDD_SOURCE_REQUIRED", path, "must be a non-empty array");
+function requireArray(value: unknown, path: string, add: AddDiagnostic, allowEmpty = false): void {
+  if (!Array.isArray(value) || (!allowEmpty && value.length === 0)) {
+    add("CRDD_SOURCE_REQUIRED", path, allowEmpty ? "must be an array" : "must be a non-empty array");
+  }
 }
 function requireBoolean(value: unknown, path: string, add: AddDiagnostic): void {
   if (typeof value !== "boolean") add("CRDD_SOURCE_TYPE", path, "must be a boolean");

@@ -1,0 +1,113 @@
+{
+  "version": "0.1",
+  "operation": "ApplyRecord",
+  "traces": [
+    "REQ-RECORD-001",
+    "DEC-CAPACITY-001"
+  ],
+  "cases": [
+    {
+      "id": "apply-record-success",
+      "description": "ApplyRecord succeeds when every precondition is satisfied",
+      "arrange": {
+        "input": {
+          "length": 1,
+          "amount": 100
+        },
+        "state": {
+          "capacity": {
+            "remaining": 1000000
+          },
+          "records": []
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "minimum-record-length-at-boundary",
+      "sourceRequirement": "minimum-record-length",
+      "description": "length equal to 0.3 is accepted",
+      "arrange": {
+        "input": {
+          "length": 0.3,
+          "amount": 100
+        },
+        "state": {
+          "capacity": {
+            "remaining": 1000000
+          },
+          "records": []
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "minimum-record-length-below-boundary",
+      "sourceRequirement": "minimum-record-length",
+      "description": "length below 0.3 is rejected without state changes",
+      "arrange": {
+        "input": {
+          "length": 0.299,
+          "amount": 100
+        },
+        "state": {
+          "capacity": {
+            "remaining": 1000000
+          },
+          "records": []
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "RECORD_TOO_SMALL",
+        "stateUnchanged": true
+      }
+    },
+    {
+      "id": "sufficient-capacity-exact",
+      "sourceRequirement": "sufficient-capacity",
+      "description": "capacity.remaining equal to amount is accepted",
+      "arrange": {
+        "input": {
+          "length": 1,
+          "amount": 100
+        },
+        "state": {
+          "capacity": {
+            "remaining": 100
+          },
+          "records": []
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "sufficient-capacity-insufficient",
+      "sourceRequirement": "sufficient-capacity",
+      "description": "capacity.remaining one unit below amount is rejected without state changes",
+      "arrange": {
+        "input": {
+          "length": 1,
+          "amount": 100
+        },
+        "state": {
+          "capacity": {
+            "remaining": 99
+          },
+          "records": []
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "INSUFFICIENT_CAPACITY",
+        "stateUnchanged": true
+      }
+    }
+  ]
+}

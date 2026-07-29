@@ -2,16 +2,16 @@
   "protocol": "crdd-ir/generation-v0.1",
   "files": [
     {
-      "path": "create-entity.conformance.json",
-      "sha256": "64d824c7ec6b7995a94bdb0d22a7c8f7a8280a1337505c53f14d2ae506641f70"
+      "path": "apply-record.conformance.json",
+      "sha256": "c948ab6b7ebc60d3d02e8e90c005454adafcf5a750e86893f022a9b2972803b8"
     },
     {
       "path": "regression.manifest.json",
-      "sha256": "bf74df95965c65d4a330718e15b6075be8e57a05af258060d32a2aa89583e283"
+      "sha256": "20ead4881b8d5867995011e37c6db471f6d7f780143a1082cf071db3204faef9"
     },
     {
-      "path": "update-entity.conformance.json",
-      "sha256": "ae1565a0bfc6c6cbde805d3a7c574590a39b29775872c504f4ae6ea3501f7947"
+      "path": "revise-record.conformance.json",
+      "sha256": "bc995de7f3870daff6793529fe5214fec8e41255e9c1bce7c7489b6b82b85b32"
     }
   ]
 }

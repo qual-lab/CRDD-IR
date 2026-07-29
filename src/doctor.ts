@@ -6,7 +6,7 @@ import { compileMarkdown } from "./compiler.ts";
 import { loadProjectConfig } from "./project-config.ts";
 import { analyzeTestCoverage, generateTestManifest } from "./test-manifest.ts";
 import { analyzeMutationCoverage } from "./mutation.ts";
-import { generateUnreal } from "./unreal.ts";
+import { getTargetAdapter, validateTargetProfile } from "./target-registry.ts";
 
 export type DoctorCheck = {
   code: string;
@@ -40,10 +40,9 @@ export async function runDoctor(configPath: string): Promise<DoctorReport> {
 
   const paths = {
     toolRoot: inside(root, config.toolRoot),
-    sources: (Array.isArray(config.source) ? config.source : [config.source])
-      .map((source) => inside(root, source)),
-    generatedSource: inside(root, config.generatedSource),
-    generatedAssets: inside(root, config.generatedAssets),
+    sources: config.sources.map((source) => inside(root, source)),
+    outputs: Object.fromEntries(Object.entries(config.targets)
+      .map(([id, target]) => [id, inside(root, target.output)])),
     evidence: inside(root, config.evidence),
   };
   for (const source of paths.sources) {
@@ -58,23 +57,32 @@ export async function runDoctor(configPath: string): Promise<DoctorReport> {
       .map((item) => item.ir.operation.id)
       .filter((id, index, ids) => ids.indexOf(id) !== index);
     if (duplicates.length > 0) throw new Error(`Duplicate operation ID(s): ${[...new Set(duplicates)].join(", ")}`);
-    const generatedNames = new Map<string, string[]>();
-    for (const compilation of compilations) {
-      for (const file of generateUnreal(compilation.ir)) {
-        const key = file.name.toLowerCase();
-        generatedNames.set(key, [...(generatedNames.get(key) ?? []), compilation.ir.operation.id]);
+    for (const [targetId, targetConfig] of Object.entries(config.targets)) {
+      const adapter = getTargetAdapter(targetId);
+      const profile = targetConfig.profile
+        ? validateTargetProfile(adapter, JSON.parse(await readFile(inside(root, targetConfig.profile), "utf8")))
+        : undefined;
+      if (adapter.profileRequired && profile === undefined) {
+        throw new Error(`Target "${targetId}" requires a profile`);
       }
+      const generatedNames = new Map<string, string[]>();
+      for (const [operationIndex, compilation] of compilations.entries()) {
+        for (const file of adapter.generate({ compilation, operationIndex, profile })) {
+          const key = file.name.toLowerCase();
+          generatedNames.set(key, [...(generatedNames.get(key) ?? []), compilation.ir.operation.id]);
+        }
+      }
+      const collisions = [...generatedNames]
+        .filter(([, operations]) => operations.length > 1)
+        .map(([name, operations]) => `${name} (${operations.join(", ")})`);
+      if (collisions.length > 0) {
+        throw new Error(`Generated ${targetId} file collision(s): ${collisions.join("; ")}`);
+      }
+      checks.push(pass(
+        "CRDD_GENERATED_NAMES_UNIQUE",
+        `${targetId}: generated filenames are unique across ${compilations.length} operation(s)`,
+      ));
     }
-    const collisions = [...generatedNames]
-      .filter(([, operations]) => operations.length > 1)
-      .map(([name, operations]) => `${name} (${operations.join(", ")})`);
-    if (collisions.length > 0) {
-      throw new Error(`Generated Unreal file collision(s): ${collisions.join("; ")}`);
-    }
-    checks.push(pass(
-      "CRDD_GENERATED_NAMES_UNIQUE",
-      `Generated Unreal filenames are unique across ${compilations.length} operation(s)`,
-    ));
     for (const [index, compilation] of compilations.entries()) {
       checks.push(pass(
         "CRDD_SOURCE_COMPILES",
@@ -107,7 +115,7 @@ export async function runDoctor(configPath: string): Promise<DoctorReport> {
     checks.push(fail("CRDD_SOURCE_INVALID", (error as Error).message));
   }
 
-  for (const output of [paths.generatedSource, paths.generatedAssets, paths.evidence]) {
+  for (const output of [...Object.values(paths.outputs), paths.evidence]) {
     const existingParent = await nearestExistingParent(output);
     try {
       await access(existingParent, constants.W_OK);
@@ -118,9 +126,6 @@ export async function runDoctor(configPath: string): Promise<DoctorReport> {
   }
 
   await checkInstallation(root, paths.toolRoot, checks);
-  if (config.unreal) await checkUnreal(root, config.unreal, checks);
-  else checks.push(warning("CRDD_UNREAL_DISABLED", "Unreal verification is not configured"));
-
   return {
     protocol: "crdd-ir/doctor-v0.1",
     ok: !checks.some((check) => check.status === "fail"),
@@ -142,16 +147,15 @@ function checkOutputSeparation(
   paths: {
     toolRoot: string;
     sources: string[];
-    generatedSource: string;
-    generatedAssets: string;
+    outputs: Record<string, string>;
     evidence: string;
   },
   checks: DoctorCheck[],
 ): void {
-  const outputs = [paths.generatedSource, paths.generatedAssets, paths.evidence];
+  const outputs = [...Object.values(paths.outputs), paths.evidence];
   const duplicates = outputs.filter((path, index) => outputs.indexOf(path) !== index);
   if (duplicates.length > 0) {
-    checks.push(fail("CRDD_OUTPUT_COLLISION", "Generated source, assets, and evidence paths must be distinct"));
+    checks.push(fail("CRDD_OUTPUT_COLLISION", "Target output and evidence paths must be distinct"));
   } else {
     checks.push(pass("CRDD_OUTPUTS_SEPARATE", "Generated output paths are distinct"));
   }
@@ -184,7 +188,7 @@ async function checkInstallation(root: string, toolRoot: string, checks: DoctorC
     checks.push(warning("CRDD_INSTALL_MANIFEST_MISSING", "Installation ownership manifest is missing", manifestPath));
     return;
   }
-  if (manifest.protocol !== "crdd-ir/install-manifest-v0.1" || !Array.isArray(manifest.files)) {
+  if (manifest.protocol !== "crdd-ir/install-manifest-v0.2" || !Array.isArray(manifest.files)) {
     checks.push(fail("CRDD_INSTALL_MANIFEST_INVALID", "Installation ownership manifest is invalid", manifestPath));
     return;
   }
@@ -224,56 +228,6 @@ function extractManagedBlock(content: string): string {
   const finish = content.indexOf(end, start);
   if (start < 0 || finish < start) throw new Error("managed block missing");
   return content.slice(start, finish + end.length);
-}
-
-async function checkUnreal(
-  root: string,
-  unreal: NonNullable<Awaited<ReturnType<typeof loadProjectConfig>>["unreal"]>,
-  checks: DoctorCheck[],
-): Promise<void> {
-  const project = inside(root, unreal.project);
-  await checkFile(project, "CRDD_UNREAL_PROJECT_PRESENT", "Unreal project exists", checks);
-  const engineRoot = resolve(unreal.engineRoot);
-  await checkFile(
-    resolve(engineRoot, "Engine/Build/BatchFiles/Build.bat"),
-    "CRDD_UNREAL_BUILD_TOOL_PRESENT",
-    "Unreal build tool exists",
-    checks,
-  );
-  await checkFile(
-    resolve(engineRoot, "Engine/Build/BatchFiles/RunUAT.bat"),
-    "CRDD_UNREAL_UAT_PRESENT",
-    "Unreal Automation Tool exists",
-    checks,
-  );
-  await checkFile(
-    resolve(engineRoot, "Engine/Binaries/Win64/UnrealEditor-Cmd.exe"),
-    "CRDD_UNREAL_EDITOR_PRESENT",
-    "Unreal headless editor exists",
-    checks,
-  );
-  const unrealRoot = dirname(project);
-  await checkFile(
-    resolve(unrealRoot, `Plugins/${unreal.integrationPlugin}/${unreal.integrationPlugin}.uplugin`),
-    "CRDD_UNREAL_PLUGIN_PRESENT",
-    "CRDD Unreal integration plugin exists",
-    checks,
-  );
-  await checkFile(
-    resolve(
-      unrealRoot,
-      `Plugins/${unreal.integrationPlugin}/Source/CRDDIRRuntime/CRDDIRRuntime.Build.cs`,
-    ),
-    "CRDD_UNREAL_RUNTIME_MODULE_PRESENT",
-    "CRDD Unreal runtime module exists",
-    checks,
-  );
-  await checkFile(
-    resolve(root, "tools/crdd-import-generated-assets.py"),
-    "CRDD_UNREAL_IMPORTER_PRESENT",
-    "CRDD Unreal asset importer exists",
-    checks,
-  );
 }
 
 async function checkFile(

@@ -1,6 +1,6 @@
 # Unreal product bridge
 
-`unreal generate` と一括生成は、Operationごとに次のBridge成果物も生成します。
+`generate unreal` と一括生成は、Operationごとに次のBridge成果物も生成します。
 
 - `<Operation>.bridge.generated.h`: DTO、失敗分類、Product Adapter port
 - `<Operation>.bridge.generated.cpp`: Contract実行とSnapshot commitの制御

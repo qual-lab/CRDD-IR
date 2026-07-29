@@ -6,15 +6,15 @@ Git Submodule利用者が適用先へコピーするProjectではありません
 
 ## Inputs
 
-- `../../../examples/create-entity/05_SPEC/01_Behavior_Specification.md`
-- `../../../generated/create-entity.conformance.json`
+- `../../../examples/apply-record/contract.md`
+- `../../../generated/apply-record.conformance.json`
 - Protocol: `crdd-ir/conformance-v0.1`
 
 ## Generate
 
 ```powershell
-node src/cli.ts unreal generate `
-  examples/create-entity/05_SPEC/01_Behavior_Specification.md `
+node src/cli.ts generate unreal `
+  examples/apply-record/contract.md `
   --profile examples/unreal/profiles/ue-5.8-editor.json `
   --out-dir examples/unreal/CrddCompilerFixture/Source/CrddCompilerFixture/Generated
 ```
@@ -22,13 +22,13 @@ node src/cli.ts unreal generate `
 ## Build
 
 Repository rootで`npm run verify:unreal`を実行すると、生成、Build、
-OBJから`/Game/CRDD/Generated/EntityPreview`へのStaticMesh Import、
-`/Game/CRDD/Generated/EntityPreviewLevel`への永続配置、Automation Test、
-Shipping Cook/Package、`07_Quality/CRDD_IR`のEvidence更新までを一括実行する。
+OBJから`/Game/CRDD/Generated/PrimaryPreview`へのStaticMesh Import、
+`/Game/CRDD/Generated/PrimaryPreviewScene`への永続配置、Automation Test、
+Shipping Cook/Package、`evidence/crdd-ir`のEvidence更新までを一括実行する。
 Import対象は`generated/assets/assets.manifest.json`から読み取るため、
 CRDD ContractへAssetを追加してもPython Scriptの固定名変更は不要。
 また、全AssetをContract指定のTransformで
-`/Game/CRDD/Generated/CreateEntityScene`へまとめて配置する。
+`/Game/CRDD/Generated/ApplyRecordScene`へまとめて配置する。
 
 ```powershell
 & 'C:\Program Files\Epic Games\UE_5.8\Engine\Build\BatchFiles\Build.bat' `
@@ -45,7 +45,7 @@ CRDD ContractへAssetを追加してもPython Scriptの固定名変更は不要�
 ```powershell
 & 'C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe' `
   "$PWD\examples\unreal\CrddCompilerFixture\CrddCompilerFixture.uproject" `
-  -ExecCmds='Automation RunTests CRDD.CreateEntity.Conformance' `
+  -ExecCmds='Automation RunTests CRDD.ApplyRecord.Conformance' `
   -TestExit='Automation Test Queue Empty' `
   -unattended `
   -nop4 `
@@ -60,7 +60,7 @@ CRDD ContractへAssetを追加してもPython Scriptの固定名変更は不要�
 
 ```text
 Test Completed. Result={Success}
-Path={CRDD.CreateEntity.Conformance}
+Path={CRDD.ApplyRecord.Conformance}
 ```
 
 `Binaries`、`Intermediate`、`Saved`等は再生成可能なためGit管理しない。

@@ -12,6 +12,7 @@ import {
   type UnrealTargetProfile,
 } from "./unreal-target.ts";
 import { generateUnrealReflection } from "./unreal-uht.ts";
+import { generateTypeScript } from "./typescript.ts";
 
 export type TargetGeneratedFile = {
   name: string;
@@ -36,14 +37,6 @@ export type TargetAdapter<TProfile = unknown> = {
   generate: (context: TargetGenerationContext & { profile?: TProfile }) => TargetGeneratedFile[];
 };
 
-const unityDefaultProfile: UnityTargetProfile = {
-  protocol: "crdd-ir/unity-target-v0.1",
-  unityVersion: "6000.0.0f1",
-  namespace: "Crdd.Generated",
-  apiCompatibility: "netstandard2.1",
-  scriptingBackend: "il2cpp",
-};
-
 const adapters = new Map<string, TargetAdapter>([
   ["ir", {
     id: "ir",
@@ -55,6 +48,13 @@ const adapters = new Map<string, TargetAdapter>([
       content: compilation.canonicalJson,
     }],
   }],
+  ["typescript", {
+    id: "typescript",
+    description: "Portable TypeScript DTOs, runtime validators, handler contracts, and event contracts",
+    profileRequired: false,
+    supportsFlatBatch: true,
+    generate: ({ compilation }) => generateTypeScript(compilation.ir),
+  }],
   ["unreal", {
     id: "unreal",
     description: "Unreal Engine C++ contract, bridge, tests, and reflection adapters",
@@ -63,6 +63,7 @@ const adapters = new Map<string, TargetAdapter>([
     supportsFlatBatch: true,
     validateProfile: validateUnrealTargetProfile,
     generate: ({ compilation, profile, operationIndex }) => {
+      assertStateTransitionTargetCompatibility("unreal", compilation);
       const unrealProfile = profile as UnrealTargetProfile | undefined;
       return [
         ...generateUnreal(compilation.ir, unrealProfile ? {
@@ -87,12 +88,14 @@ const adapters = new Map<string, TargetAdapter>([
     profileRequired: true,
     supportsFlatBatch: true,
     validateProfile: validateUnityTargetProfile,
-    generate: ({ compilation, profile }) =>
-      generateUnity(
+    generate: ({ compilation, profile }) => {
+      assertStateTransitionTargetCompatibility("unity", compilation);
+      return generateUnity(
         compilation.ir,
-        (profile as UnityTargetProfile | undefined) ?? unityDefaultProfile,
+        profile as UnityTargetProfile,
         { irSha256: compilation.digest, generatorVersion: "0.2.1" },
-      ),
+      );
+    },
   }],
   ["assets", {
     id: "assets",
@@ -103,6 +106,48 @@ const adapters = new Map<string, TargetAdapter>([
     generate: ({ compilation }) => generateAssets(compilation.ir),
   }],
 ]);
+
+function assertStateTransitionTargetCompatibility(
+  target: string,
+  compilation: CompilationResult,
+): void {
+  const operation = compilation.ir.operation;
+  if (operation.kind === "query") {
+    throw new Error(
+      `Target "${target}" does not yet project query output semantics; use target "ir" or a query-capable adapter`,
+    );
+  }
+  if (operation.execution?.mode === "async") {
+    throw new Error(
+      `Target "${target}" does not yet project async execution semantics; use target "ir" or an async-capable adapter`,
+    );
+  }
+  if (operation.output !== undefined || (operation.emits?.length ?? 0) > 0) {
+    throw new Error(
+      `Target "${target}" does not yet project output or event semantics; use target "ir" or a capable adapter`,
+    );
+  }
+  const unsupported = [...Object.values(operation.input), ...Object.values(operation.state)]
+    .find((field) => containsGeneralApplicationType(field));
+  if (unsupported) {
+    throw new Error(
+      `Target "${target}" does not yet support field type "${unsupported.type}"; use target "ir" or a capable adapter`,
+    );
+  }
+}
+
+function containsGeneralApplicationType(field: import("./model.ts").FieldDefinition):
+  import("./model.ts").FieldDefinition | undefined {
+  if (["integer", "map", "union"].includes(field.type) || field.nullable === true) return field;
+  if (field.type === "object") {
+    for (const nested of Object.values(field.properties)) {
+      const unsupported = containsGeneralApplicationType(nested);
+      if (unsupported) return unsupported;
+    }
+  }
+  if (field.type === "array") return containsGeneralApplicationType(field.items);
+  return undefined;
+}
 
 export function listTargetAdapters(): TargetAdapter[] {
   return [...adapters.values()].sort((left, right) => left.id.localeCompare(right.id));

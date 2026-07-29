@@ -15,7 +15,7 @@ extensions:
   com.example.audit:
     protocol: example/audit-v1
     data:
-      category: billing
+      category: audit
 ```
 
 Extension IDs use lowercase reverse-domain-style names. The Core validates only
@@ -23,10 +23,9 @@ the envelope (`protocol` and `data`). The target or extension owner validates
 the data payload. This prevents Unreal, Unity, 3D, web, server, or business
 rules from becoming Core IR semantics.
 
-## 3D asset compatibility
+## 3D asset extension
 
-The CRDD Markdown `assets:` shorthand remains accepted for compatibility. The
-CRDD frontend normalizes it into:
+3D asset declarations use the extension envelope:
 
 ```yaml
 extensions:
@@ -37,5 +36,4 @@ extensions:
 ```
 
 The `assets` target owns validation of geometry, material, collision, LOD, and
-placement. Existing v0.1 IR files containing `operation.assets` remain readable,
-but newly compiled IR never emits that legacy field.
+placement. Core IR does not define asset semantics.
