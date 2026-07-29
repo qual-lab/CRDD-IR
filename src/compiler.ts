@@ -44,18 +44,26 @@ export async function compileMarkdown(path: string): Promise<CompilationResult> 
         atomic: contract.operation.transaction.atomic,
         rollbackOnFailure: contract.operation.transaction.rollback_on_failure,
       },
-      ...(contract.operation.assets
+      ...(contract.operation.extensions || contract.operation.assets
         ? {
-            assets: contract.operation.assets.map((asset) => ({
-              id: asset.id,
-              type: asset.type,
-              dimensions: structuredClone(asset.dimensions),
-              material: { baseColor: [...asset.material.base_color] as [number, number, number] },
-              collision: structuredClone(asset.collision),
-              lod: structuredClone(asset.lod),
-              placement: structuredClone(asset.placement),
-              traces: [...asset.traces],
-            })),
+            extensions: {
+              ...structuredClone(contract.operation.extensions ?? {}),
+              ...(contract.operation.assets ? { "crdd.3d-assets": {
+                protocol: "crdd-ir/3d-assets-v0.1",
+                data: {
+                  assets: contract.operation.assets.map((asset) => ({
+                    id: asset.id,
+                    type: asset.type,
+                    dimensions: structuredClone(asset.dimensions),
+                    material: { baseColor: [...asset.material.base_color] as [number, number, number] },
+                    collision: structuredClone(asset.collision),
+                    lod: structuredClone(asset.lod),
+                    placement: structuredClone(asset.placement),
+                    traces: [...asset.traces],
+                  })),
+                },
+              } } : {}),
+            },
           }
         : {}),
     },

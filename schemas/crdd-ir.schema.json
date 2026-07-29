@@ -32,9 +32,10 @@
           "items": { "$ref": "#/$defs/effect" }
         },
         "errors": { "type": "array", "minItems": 1 },
-        "assets": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/asset" }
+        "extensions": {
+          "type": "object",
+          "propertyNames": { "pattern": "^[a-z][a-z0-9.-]*$" },
+          "additionalProperties": { "$ref": "#/$defs/extension" }
         },
         "transaction": {
           "type": "object",
@@ -49,6 +50,15 @@
     }
   },
   "$defs": {
+    "extension": {
+      "type": "object",
+      "required": ["protocol", "data"],
+      "properties": {
+        "protocol": { "type": "string", "minLength": 1 },
+        "data": {}
+      },
+      "additionalProperties": false
+    },
     "effect": {
       "oneOf": [
         {

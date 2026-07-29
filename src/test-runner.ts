@@ -1,6 +1,7 @@
 import { assertSimulationResult, createReferenceAdapter } from "./adapter.ts";
 import { simulate } from "./simulator.ts";
 import type { CrddIr, OperationAdapter, SimulationResult, TestManifest, TestRunReport } from "./model.ts";
+import { isDeepStrictEqual } from "node:util";
 
 export async function runTestManifest(
   ir: CrddIr,
@@ -69,5 +70,5 @@ export async function runTestManifest(
 }
 
 function deepEqual(left: unknown, right: unknown): boolean {
-  return JSON.stringify(left) === JSON.stringify(right);
+  return isDeepStrictEqual(left, right);
 }
