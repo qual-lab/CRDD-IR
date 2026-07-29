@@ -1,6 +1,8 @@
 param(
     [string]$UnrealRoot = $env:CRDD_UNREAL_ROOT,
-    [string]$Configuration = "Development"
+    [string]$Configuration = "Development",
+    [ValidateRange(1, 86400)]
+    [int]$LockTimeoutSeconds = 1800
 )
 
 $ErrorActionPreference = "Stop"
@@ -15,6 +17,12 @@ $buildTool = Join-Path $UnrealRoot "Engine\Build\BatchFiles\Build.bat"
 $runUat = Join-Path $UnrealRoot "Engine\Build\BatchFiles\RunUAT.bat"
 $editorCmd = Join-Path $UnrealRoot "Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
 $project = Join-Path $repoRoot "examples\unreal\CrddCompilerFixture\CrddCompilerFixture.uproject"
+. (Join-Path $PSScriptRoot "verify-lock.ps1")
+$verifyLock = Enter-CrddVerifyLock `
+    -ProjectPath $project `
+    -MetadataRoot $repoRoot `
+    -TimeoutSeconds $LockTimeoutSeconds
+try {
 $assetImportScript = Join-Path $repoRoot "examples\unreal\CrddCompilerFixture\Scripts\import_generated_assets.py"
 $integrationPluginSource = Join-Path $repoRoot "templates\unreal\CRDDIRIntegration"
 $integrationPluginTarget = Join-Path (
@@ -155,3 +163,7 @@ Write-Host "CRDD Unreal verification succeeded."
 Write-Host "Raw Unreal report: $reportPath"
 Write-Host "Evidence: $(Join-Path $repoRoot $evidenceDir)"
 Write-Host "Shipping package: $packageDir"
+}
+finally {
+    Exit-CrddVerifyLock -Lock $verifyLock
+}
