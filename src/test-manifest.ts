@@ -1,8 +1,16 @@
 import type { CrddIr, SimulationRequest, TestCase, TestManifest } from "./model.ts";
 import { evaluateExpression, extractReferences, getPath } from "./expression.ts";
+import {
+  parseSourceExpression,
+  type ExpressionNode,
+} from "./source-expression.ts";
+import { defaultUnitRegistry } from "./unit-registry.ts";
 
 export function generateTestManifest(ir: CrddIr): TestManifest {
-  const baseline = satisfyRequirements(ir, createBaseline(ir));
+  const baseline = canonicalizeBaselineUnits(
+    ir,
+    satisfyRequirements(ir, createBaseline(ir)),
+  );
   const cases: TestCase[] = [
     {
       id: `${slug(ir.operation.id)}-success`,
@@ -13,6 +21,16 @@ export function generateTestManifest(ir: CrddIr): TestManifest {
   ];
 
   for (const requirement of ir.operation.requires) {
+    const arithmeticBoundary = deriveArithmeticBoundaryCases(
+      ir,
+      requirement.id,
+      baseline,
+    );
+    if (arithmeticBoundary) {
+      cases.push(...arithmeticBoundary);
+      continue;
+    }
+
     const literalBoundary = requirement.expression.match(/^input\.([A-Za-z_]\w*)\s*>=\s*(\d+(?:\.\d+)?)$/);
     if (literalBoundary) {
       const [, field, rawBoundary] = literalBoundary;
@@ -96,6 +114,384 @@ export function generateTestManifest(ir: CrddIr): TestManifest {
     traces: ir.operation.traces,
     cases,
   };
+}
+
+type AffineExpression = {
+  constant: number;
+  coefficients: Map<string, number>;
+};
+
+type BoundaryScenario = {
+  suffix: "at-boundary" | "inside-boundary" | "outside-boundary";
+  gapSteps: -1 | 0 | 1;
+  ok: boolean;
+};
+
+export class BoundaryCaseGenerationError extends Error {
+  readonly requirementId: string;
+  readonly expression: string;
+  readonly classification: "unsupported" | "unsatisfiable";
+  readonly conflicts: string[];
+
+  constructor(
+    requirementId: string,
+    expression: string,
+    classification: "unsupported" | "unsatisfiable",
+    conflicts: string[],
+    reason: string,
+  ) {
+    super(
+      `Cannot generate arithmetic boundary cases; requirement="${requirementId}"; ` +
+      `expression="${expression}"; classification=${classification}; reason=${reason}; ` +
+      `conflicts=${conflicts.length > 0 ? conflicts.join(", ") : "none"}`,
+    );
+    this.name = "BoundaryCaseGenerationError";
+    this.requirementId = requirementId;
+    this.expression = expression;
+    this.classification = classification;
+    this.conflicts = conflicts;
+  }
+}
+
+function deriveArithmeticBoundaryCases(
+  ir: CrddIr,
+  requirementId: string,
+  baseline: SimulationRequest,
+): TestCase[] | undefined {
+  const requirement = ir.operation.requires.find((item) => item.id === requirementId)!;
+  let ast: ExpressionNode;
+  try {
+    ast = parseSourceExpression(requirement.expression);
+  } catch {
+    return undefined;
+  }
+  if (
+    ast.kind !== "binary" ||
+    !["<=", "<", ">=", ">"].includes(ast.operator) ||
+    !containsAdditive(ast.left) && !containsAdditive(ast.right)
+  ) {
+    return undefined;
+  }
+
+  const left = affine(ast.left);
+  const right = affine(ast.right);
+  if (!left || !right) {
+    throw new BoundaryCaseGenerationError(
+      requirement.id,
+      requirement.expression,
+      "unsupported",
+      [],
+      "the comparison is not an affine expression composed of references, literals, +, and -",
+    );
+  }
+  const difference = subtractAffine(left, right);
+  const references = [...difference.coefficients]
+    .filter(([, coefficient]) => coefficient !== 0)
+    .map(([reference]) => reference)
+    .sort();
+  if (references.length === 0) {
+    throw new BoundaryCaseGenerationError(
+      requirement.id,
+      requirement.expression,
+      "unsatisfiable",
+      [requirement.id],
+      "the arithmetic comparison has no adjustable field",
+    );
+  }
+
+  const scenarios = boundaryScenarios(ast.operator);
+  const generated: TestCase[] = [];
+  const failures = new Set<string>();
+  for (const scenario of scenarios) {
+    let candidate: SimulationRequest | undefined;
+    try {
+      candidate = solveBoundaryScenario(
+        ir,
+        requirement.id,
+        baseline,
+        difference,
+        references,
+        scenario,
+        failures,
+      );
+    } catch (error) {
+      throw new BoundaryCaseGenerationError(
+        requirement.id,
+        requirement.expression,
+        "unsupported",
+        [...failures].sort(),
+        (error as Error).message,
+      );
+    }
+    if (!candidate) {
+      throw new BoundaryCaseGenerationError(
+        requirement.id,
+        requirement.expression,
+        "unsatisfiable",
+        [...failures].sort(),
+        `no schema-valid assignment satisfies the ${scenario.suffix} scenario while preserving every other requirement`,
+      );
+    }
+    generated.push({
+      id: `${slug(requirement.id)}-${scenario.suffix}`,
+      sourceRequirement: requirement.id,
+      description: `${requirement.expression} ${scenario.suffix.replaceAll("-", " ")}`,
+      arrange: candidate,
+      expect: scenario.ok
+        ? { ok: true }
+        : { ok: false, error: requirement.error, stateUnchanged: true },
+    });
+  }
+  return generated;
+}
+
+function solveBoundaryScenario(
+  ir: CrddIr,
+  requirementId: string,
+  baseline: SimulationRequest,
+  difference: AffineExpression,
+  references: string[],
+  scenario: BoundaryScenario,
+  failures: Set<string>,
+): SimulationRequest | undefined {
+  const baselineGap = evaluateAffine(difference, baseline);
+  for (const reference of references) {
+    const coefficient = difference.coefficients.get(reference)!;
+    const current = getPath(baseline, reference);
+    if (typeof current !== "number") {
+      failures.add(`schema:${reference}:not-numeric`);
+      continue;
+    }
+    const step = fieldStep(ir, reference);
+    const desiredGap = checkedMultiply(scenario.gapSteps, step);
+    const adjustment = checkedDivide(checkedSubtract(desiredGap, baselineGap), coefficient);
+    const value = canonicalBoundaryNumber(checkedAdd(current, adjustment), step);
+    if (!fieldAllows(ir, reference, value)) {
+      failures.add(`schema:${reference}:minimum/maximum/type`);
+      continue;
+    }
+    const candidate = structuredClone(baseline);
+    setPath(candidate as unknown as Record<string, unknown>, reference, value);
+    const failedRequirements: string[] = [];
+    try {
+      const actualGap = evaluateAffine(difference, candidate);
+      if (Math.abs(actualGap - desiredGap) > Math.max(Number.EPSILON, step * 1e-9)) {
+        failures.add(`unit:${reference}:cannot-represent-${scenario.suffix}`);
+        continue;
+      }
+      for (const requirement of ir.operation.requires) {
+        const actual = evaluateExpression(
+          requirement.expression,
+          candidate as unknown as Record<string, unknown>,
+        );
+        const expected = requirement.id === requirementId ? scenario.ok : true;
+        if (actual !== expected) failedRequirements.push(requirement.id);
+      }
+    } catch (error) {
+      failures.add(`arithmetic:${(error as Error).message}`);
+      continue;
+    }
+    if (failedRequirements.length === 0) return candidate;
+    failedRequirements.forEach((id) => failures.add(`requires:${id}`));
+  }
+  return undefined;
+}
+
+function canonicalizeBaselineUnits(
+  ir: CrddIr,
+  baseline: SimulationRequest,
+): SimulationRequest {
+  let result = structuredClone(baseline);
+  const references = [...new Set(ir.operation.requires.flatMap((requirement) =>
+    extractReferences(requirement.expression)
+  ))].sort();
+  for (const reference of references) {
+    const current = getPath(result, reference);
+    const field = fieldDefinition(ir, reference);
+    if (
+      typeof current !== "number" ||
+      !field ||
+      field.type !== "number" && field.type !== "integer"
+    ) continue;
+    const step = fieldStep(ir, reference);
+    const rounded = canonicalBoundaryNumber(Math.round(current / step) * step, step);
+    if (!fieldAllows(ir, reference, rounded)) continue;
+    const candidate = structuredClone(result);
+    setPath(candidate as unknown as Record<string, unknown>, reference, rounded);
+    try {
+      if (ir.operation.requires.every((requirement) =>
+        evaluateExpression(
+          requirement.expression,
+          candidate as unknown as Record<string, unknown>,
+        ) === true
+      )) result = candidate;
+    } catch {
+      // Keep the already-valid baseline when canonicalization changes semantics.
+    }
+  }
+  return result;
+}
+
+function boundaryScenarios(operator: string): BoundaryScenario[] {
+  if (operator === "<=") {
+    return [
+      { suffix: "at-boundary", gapSteps: 0, ok: true },
+      { suffix: "outside-boundary", gapSteps: 1, ok: false },
+      { suffix: "inside-boundary", gapSteps: -1, ok: true },
+    ];
+  }
+  if (operator === "<") {
+    return [
+      { suffix: "at-boundary", gapSteps: 0, ok: false },
+      { suffix: "outside-boundary", gapSteps: 1, ok: false },
+      { suffix: "inside-boundary", gapSteps: -1, ok: true },
+    ];
+  }
+  if (operator === ">=") {
+    return [
+      { suffix: "at-boundary", gapSteps: 0, ok: true },
+      { suffix: "outside-boundary", gapSteps: -1, ok: false },
+      { suffix: "inside-boundary", gapSteps: 1, ok: true },
+    ];
+  }
+  return [
+    { suffix: "at-boundary", gapSteps: 0, ok: false },
+    { suffix: "outside-boundary", gapSteps: -1, ok: false },
+    { suffix: "inside-boundary", gapSteps: 1, ok: true },
+  ];
+}
+
+function containsAdditive(node: ExpressionNode): boolean {
+  return node.kind === "binary" &&
+    (node.operator === "+" || node.operator === "-" ||
+      containsAdditive(node.left) || containsAdditive(node.right));
+}
+
+function affine(node: ExpressionNode): AffineExpression | undefined {
+  if (node.kind === "literal" && typeof node.value === "number") {
+    return { constant: node.value, coefficients: new Map() };
+  }
+  if (node.kind === "reference") {
+    return { constant: 0, coefficients: new Map([[node.path, 1]]) };
+  }
+  if (node.kind === "unary" && node.operator === "-") {
+    const operand = affine(node.operand);
+    return operand ? scaleAffine(operand, -1) : undefined;
+  }
+  if (node.kind === "binary" && (node.operator === "+" || node.operator === "-")) {
+    const left = affine(node.left);
+    const right = affine(node.right);
+    if (!left || !right) return undefined;
+    return addAffine(left, node.operator === "+" ? right : scaleAffine(right, -1));
+  }
+  return undefined;
+}
+
+function addAffine(left: AffineExpression, right: AffineExpression): AffineExpression {
+  const coefficients = new Map(left.coefficients);
+  for (const [reference, coefficient] of right.coefficients) {
+    coefficients.set(
+      reference,
+      checkedAdd(coefficients.get(reference) ?? 0, coefficient),
+    );
+  }
+  return {
+    constant: checkedAdd(left.constant, right.constant),
+    coefficients,
+  };
+}
+
+function subtractAffine(left: AffineExpression, right: AffineExpression): AffineExpression {
+  return addAffine(left, scaleAffine(right, -1));
+}
+
+function scaleAffine(expression: AffineExpression, factor: number): AffineExpression {
+  return {
+    constant: checkedMultiply(expression.constant, factor),
+    coefficients: new Map(
+      [...expression.coefficients].map(([reference, coefficient]) => [
+        reference,
+        checkedMultiply(coefficient, factor),
+      ]),
+    ),
+  };
+}
+
+function evaluateAffine(expression: AffineExpression, request: SimulationRequest): number {
+  let value = expression.constant;
+  for (const [reference, coefficient] of expression.coefficients) {
+    const operand = getPath(request, reference);
+    if (typeof operand !== "number") throw new Error(`${reference} is not numeric`);
+    value = checkedAdd(value, checkedMultiply(coefficient, operand));
+  }
+  return value;
+}
+
+function fieldStep(ir: CrddIr, reference: string): number {
+  const field = fieldDefinition(ir, reference);
+  if (field?.type === "integer") return 1;
+  if (field?.type === "number" && field.unit) {
+    return defaultUnitRegistry.compatible("m", field.unit)
+      ? defaultUnitRegistry.convert(0.001, "m", field.unit)
+      : 1;
+  }
+  const precision = Math.max(
+    3,
+    ...[field?.minimum, field?.maximum]
+      .filter((value): value is number => value !== undefined)
+      .map((value) => decimalPlaces(String(value))),
+  );
+  return 10 ** -Math.min(9, precision);
+}
+
+function fieldDefinition(
+  ir: CrddIr,
+  reference: string,
+): import("./model.ts").FieldDefinition | undefined {
+  const [root, ...parts] = reference.split(".");
+  let field: import("./model.ts").FieldDefinition | undefined =
+    root === "input"
+      ? ir.operation.input[parts.shift() ?? ""]
+      : root === "state"
+        ? ir.operation.state[parts.shift() ?? ""]
+        : undefined;
+  for (const part of parts) {
+    if (field?.type !== "object") return undefined;
+    field = field.properties[part];
+  }
+  return field;
+}
+
+function canonicalBoundaryNumber(value: number, step: number): number {
+  checkedNumber(value);
+  const precision = Math.min(9, decimalPlaces(String(step)));
+  const result = Number(value.toFixed(precision));
+  checkedNumber(result);
+  return Object.is(result, -0) ? 0 : result;
+}
+
+function checkedAdd(left: number, right: number): number {
+  return checkedNumber(left + right);
+}
+
+function checkedSubtract(left: number, right: number): number {
+  return checkedNumber(left - right);
+}
+
+function checkedMultiply(left: number, right: number): number {
+  return checkedNumber(left * right);
+}
+
+function checkedDivide(left: number, right: number): number {
+  if (right === 0) throw new Error("division by zero while solving a boundary");
+  return checkedNumber(left / right);
+}
+
+function checkedNumber(value: number): number {
+  if (!Number.isFinite(value) || Math.abs(value) > Number.MAX_SAFE_INTEGER) {
+    throw new Error("numeric overflow/underflow while solving a boundary");
+  }
+  return value;
 }
 
 export function analyzeTestCoverage(ir: CrddIr, manifest: TestManifest): {
@@ -230,21 +626,13 @@ function numericCandidates(ir: CrddIr): number[] {
 }
 
 function fieldAllows(ir: CrddIr, reference: string, value: unknown): boolean {
-  const [root, ...parts] = reference.split(".");
-  let field: import("./model.ts").FieldDefinition | undefined =
-    root === "input"
-      ? ir.operation.input[parts.shift() ?? ""]
-      : root === "state"
-        ? ir.operation.state[parts.shift() ?? ""]
-        : undefined;
-  for (const part of parts) {
-    if (field?.type !== "object") return true;
-    field = field.properties[part];
-  }
+  const field = fieldDefinition(ir, reference);
   if (!field || field.type === "array" || field.type === "object") return true;
-  if (field.type === "number") {
+  if (field.type === "number" || field.type === "integer") {
     return typeof value === "number" && Number.isFinite(value) &&
-      (field.minimum === undefined || value >= field.minimum);
+      (field.type !== "integer" || Number.isSafeInteger(value)) &&
+      (field.minimum === undefined || value >= field.minimum) &&
+      (field.maximum === undefined || value <= field.maximum);
   }
   if (field.type === "string") {
     return typeof value === "string" && (!field.enum || field.enum.includes(value));
@@ -264,7 +652,9 @@ function createBaseline(ir: CrddIr): SimulationRequest {
 
   const state: Record<string, unknown> = {};
   for (const [path, field] of Object.entries(ir.operation.state)) {
-    const value = field.type === "number" ? 1_000_000 : baselineFieldValue(field);
+    const value = field.type === "number" || field.type === "integer"
+      ? Math.min(field.maximum ?? 1_000_000, 1_000_000)
+      : baselineFieldValue(field);
     setPath(state, path, value);
   }
   for (const effect of ir.operation.effects) {
@@ -291,7 +681,12 @@ function baselineFieldValue(field: import("./model.ts").FieldDefinition): unknow
   }
   if (field.type === "array") return [];
   if (field.default !== undefined) return structuredClone(field.default);
-  if (field.type === "number") return Math.max(field.minimum ?? 0, 1);
+  if (field.type === "number" || field.type === "integer") {
+    return Math.min(
+      field.maximum ?? Number.MAX_SAFE_INTEGER,
+      Math.max(field.minimum ?? 0, 1),
+    );
+  }
   if (field.type === "string") return field.enum?.[0] ?? "sample";
   return true;
 }

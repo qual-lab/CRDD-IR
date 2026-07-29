@@ -156,6 +156,7 @@ CRDD Markdownが正本です。Internal IR instanceを専用フォルダへ恒�
 - [Target adapter registry](docs/target-adapters.md)
 - [Unreal and Unity target parity](docs/target-parity.md)
 - [Core IR extensions](docs/core-extensions.md)
+- [Composite arithmetic boundary generation](docs/composite-arithmetic-boundaries.md)
 - [Verify lock events](docs/verify-events.md)
 - [v0.1.2 release notes](docs/releases/v0.1.2.md)
 - [v0.2.1 release notes](docs/releases/v0.2.1.md)

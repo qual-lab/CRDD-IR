@@ -48,3 +48,52 @@ test("doctor rejects colliding output directories", async () => {
   assert.equal(report.ok, false);
   assert.ok(report.checks.some((check) => check.code === "CRDD_OUTPUT_COLLISION"));
 });
+
+test("IR-TEST-003 doctor kills composite arithmetic boundary mutations", async () => {
+  const { root, configPath } = await fixture();
+  await cp(
+    fileURLToPath(new URL("fixtures/contracts/numeric-boundary.md", import.meta.url)),
+    join(root, "contracts/spec.md"),
+  );
+  const report = await runDoctor(configPath);
+  assert.equal(report.ok, true);
+  assert.ok(report.checks.some((check) =>
+    check.code === "CRDD_MUTATIONS_KILLED" &&
+    check.message.includes("killed all 12 deterministic mutants")
+  ));
+  assert.ok(!report.checks.some((check) => check.code === "CRDD_MUTATIONS_SURVIVED"));
+});
+
+test("IR-TEST-003 doctor reports an unsatisfiable composite boundary explicitly", async () => {
+  const { root, configPath } = await fixture();
+  await writeFile(join(root, "contracts/spec.md"), `# Composite boundary
+
+\`\`\`crdd-contract
+schema: crdd-source-contract/v0.1
+operation:
+  id: CompositeBoundary
+  kind: query
+  traces: [IR-TEST-003]
+  input:
+    a: { type: number, unit: mm, minimum: 0, maximum: 2 }
+    b: { type: number, unit: mm, minimum: 0, maximum: 2 }
+    c: { type: number, unit: mm, minimum: 10, maximum: 10 }
+  state: {}
+  requires:
+    - { id: opening-fits, condition: input.a + input.b <= input.c, error: OUTSIDE }
+  effects: []
+  errors:
+    - { code: OUTSIDE, traces: [IR-TEST-003] }
+\`\`\`
+`);
+  const report = await runDoctor(configPath);
+  assert.equal(report.ok, false);
+  const diagnostic = report.checks.find((check) =>
+    check.code === "CRDD_BOUNDARY_CASE_UNSATISFIABLE"
+  );
+  assert.ok(diagnostic, JSON.stringify(report.checks, null, 2));
+  assert.match(diagnostic.message, /requirement="opening-fits"/);
+  assert.match(diagnostic.message, /expression="input\.a \+ input\.b <= input\.c"/);
+  assert.match(diagnostic.message, /classification=unsatisfiable/);
+  assert.match(diagnostic.message, /schema:/);
+});
