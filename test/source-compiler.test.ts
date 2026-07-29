@@ -12,6 +12,7 @@ import { normalizeSourceExpression, parseSourceExpression } from "../src/source-
 import { extractContractFences } from "../src/source-contract.ts";
 import { analyzeTestCoverage, generateTestManifest } from "../src/test-manifest.ts";
 import { simulate } from "../src/simulator.ts";
+import { runTestManifest } from "../src/test-runner.ts";
 import {
   generateEvidenceMarkdown,
   generateTraceabilityManifest,
@@ -238,6 +239,38 @@ test("compiles the UpdateEntity source contract and exercises its generated case
   assert.equal((result.state.entities as Array<{ length: number }>)[0].length, 1);
   const mutation = (await import("../src/mutation.ts")).analyzeMutationCoverage(ir, manifest);
   assert.equal(mutation.score, 100);
+});
+
+test("derives isolated conformance cases from a baseline satisfying multiple requirements", async () => {
+  const compilation = await compileMarkdown("test/fixtures/create-wall.md");
+  const manifest = generateTestManifest(compilation.ir);
+  const report = await runTestManifest(compilation.ir, manifest);
+  assert.equal(report.failed, 0);
+  assert.equal(report.passed, report.total);
+  assert.ok(manifest.cases.find((item) => item.id === "create-wall-success")?.expect.ok);
+  for (const requirement of compilation.ir.operation.requires) {
+    assert.ok(manifest.cases.some((item) =>
+      item.sourceRequirement === requirement.id && item.expect.ok === false
+    ));
+  }
+});
+
+test("fails with requirement IDs when no satisfying conformance baseline exists", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "crdd-unsatisfied-"));
+  const path = join(directory, "impossible.md");
+  const source = await readFile("test/fixtures/create-wall.md", "utf8");
+  await writeFile(path, source.replace(
+    "condition: input.length >= 300mm",
+    "condition: input.length >= 300mm",
+  ).replace(
+    "    - { id: minimum-wall-height",
+    "    - { id: impossible-maximum, condition: input.length <= 10mm, error: WALL_TOO_SHORT }\n    - { id: minimum-wall-height",
+  ));
+  const compilation = await compileMarkdown(path);
+  assert.throws(
+    () => generateTestManifest(compilation.ir),
+    /Cannot derive a satisfying conformance baseline.*minimum-wall-length|impossible-maximum/,
+  );
 });
 
 test("materializes optional enum defaults and rejects unknown values", async () => {

@@ -1,6 +1,8 @@
 param(
     [Parameter(Mandatory = $true)]
-    [string]$ProjectRoot
+    [string]$ProjectRoot,
+    [ValidateRange(1, 86400)]
+    [int]$LockTimeoutSeconds = 1800
 )
 
 $ErrorActionPreference = "Stop"
@@ -26,6 +28,12 @@ function Assert-ExitCode([string]$Step) {
 }
 
 $project = Resolve-ProjectPath $config.unreal.project
+. (Join-Path $PSScriptRoot "verify-lock.ps1")
+$verifyLock = Enter-CrddVerifyLock `
+    -ProjectPath $project `
+    -MetadataRoot $resolvedProjectRoot `
+    -TimeoutSeconds $LockTimeoutSeconds
+try {
 $engineRoot = [System.IO.Path]::GetFullPath($config.unreal.engineRoot)
 $buildTool = Join-Path $engineRoot "Engine\Build\BatchFiles\Build.bat"
 $runUat = Join-Path $engineRoot "Engine\Build\BatchFiles\RunUAT.bat"
@@ -193,3 +201,7 @@ foreach ($source in $sources) {
 Write-Host "CRDD Unreal project verification succeeded."
 Write-Host "Report: $reportPath"
 Write-Host "Shipping package: $packageDir"
+}
+finally {
+    Exit-CrddVerifyLock -Lock $verifyLock
+}

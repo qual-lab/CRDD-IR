@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import type { GeneratedFile } from "./unreal.ts";
+import { withInterprocessLock } from "./interprocess-lock.ts";
 
 export type GenerationChange = {
   path: string;
@@ -15,6 +16,17 @@ type GenerationManifest = {
 };
 
 export async function generateTransactionally(options: {
+  outDir: string;
+  files: GeneratedFile[];
+  dryRun?: boolean;
+  force?: boolean;
+}): Promise<GenerationChange[]> {
+  return withInterprocessLock(resolve(options.outDir), () => generateLocked(options), {
+    timeoutMs: 30_000,
+  });
+}
+
+async function generateLocked(options: {
   outDir: string;
   files: GeneratedFile[];
   dryRun?: boolean;

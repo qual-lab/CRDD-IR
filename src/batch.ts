@@ -6,6 +6,7 @@ import { compileMarkdown, type CompilationResult } from "./compiler.ts";
 import { generateUnreal } from "./unreal.ts";
 import { buildUnrealTargetPlan, type UnrealTargetProfile } from "./unreal-target.ts";
 import { generateUnrealReflection } from "./unreal-uht.ts";
+import { withInterprocessLock } from "./interprocess-lock.ts";
 
 export type BatchTarget = "ir" | "unreal" | "assets";
 export type BatchLayout = "operation-directories" | "flat";
@@ -24,6 +25,17 @@ export type BatchManifest = {
 };
 
 export async function generateBatch(
+  sources: string[],
+  outDir: string,
+  target: BatchTarget,
+  options: { layout?: BatchLayout; force?: boolean; unrealProfile?: UnrealTargetProfile } = {},
+): Promise<BatchManifest> {
+  return withInterprocessLock(resolve(outDir), () =>
+    generateBatchLocked(sources, outDir, target, options)
+  );
+}
+
+async function generateBatchLocked(
   sources: string[],
   outDir: string,
   target: BatchTarget,
@@ -59,6 +71,7 @@ export async function generateBatch(
             ...generateUnreal(compilation.ir, options.unrealProfile ? {
               irSha256: compilation.digest,
               generatorVersion: "0.1.0",
+              numericProjection: options.unrealProfile.numericProjection,
             } : undefined),
             ...(options.unrealProfile && compilationIndex === 0
               ? generateUnrealReflection(buildUnrealTargetPlan(
@@ -84,7 +97,12 @@ export async function generateBatch(
         entry.id === compilation.ir.operation.id && entry.digest === compilation.digest
       )
       : undefined;
-    const cacheHit = previousOperation &&
+    const expectedFiles = hashedFiles
+      .map(({ path, sha256 }) => ({ path, sha256 }))
+      .sort((a, b) => a.path.localeCompare(b.path));
+    const cacheHit = !options.force &&
+      previousOperation &&
+      sameFiles(previousOperation.files, expectedFiles) &&
       await outputsMatch(operationDir, previousOperation.files);
     if (!cacheHit) {
       for (const file of hashedFiles) {
@@ -96,9 +114,7 @@ export async function generateBatch(
       source: compilation.sourceMap.sourcePath.replaceAll("\\", "/"),
       digest: compilation.digest,
       outputDirectory: layout === "flat" ? "." : compilation.ir.operation.id,
-      files: hashedFiles
-        .map(({ path, sha256 }) => ({ path, sha256 }))
-        .sort((a, b) => a.path.localeCompare(b.path)),
+      files: expectedFiles,
     });
   }
 
@@ -123,6 +139,16 @@ export async function generateBatch(
   await mkdir(outDir, { recursive: true });
   await writeIfChanged(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
   return manifest;
+}
+
+function sameFiles(
+  left: Array<{ path: string; sha256: string }>,
+  right: Array<{ path: string; sha256: string }>,
+): boolean {
+  return left.length === right.length &&
+    left.every((file, index) =>
+      file.path === right[index]?.path && file.sha256 === right[index]?.sha256
+    );
 }
 
 async function rejectModifiedOwnedOutputs(

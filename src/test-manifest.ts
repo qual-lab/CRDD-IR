@@ -2,7 +2,7 @@ import type { CrddIr, SimulationRequest, TestCase, TestManifest } from "./model.
 import { evaluateExpression, extractReferences, getPath } from "./expression.ts";
 
 export function generateTestManifest(ir: CrddIr): TestManifest {
-  const baseline = createBaseline(ir);
+  const baseline = satisfyRequirements(ir, createBaseline(ir));
   const cases: TestCase[] = [
     {
       id: `${slug(ir.operation.id)}-success`,
@@ -75,7 +75,7 @@ export function generateTestManifest(ir: CrddIr): TestManifest {
     if (cases.some((testCase) =>
       testCase.sourceRequirement === requirement.id && testCase.expect.ok === false
     )) continue;
-    const falsified = falsifyRequirement(requirement.expression, baseline);
+    const falsified = falsifyRequirement(ir, requirement.id, baseline);
     if (!falsified) {
       throw new Error(
         `Cannot derive a failing conformance case for requirement "${requirement.id}"`,
@@ -116,17 +116,26 @@ export function analyzeTestCoverage(ir: CrddIr, manifest: TestManifest): {
 }
 
 function falsifyRequirement(
-  expression: string,
+  ir: CrddIr,
+  requirementId: string,
   baseline: SimulationRequest,
 ): SimulationRequest | undefined {
-  for (const reference of extractReferences(expression)) {
+  const requirement = ir.operation.requires.find((item) => item.id === requirementId)!;
+  const numericSeeds = numericCandidates(ir);
+  for (const reference of extractReferences(requirement.expression)) {
     const request = structuredClone(baseline);
     const current = getPath(request, reference);
-    for (const candidate of mutationCandidates(current)) {
+    for (const candidate of mutationCandidates(current, numericSeeds)) {
       const mutated = structuredClone(request);
       setPath(mutated as unknown as Record<string, unknown>, reference, candidate);
       try {
-        if (evaluateExpression(expression, mutated as unknown as Record<string, unknown>) === false) {
+        if (fieldAllows(ir, reference, candidate) &&
+            evaluateExpression(requirement.expression, mutated as unknown as Record<string, unknown>) === false &&
+            ir.operation.requires
+              .filter((item) => item.id !== requirementId)
+              .every((item) =>
+                evaluateExpression(item.expression, mutated as unknown as Record<string, unknown>) === true
+              )) {
           return mutated;
         }
       } catch {
@@ -137,11 +146,114 @@ function falsifyRequirement(
   return undefined;
 }
 
-function mutationCandidates(value: unknown): unknown[] {
-  if (typeof value === "number") return [0, -1, value - 1, value + 1];
+function mutationCandidates(value: unknown, numericSeeds: number[] = []): unknown[] {
+  if (typeof value === "number") {
+    return [...new Set([
+      0, -1, value - 1, value + 1,
+      ...numericSeeds.flatMap((candidate) => [candidate, candidate - epsilon(candidate), candidate + epsilon(candidate)]),
+    ])];
+  }
   if (typeof value === "boolean") return [!value];
   if (typeof value === "string") return ["", "__crdd_counterexample__"];
   return [];
+}
+
+function satisfyRequirements(ir: CrddIr, initial: SimulationRequest): SimulationRequest {
+  let request = structuredClone(initial);
+  const requirements = ir.operation.requires;
+  const satisfied = (candidate: SimulationRequest) => requirements.filter((requirement) =>
+    evaluateExpression(requirement.expression, candidate as unknown as Record<string, unknown>) === true
+  ).length;
+  if (satisfied(request) === requirements.length) return request;
+
+  const references = [...new Set(requirements.flatMap((requirement) =>
+    extractReferences(requirement.expression)
+  ))].sort();
+  const numericSeeds = numericCandidates(ir);
+  let frontier = [{ request, score: satisfied(request), key: canonicalRequest(request) }];
+  const visited = new Set(frontier.map((item) => item.key));
+  for (let pass = 0; pass < Math.max(4, references.length); pass += 1) {
+    const next: typeof frontier = [];
+    for (const entry of frontier) {
+      for (const reference of references) {
+        const current = getPath(entry.request, reference);
+        for (const value of mutationCandidates(current, numericSeeds)) {
+          if (!fieldAllows(ir, reference, value)) continue;
+          const candidate = structuredClone(entry.request);
+          setPath(candidate as unknown as Record<string, unknown>, reference, value);
+          const key = canonicalRequest(candidate);
+          if (visited.has(key)) continue;
+          visited.add(key);
+          let score: number;
+          try {
+            score = satisfied(candidate);
+          } catch {
+            continue;
+          }
+          if (score === requirements.length) return candidate;
+          next.push({ request: candidate, score, key });
+        }
+      }
+    }
+    if (next.length === 0) break;
+    next.sort((left, right) => right.score - left.score || left.key.localeCompare(right.key));
+    frontier = next.slice(0, 64);
+    request = frontier[0].request;
+  }
+  const failed = requirements.filter((requirement) =>
+    evaluateExpression(requirement.expression, request as unknown as Record<string, unknown>) !== true
+  ).map((requirement) => requirement.id);
+  throw new Error(
+    `Cannot derive a satisfying conformance baseline; unsatisfied requirement(s): ${failed.join(", ")}`,
+  );
+}
+
+function canonicalRequest(request: SimulationRequest): string {
+  const sort = (value: unknown): unknown =>
+    Array.isArray(value)
+      ? value.map(sort)
+      : typeof value === "object" && value !== null
+        ? Object.fromEntries(
+            Object.entries(value).sort(([left], [right]) => left.localeCompare(right))
+              .map(([key, child]) => [key, sort(child)]),
+          )
+        : value;
+  return JSON.stringify(sort(request));
+}
+
+function numericCandidates(ir: CrddIr): number[] {
+  const values = ir.operation.requires.flatMap((requirement) =>
+    [...requirement.expression.matchAll(/(?:^|[^\w.])(-?\d+(?:\.\d+)?)(?:$|[^\w.])/g)]
+      .map((match) => Number(match[1]))
+  );
+  return [...new Set([0, 1, ...values])].sort((a, b) => a - b);
+}
+
+function fieldAllows(ir: CrddIr, reference: string, value: unknown): boolean {
+  const [root, ...parts] = reference.split(".");
+  let field: import("./model.ts").FieldDefinition | undefined =
+    root === "input"
+      ? ir.operation.input[parts.shift() ?? ""]
+      : root === "state"
+        ? ir.operation.state[parts.shift() ?? ""]
+        : undefined;
+  for (const part of parts) {
+    if (field?.type !== "object") return true;
+    field = field.properties[part];
+  }
+  if (!field || field.type === "array" || field.type === "object") return true;
+  if (field.type === "number") {
+    return typeof value === "number" && Number.isFinite(value) &&
+      (field.minimum === undefined || value >= field.minimum);
+  }
+  if (field.type === "string") {
+    return typeof value === "string" && (!field.enum || field.enum.includes(value));
+  }
+  return typeof value === "boolean";
+}
+
+function epsilon(value: number): number {
+  return Number.isInteger(value) ? 0.001 : 10 ** -(Math.min(9, decimalPlaces(String(value)) + 1));
 }
 
 function createBaseline(ir: CrddIr): SimulationRequest {

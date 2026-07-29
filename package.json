@@ -1,6 +1,6 @@
 {
   "name": "crdd-ir",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "bin": {
@@ -30,6 +30,7 @@
     "verify:unreal": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/verify-unreal.ps1",
     "pack:check": "npm pack --dry-run",
     "test:installer": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File test/install-project.test.ps1",
+    "test:verify-lock": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File test/verify-lock.test.ps1",
     "test": "node --test test/*.test.ts"
   },
   "engines": {

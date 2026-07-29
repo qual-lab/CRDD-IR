@@ -1,6 +1,8 @@
 param(
     [string]$UnrealRoot = $env:CRDD_UNREAL_ROOT,
-    [string]$Configuration = "Development"
+    [string]$Configuration = "Development",
+    [ValidateRange(1, 86400)]
+    [int]$LockTimeoutSeconds = 1800
 )
 
 $ErrorActionPreference = "Stop"
@@ -15,6 +17,12 @@ $buildTool = Join-Path $UnrealRoot "Engine\Build\BatchFiles\Build.bat"
 $runUat = Join-Path $UnrealRoot "Engine\Build\BatchFiles\RunUAT.bat"
 $editorCmd = Join-Path $UnrealRoot "Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
 $project = Join-Path $repoRoot "examples\unreal\CrddCompilerFixture\CrddCompilerFixture.uproject"
+. (Join-Path $PSScriptRoot "verify-lock.ps1")
+$verifyLock = Enter-CrddVerifyLock `
+    -ProjectPath $project `
+    -MetadataRoot $repoRoot `
+    -TimeoutSeconds $LockTimeoutSeconds
+try {
 $assetImportScript = Join-Path $repoRoot "examples\unreal\CrddCompilerFixture\Scripts\import_generated_assets.py"
 $integrationPluginSource = Join-Path $repoRoot "templates\unreal\CRDDIRIntegration"
 $integrationPluginTarget = Join-Path (
@@ -22,6 +30,7 @@ $integrationPluginTarget = Join-Path (
 ) "Plugins\CRDDIRIntegration"
 $spec = "examples/create-entity/05_SPEC/01_Behavior_Specification.md"
 $updateEntitySpec = "examples/update-entity/05_SPEC/01_Behavior_Specification.md"
+$numericProjectionSpec = "test/fixtures/create-wall.md"
 $fixtureGenerated = "examples/unreal/CrddCompilerFixture/Source/CrddCompilerFixture/Generated"
 $evidenceDir = "examples/create-entity/07_Quality/CRDD_IR"
 $editorProfile = "examples/unreal/profiles/ue-5.8-editor.json"
@@ -68,7 +77,7 @@ Assert-LastExitCode "Conformance Bundle generation"
 Write-Host "[4/10] Generate Unreal C++ and 3D assets"
 & node src/cli.ts unreal generate $spec --profile $editorProfile --out-dir generated/unreal --force
 Assert-LastExitCode "Unreal reference generation"
-& node src/cli.ts batch unreal $spec $updateEntitySpec --out-dir $fixtureGenerated --flat --profile $editorProfile --force
+& node src/cli.ts batch unreal $spec $updateEntitySpec $numericProjectionSpec --out-dir $fixtureGenerated --flat --profile $editorProfile --force
 Assert-LastExitCode "Multi-operation Unreal fixture generation"
 & node src/cli.ts generate assets $spec --out-dir generated/assets --force
 Assert-LastExitCode "3D asset generation"
@@ -154,3 +163,7 @@ Write-Host "CRDD Unreal verification succeeded."
 Write-Host "Raw Unreal report: $reportPath"
 Write-Host "Evidence: $(Join-Path $repoRoot $evidenceDir)"
 Write-Host "Shipping package: $packageDir"
+}
+finally {
+    Exit-CrddVerifyLock -Lock $verifyLock
+}

@@ -2,6 +2,7 @@ import type { UnrealConfigPatch } from "./unreal-target.ts";
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
+import { withInterprocessLock } from "./interprocess-lock.ts";
 
 export type UnrealConfigEdit = {
   file: string;
@@ -30,6 +31,16 @@ export async function applyUnrealConfigToProject(
   projectRoot: string,
   patches: UnrealConfigPatch[],
   dryRun = false,
+): Promise<UnrealConfigEdit[]> {
+  return withInterprocessLock(resolve(projectRoot, "Config"), () =>
+    applyUnrealConfigLocked(projectRoot, patches, dryRun)
+  );
+}
+
+async function applyUnrealConfigLocked(
+  projectRoot: string,
+  patches: UnrealConfigPatch[],
+  dryRun: boolean,
 ): Promise<UnrealConfigEdit[]> {
   const files = [...new Set(patches.map((patch) =>
     patch.platform

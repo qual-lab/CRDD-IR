@@ -11,11 +11,31 @@
       "files": [
         {
           "path": "CreateEntity.generated.cpp",
-          "sha256": "d293120ecac980bb8368b8aa6e99081d2e14bf1f740b0ef41447cc7d8bed3e9d"
+          "sha256": "cca122e2679818fcd4d41d3faf32547306c560d1dd9d79611ee4fdb0177650b2"
         },
         {
           "path": "CreateEntity.generated.h",
-          "sha256": "fe6c345d644a7e81ceaf170d8f65d8c943b4ec946c2494f5d3235c348f957123"
+          "sha256": "6227d42a241d49d1497b3f3ea73104300400038a8046417efb436a12bce1a071"
+        }
+      ]
+    },
+    {
+      "id": "CreateWall",
+      "source": "test/fixtures/create-wall.md",
+      "digest": "eb68492132bb28b21bdf6d6fbf30c4d8b80130f7a8fbb628266d1bb5627bb696",
+      "outputDirectory": ".",
+      "files": [
+        {
+          "path": "CreateWall.generated.cpp",
+          "sha256": "b7f336e449f9e507332dbf16bc88688ade670b4636b4a6ea003c0782f9b73c8a"
+        },
+        {
+          "path": "CreateWall.generated.h",
+          "sha256": "6b5d2e069c2bb2dd6b337af27d42bc42293c526e05d0374ef632468e860d9ae1"
+        },
+        {
+          "path": "CreateWall.numeric.generated.spec.cpp",
+          "sha256": "a2b2b6b9960177091a2d65bbcfcfbadb7270e72a26ab745ff6a9228f2d17973b"
         }
       ]
     },
@@ -27,11 +47,11 @@
       "files": [
         {
           "path": "UpdateEntity.generated.cpp",
-          "sha256": "6f74243d2488de2c2b30015b0a4e739e696bff527af8842729ed1a6f6d736708"
+          "sha256": "806823d458e55c85684b65f32b9a1eb6cf9665cd8699a824e380a7499e1d8fca"
         },
         {
           "path": "UpdateEntity.generated.h",
-          "sha256": "d3f504112349a2fa1abd7d9db186a3e7188afac9fc388e0137c4a80c80a1d1fd"
+          "sha256": "027b679a8d75dd6cea8f8dc407d086ec7add82a403b1ed97179c3052ce41be07"
         }
       ]
     }

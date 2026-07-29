@@ -8,7 +8,7 @@
   "generatedFiles": [
     {
       "path": "unreal/CreateEntity.generated.h",
-      "sha256": "d1162f88d82efcb2f55dfd4308c5eca371e487b910267cc91cebf2cefbb1a290",
+      "sha256": "3877104986613e3236836d6e3b1381463d8942fcbf6b526fbc348c5efa8e2ca7",
       "traces": [
         "REQ-ENTITY-001",
         "DEC-ENTITY-003"
@@ -16,7 +16,7 @@
     },
     {
       "path": "unreal/CreateEntity.generated.cpp",
-      "sha256": "d293120ecac980bb8368b8aa6e99081d2e14bf1f740b0ef41447cc7d8bed3e9d",
+      "sha256": "cca122e2679818fcd4d41d3faf32547306c560d1dd9d79611ee4fdb0177650b2",
       "traces": [
         "REQ-ENTITY-001",
         "DEC-ENTITY-003"
@@ -136,13 +136,14 @@
   },
   "execution": {
     "path": "unreal-execution.json",
-    "sha256": "a363611eb17ab9214813830be3c2873bdc1021ceb771e11dfaa3fe15f23d4539",
+    "sha256": "b17ab34e9bf6086dd098126ed592090e57ed44d81e48ba2ac80916896f932f10",
     "status": "passed",
     "tests": [
       "CRDD.Assets.GeneratedMeshes",
       "CRDD.Assets.GeneratedPreviewLevels",
       "CRDD.Assets.GeneratedScene",
       "CRDD.CreateEntity.Conformance",
+      "CRDD.CreateWall.NumericBoundary.Generated",
       "CRDD.Integration.GeneratedAssets"
     ]
   }

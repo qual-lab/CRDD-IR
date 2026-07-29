@@ -9,5 +9,13 @@
   "targetType": "Game",
   "configuration": "Shipping",
   "linkType": "monolithic",
-  "withEditor": false
+  "withEditor": false,
+  "numericProjection": {
+    "mm": {
+      "cppType": "int64",
+      "jsonRepresentation": "decimal-string",
+      "rounding": "reject-lossy",
+      "overflow": "error"
+    }
+  }
 }

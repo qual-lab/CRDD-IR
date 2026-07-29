@@ -270,3 +270,10 @@ backupし、`-ForceManagedRemoval`を指定するまで削除しません。そ�
 - 保存は容量制限、非同期、atomic replacement、project提供transform境界を使用
 - ActorはDomain stateの投影であり正本にしない
 - Target Profile違反はC++生成前に停止する
+- 生成C++は出力ディレクトリ名に依存しない同一ディレクトリ相対includeを使う
+- `generate`と`verify`はProject lock、各生成器は正規化した出力先lockを取得する
+- lock timeout時はPID、開始時刻、commandを表示し、生存processのlockを奪わない
+- 単位別数値投影はTarget ProfileでC++型、JSON表現、丸め、overflowを固定する
+- 整数投影されたRequiresの加減算はchecked arithmeticへ展開し、overflowを条件成立として扱わない
+- `decimal-string`投影には生成されたparse/serialize APIを使い、範囲外・小数・非canonical入力を拒否する
+- Target Plan差分は`numericProjection`変更をmigration対象として報告する

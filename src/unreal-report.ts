@@ -34,15 +34,11 @@ export function parseUnrealAutomationReport(
     throw new Error("Unreal Automation report is missing tests or devices");
   }
 
-  const expectedPath = `CRDD.${operation}.Conformance`;
   const tests = value.tests
     .filter(isRecord)
     .filter(
-      (test) =>
-        test.fullTestPath === expectedPath ||
-        (typeof test.fullTestPath === "string" &&
-          (test.fullTestPath.startsWith("CRDD.Assets.") ||
-            test.fullTestPath.startsWith("CRDD.Integration."))),
+      (test) => typeof test.fullTestPath === "string" &&
+        test.fullTestPath.startsWith("CRDD."),
     )
     .map((test) => ({
       path: requireString(test, "fullTestPath"),

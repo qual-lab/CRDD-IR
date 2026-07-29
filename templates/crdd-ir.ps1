@@ -1,7 +1,9 @@
 param(
     [Parameter(Position = 0)]
     [ValidateSet("doctor", "check", "generate", "verify")]
-    [string]$Command = "check"
+    [string]$Command = "check",
+    [ValidateRange(1, 86400)]
+    [int]$LockTimeoutSeconds = 600
 )
 
 $ErrorActionPreference = "Stop"
@@ -98,6 +100,55 @@ function Invoke-Generate {
     Invoke-CrddIr @("generate", "assets", $assetSource, "--out-dir", $generatedAssets)
 }
 
+$projectMutex = $null
+$projectLockPath = Join-Path $projectRoot ".crdd-ir\project.lock.json"
+if ($Command -in @("generate", "verify")) {
+    $scopeBytes = [System.Text.Encoding]::UTF8.GetBytes(
+        [System.IO.Path]::GetFullPath($projectRoot).ToLowerInvariant()
+    )
+    $scopeAlgorithm = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $scopeHash = ([BitConverter]::ToString(
+            $scopeAlgorithm.ComputeHash($scopeBytes)
+        ) -replace "-", "").ToLowerInvariant()
+    }
+    finally {
+        $scopeAlgorithm.Dispose()
+    }
+    $projectMutex = [System.Threading.Mutex]::new($false, "Local\CRDDIR-$scopeHash")
+    $lockAcquired = $false
+    try {
+        $lockAcquired = $projectMutex.WaitOne([TimeSpan]::FromSeconds($LockTimeoutSeconds))
+    }
+    catch [System.Threading.AbandonedMutexException] {
+        # The previous process terminated without releasing the mutex. Windows
+        # transfers ownership to this process, so recovery is safe.
+        $lockAcquired = $true
+    }
+    if (-not $lockAcquired) {
+        $owner = if (Test-Path -LiteralPath $projectLockPath) {
+            Get-Content -LiteralPath $projectLockPath -Raw
+        }
+        else {
+            "owner metadata unavailable"
+        }
+        throw "CRDD_LOCK_TIMEOUT: project is locked: $owner"
+    }
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $projectLockPath) | Out-Null
+    [System.IO.File]::WriteAllText(
+        $projectLockPath,
+        (([ordered]@{
+            protocol = "crdd-ir/lock-v0.1"
+            pid = $PID
+            startedAt = [DateTime]::UtcNow.ToString("o")
+            scope = [System.IO.Path]::GetFullPath($projectRoot).Replace("\", "/")
+            command = $Command
+        } | ConvertTo-Json) + [Environment]::NewLine),
+        [System.Text.UTF8Encoding]::new($false)
+    )
+}
+
+try {
 switch ($Command) {
     "doctor" {
         Invoke-CrddIr @("project", "doctor", $configPath)
@@ -130,5 +181,13 @@ switch ($Command) {
                 ))
             }
         }
+    }
+}
+}
+finally {
+    if ($null -ne $projectMutex) {
+        Remove-Item -LiteralPath $projectLockPath -Force -ErrorAction SilentlyContinue
+        $projectMutex.ReleaseMutex()
+        $projectMutex.Dispose()
     }
 }

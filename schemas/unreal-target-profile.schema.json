@@ -33,9 +33,24 @@
     },
     "modules": { "type": "array", "items": { "$ref": "#/$defs/module" } },
     "plugins": { "type": "array", "items": { "$ref": "#/$defs/plugin" } },
+    "numericProjection": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/numericProjection" }
+    },
     "adapter": { "$ref": "#/$defs/adapter" }
   },
   "$defs": {
+    "numericProjection": {
+      "type": "object",
+      "required": ["cppType", "jsonRepresentation", "rounding", "overflow"],
+      "properties": {
+        "cppType": { "enum": ["double", "float", "int32", "int64"] },
+        "jsonRepresentation": { "enum": ["number", "decimal-string"] },
+        "rounding": { "enum": ["reject-lossy", "nearest", "floor", "ceil"] },
+        "overflow": { "enum": ["error", "clamp"] }
+      },
+      "additionalProperties": false
+    },
     "module": {
       "type": "object",
       "required": ["name", "type", "loadingPhase", "publicDependencies", "privateDependencies", "dynamicModules", "publicIncludes", "privateIncludes", "platformAllowList", "platformDenyList"],
