@@ -249,6 +249,15 @@ test("portable rules generate independently for Unreal and Unity with shared par
   assert.match(unity.find((file) => file.name.endsWith(".Generated.cs"))!.content, /Dictionary<string/);
   const parity = verifyTargetParity(compilation, unrealProfile, unityProfile);
   assert.equal(parity.equivalent, true);
+  assert.ok(parity.requirements.includes("IR-IMMUTABLE-001"));
+
+  const editIntentOnly = structuredClone(compilation);
+  editIntentOnly.ir.operation.portableRules = editIntentOnly.ir.operation.portableRules?.filter(
+    (rule) => rule.kind === "opaque.reject-edit-when-inactive",
+  );
+  const editIntentParity = verifyTargetParity(editIntentOnly, unrealProfile, unityProfile);
+  assert.ok(editIntentParity.requirements.includes("IR-IMMUTABLE-001"));
+
   const tampered = unreal.map((file) => ({ ...file }));
   const markerFile = tampered.find((file) => file.content.includes("CRDD-PORTABLE-SEMANTICS:"))!;
   markerFile.content = markerFile.content.replace(

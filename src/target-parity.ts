@@ -117,7 +117,10 @@ function parityRequirements(compilation: CompilationResult): string[] {
   const kinds = new Set((compilation.ir.operation.portableRules ?? []).map((rule) => rule.kind));
   if ([...kinds].some((kind) => kind.startsWith("collection."))) requirements.push("IR-COLLECTION-001");
   if (kinds.has("opaque.integrity")) requirements.push("IR-OPAQUE-001");
-  if (kinds.has("opaque.immutable-when-inactive")) requirements.push("IR-IMMUTABLE-001");
+  if (
+    kinds.has("opaque.immutable-when-inactive") ||
+    kinds.has("opaque.reject-edit-when-inactive")
+  ) requirements.push("IR-IMMUTABLE-001");
   return requirements;
 }
 
