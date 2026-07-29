@@ -66,7 +66,7 @@ const adapters = new Map<string, TargetAdapter>([
       return [
         ...generateUnreal(compilation.ir, unrealProfile ? {
           irSha256: compilation.digest,
-          generatorVersion: "0.1.2",
+          generatorVersion: "0.2.0",
           numericProjection: unrealProfile.numericProjection,
         } : undefined),
         ...(unrealProfile && operationIndex === 0
@@ -90,7 +90,7 @@ const adapters = new Map<string, TargetAdapter>([
       generateUnity(
         compilation.ir,
         (profile as UnityTargetProfile | undefined) ?? unityDefaultProfile,
-        { irSha256: compilation.digest, generatorVersion: "0.1.2" },
+        { irSha256: compilation.digest, generatorVersion: "0.2.0" },
       ),
   }],
   ["assets", {

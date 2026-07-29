@@ -66,6 +66,18 @@ Runtime asmdefはEditor assemblyを参照しないでください。生成test�
 - GameObject／Asset／UIへの反映は製品AdapterからMain Threadへmarshalする
 - AddressablesやResourcesの選択は製品側のAsset portへ閉じ込める
 
+## Unity 6 verification
+
+The repository includes a minimal Unity fixture and repeatable verification command:
+
+```powershell
+npm.cmd run verify:unity
+```
+
+It generates runtime and test assemblies separately, runs EditMode bridge/conformance
+tests, and performs a Windows x64 IL2CPP Player build. Results and logs are written to
+`.crdd-ir/unity-verification/`.
+
 ## Current verification boundary
 
 Node側では決定性、型Projection、checked arithmetic、rollback、Bridge commit境界、

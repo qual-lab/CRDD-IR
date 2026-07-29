@@ -1,0 +1,14 @@
+{
+  "name": "CRDD.Generated.Tests",
+  "rootNamespace": "Crdd.Generated.Tests",
+  "references": [
+    "CRDD.Generated"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "autoReferenced": false
+}
