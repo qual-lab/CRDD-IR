@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qual-lab.github.io/crdd-ir/schemas/unity-target-profile.schema.json",
+  "title": "CRDD IR Unity Target Profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocol",
+    "unityVersion",
+    "namespace",
+    "apiCompatibility",
+    "scriptingBackend"
+  ],
+  "properties": {
+    "protocol": { "const": "crdd-ir/unity-target-v0.1" },
+    "unityVersion": {
+      "type": "string",
+      "pattern": "^\\d{4}\\.\\d+\\.\\d+[abfp]\\d+$"
+    },
+    "namespace": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_.]*$"
+    },
+    "apiCompatibility": { "const": "netstandard2.1" },
+    "scriptingBackend": { "enum": ["mono", "il2cpp"] },
+    "numericProjection": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "csharpType",
+          "jsonRepresentation",
+          "rounding",
+          "overflow"
+        ],
+        "properties": {
+          "csharpType": { "enum": ["int", "long", "double"] },
+          "jsonRepresentation": { "enum": ["number", "decimal-string"] },
+          "rounding": { "enum": ["reject", "floor", "ceil", "nearest"] },
+          "overflow": { "const": "error" }
+        }
+      }
+    }
+  }
+}

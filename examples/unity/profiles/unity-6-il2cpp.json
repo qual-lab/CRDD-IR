@@ -1,0 +1,15 @@
+{
+  "protocol": "crdd-ir/unity-target-v0.1",
+  "unityVersion": "6000.0.0f1",
+  "namespace": "Crdd.Generated",
+  "apiCompatibility": "netstandard2.1",
+  "scriptingBackend": "il2cpp",
+  "numericProjection": {
+    "mm": {
+      "csharpType": "long",
+      "jsonRepresentation": "decimal-string",
+      "rounding": "reject",
+      "overflow": "error"
+    }
+  }
+}

@@ -7,8 +7,10 @@ import { buildUnrealTargetPlan, type UnrealTargetProfile } from "./unreal-target
 import { generateUnrealReflection } from "./unreal-uht.ts";
 import { withInterprocessLock } from "./interprocess-lock.ts";
 import { generatedTextSha256 } from "./content-hash.ts";
+import { generateUnity } from "./unity.ts";
+import type { UnityTargetProfile } from "./unity-target.ts";
 
-export type BatchTarget = "ir" | "unreal" | "assets";
+export type BatchTarget = "ir" | "unreal" | "unity" | "assets";
 export type BatchLayout = "operation-directories" | "flat";
 
 export type BatchManifest = {
@@ -28,7 +30,12 @@ export async function generateBatch(
   sources: string[],
   outDir: string,
   target: BatchTarget,
-  options: { layout?: BatchLayout; force?: boolean; unrealProfile?: UnrealTargetProfile } = {},
+  options: {
+    layout?: BatchLayout;
+    force?: boolean;
+    unrealProfile?: UnrealTargetProfile;
+    unityProfile?: UnityTargetProfile;
+  } = {},
 ): Promise<BatchManifest> {
   return withInterprocessLock(resolve(outDir), () =>
     generateBatchLocked(sources, outDir, target, options)
@@ -39,11 +46,16 @@ async function generateBatchLocked(
   sources: string[],
   outDir: string,
   target: BatchTarget,
-  options: { layout?: BatchLayout; force?: boolean; unrealProfile?: UnrealTargetProfile } = {},
+  options: {
+    layout?: BatchLayout;
+    force?: boolean;
+    unrealProfile?: UnrealTargetProfile;
+    unityProfile?: UnityTargetProfile;
+  } = {},
 ): Promise<BatchManifest> {
   const layout = options.layout ?? "operation-directories";
-  if (layout === "flat" && target !== "unreal") {
-    throw new Error('Flat batch layout is supported only for target "unreal"');
+  if (layout === "flat" && !["unreal", "unity"].includes(target)) {
+    throw new Error('Flat batch layout is supported only for target "unreal" or "unity"');
   }
   if (sources.length === 0) throw new Error("Batch requires at least one CRDD Markdown source");
   const compilations = await Promise.all(sources.map((source) => compileMarkdown(source)));
@@ -81,6 +93,19 @@ async function generateBatchLocked(
                 ))
               : []),
           ]
+        : target === "unity"
+          ? generateUnity(
+              compilation.ir,
+              options.unityProfile ??
+                {
+                  protocol: "crdd-ir/unity-target-v0.1",
+                  unityVersion: "6000.0.0f1",
+                  namespace: "Crdd.Generated",
+                  apiCompatibility: "netstandard2.1",
+                  scriptingBackend: "il2cpp",
+                },
+              { irSha256: compilation.digest, generatorVersion: "0.1.2" },
+            )
         : generateAssets(compilation.ir);
     if (target === "assets" && files.length === 0) {
       throw new Error(`Operation "${compilation.ir.operation.id}" declares no assets`);
@@ -240,7 +265,15 @@ function rejectOutputCollisions(
   for (const compilation of compilations) {
     const names = target === "unreal"
       ? generateUnreal(compilation.ir).map((file) => file.name)
-      : [];
+      : target === "unity"
+        ? generateUnity(compilation.ir, {
+            protocol: "crdd-ir/unity-target-v0.1",
+            unityVersion: "6000.0.0f1",
+            namespace: "Crdd.Generated",
+            apiCompatibility: "netstandard2.1",
+            scriptingBackend: "il2cpp",
+          }).map((file) => file.name)
+        : [];
     for (const name of names) {
       const key = name.toLowerCase();
       owners.set(key, [...(owners.get(key) ?? []), compilation.ir.operation.id]);

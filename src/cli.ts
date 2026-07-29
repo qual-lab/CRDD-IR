@@ -36,6 +36,8 @@ import {
 import { normalizeUnrealDiagnostics } from "./unreal-diagnostics.ts";
 import { generateUnrealReflection } from "./unreal-uht.ts";
 import { generateRegressionManifest } from "./regression-manifest.ts";
+import { generateUnity } from "./unity.ts";
+import { validateUnityTargetProfile } from "./unity-target.ts";
 import type { SimulationRequest, TestManifest } from "./model.ts";
 
 const args = process.argv.slice(2);
@@ -107,7 +109,7 @@ async function main(argv: string[]): Promise<void> {
 
   if (command === "batch") {
     const target = required(argv[1], "batch target") as BatchTarget;
-    if (!["ir", "unreal", "assets"].includes(target)) {
+    if (!["ir", "unreal", "unity", "assets"].includes(target)) {
       throw new Error(`Unsupported batch target: ${target}`);
     }
     const outDir = option(argv, "--out-dir") ?? `generated/batch/${target}`;
@@ -116,8 +118,11 @@ async function main(argv: string[]): Promise<void> {
     const manifest = await generateBatch(sources, outDir, target, {
       layout: argv.includes("--flat") ? "flat" : "operation-directories",
       force: argv.includes("--force"),
-      unrealProfile: profilePath
+      unrealProfile: target === "unreal" && profilePath
         ? validateUnrealTargetProfile(JSON.parse(await readFile(profilePath, "utf8")))
+        : undefined,
+      unityProfile: target === "unity" && profilePath
+        ? validateUnityTargetProfile(JSON.parse(await readFile(profilePath, "utf8")))
         : undefined,
     });
     console.log(`Generated ${manifest.operations.length} operation(s) in ${resolve(outDir)}`);
@@ -293,6 +298,24 @@ async function main(argv: string[]): Promise<void> {
       ...generateUnrealReflection(plan),
     ];
     await runGeneration(outDir, files, argv);
+    return;
+  }
+
+  if (command === "unity" && subcommand === "generate") {
+    const sourcePath = required(argv[2], "CRDD Markdown file");
+    const profilePath = option(argv, "--profile");
+    const outDir = option(argv, "--out-dir");
+    if (!profilePath || !outDir) {
+      throw new Error("unity generate requires --profile and --out-dir");
+    }
+    const compilation = await compileMarkdown(sourcePath);
+    const profile = validateUnityTargetProfile(
+      JSON.parse(await readFile(profilePath, "utf8")),
+    );
+    await runGeneration(outDir, generateUnity(compilation.ir, profile, {
+      irSha256: compilation.digest,
+      generatorVersion: "0.1.2",
+    }), argv);
     return;
   }
 
@@ -543,7 +566,7 @@ function printHelp(): void {
 
 Commands:
   compile <spec.md> [--out <debug-ir.json>]
-  batch <ir|unreal|assets> <spec.md>... [--out-dir <directory>] [--flat] [--force]
+  batch <ir|unreal|unity|assets> <spec.md>... [--out-dir <directory>] [--flat] [--force]
   check <spec.md> [--format json]
   project check <crdd-ir.config.json>
   project doctor <crdd-ir.config.json> [--format json]
@@ -556,6 +579,7 @@ Commands:
                   --verify-run-id <id>] --out <evidence.json>
   unreal diagnostics <unreal.log> [--source <spec.md>]
   unreal generate <spec.md> --profile <profile.json> --out-dir <directory>
+  unity generate <spec.md> --profile <profile.json> --out-dir <directory>
                   [--dry-run] [--force]
   lint <ir.json> [--format json]
   simulate <ir.json> --input <input.json>
