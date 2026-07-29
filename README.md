@@ -1,6 +1,6 @@
 # CRDD IR
 
-CRDD Markdownに記録した構造化契約を検証し、Unreal C++、3D Asset、
+CRDD Markdownに記録した構造化契約を検証し、Unreal C++、Unity C#、3D Asset、
 Conformance Test、Traceability Evidenceへ決定的に変換するCompilerです。
 
 通常はCRDD適用先リポジトリの`tools/CRDD-IR`へGit Submoduleとして導入します。
@@ -13,7 +13,9 @@ CRDD Coreへ組み込む必要はありません。
 - Windows PowerShell
 - Node.js 22.18以降
 - Unreal連携を使う場合はUnreal Engine 5.8とVisual Studio 2022
-- 適用先リポジトリにCRDD Markdownと`.uproject`が存在すること
+- Unity連携を使う場合はUnity 6。Windows IL2CPP検証にはWindows Build Support
+  (IL2CPP)とC++ Toolchainが必要
+- 適用先リポジトリにCRDD Markdownと、利用targetのProjectが存在すること
 
 適用先リポジトリのルートで実行します。
 
@@ -36,6 +38,10 @@ npm.cmd ci --prefix tools/CRDD-IR
 
 `-Source`が1件なら`-AssetSource`は省略できます。Unrealを使わない場合は
 `-UnrealProject`と`-UnrealEngineRoot`を省略します。
+
+このInstallerはv0.2.0でもUnreal適用先のscaffoldを担当します。Unity適用先では
+[Unity integration](docs/unity-integration.md)に従い、Target ProfileとRuntime/Test
+assemblyを配置してください。
 
 Installerは次を適用先へ追加します。
 
@@ -66,6 +72,27 @@ Installerは次を適用先へ追加します。
 
 ```powershell
 .\tools\crdd-ir.ps1 verify
+```
+
+Unity targetの生成と検証は次を使用します。
+
+```powershell
+node .\tools\CRDD-IR\src\cli.ts generate unity `
+  .\05_SPEC\operations\create-entity.md `
+  --profile .\Config\CRDD\unity-6-il2cpp.json `
+  --out-dir .\Assets\CRDD\Generated
+
+npm.cmd run verify:unity --prefix .\tools\CRDD-IR
+```
+
+Unreal／Unityの静的意味同値性は`target parity`で検証します。
+
+```powershell
+node .\tools\CRDD-IR\src\cli.ts target parity `
+  .\05_SPEC\operations\create-entity.md `
+  --unreal-profile .\Config\CRDD\ue-5.8-editor.json `
+  --unity-profile .\Config\CRDD\unity-6-il2cpp.json `
+  --out .\07_Quality\CRDD_IR\target-parity.json
 ```
 
 中間IR、ログ、Packageは`.crdd-ir/`へ置かれ、Git管理しません。
@@ -131,7 +158,9 @@ CRDD Markdownが正本です。Internal IR instanceを`30_IR`などへ恒久保�
 - [Verify lock events](docs/verify-events.md)
 - [v0.1.2 release notes](docs/releases/v0.1.2.md)
 - [v0.2.0 release notes](docs/releases/v0.2.0.md)
+- [v0.2.0 release checklist](docs/release-checklist.md)
 - [Unreal fixture](examples/unreal/CrddCompilerFixture/README.md)
+- [Unity fixture](examples/unity/CrddCompilerFixture/README.md)
 
 ## このリポジトリを開発する
 
@@ -140,11 +169,16 @@ npm.cmd ci
 npm.cmd test
 npm.cmd run test:installer
 npm.cmd run verify:unreal
+npm.cmd run verify:unity
 ```
 
 `verify:unreal`はUE 5.8のUHT、Editor Build、Automation、Shipping Build、
 Cook、Pak/IoStore、Evidence生成まで実行します。既定以外へUEをインストールした
 場合は`CRDD_UNREAL_ROOT`を設定してください。
+
+`verify:unity`はUnity 6の生成C#コンパイル、EditMode Test、Windows x64 IL2CPP
+Player Buildを実行します。既定Editor path以外では
+`scripts/verify-unity.ps1 -UnityEditor <Unity.exe>`を使用してください。
 
 ## 設計境界
 

@@ -17,7 +17,9 @@ node tools/CRDD-IR/src/cli.ts generate unity 05_SPEC/MyOperation.md `
   --profile Config/CRDD/unity-target.json `
   --out-dir 40_Develop/MyGame/Assets/Generated/CRDD
 
-node tools/CRDD-IR/src/cli.ts batch unity 05_SPEC/operations/*.md `
+node tools/CRDD-IR/src/cli.ts batch unity `
+  05_SPEC/operations/create-entity.md `
+  05_SPEC/operations/update-entity.md `
   --profile Config/CRDD/unity-target.json `
   --out-dir 40_Develop/MyGame/Assets/Generated/CRDD `
   --flat
