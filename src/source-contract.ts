@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { LineCounter, parseDocument } from "yaml";
 import { DiagnosticError } from "./diagnostics.ts";
-import type { AssetDefinition, Diagnostic, Effect, FieldDefinition } from "./model.ts";
+import type { AssetDefinition, Diagnostic, Effect, FieldDefinition, IrExtension } from "./model.ts";
 
 export type SourceRequirement = {
   id: string;
@@ -26,6 +26,7 @@ export type SourceContract = {
     assets?: Array<Omit<AssetDefinition, "material"> & {
       material: { base_color: [number, number, number] };
     }>;
+    extensions?: Record<string, IrExtension>;
   };
 };
 
@@ -132,7 +133,7 @@ function validateSourceContract(
   const operation = value.operation;
   rejectUnknown(
     operation,
-    ["id", "traces", "input", "state", "requires", "effects", "errors", "assets", "transaction"],
+    ["id", "traces", "input", "state", "requires", "effects", "errors", "assets", "extensions", "transaction"],
     "$.operation",
     add,
   );
@@ -145,6 +146,9 @@ function validateSourceContract(
   requireArray(operation.errors, "$.operation.errors", add);
   if (operation.assets !== undefined && !Array.isArray(operation.assets)) {
     add("CRDD_SOURCE_TYPE", "$.operation.assets", "must be an array");
+  }
+  if (operation.extensions !== undefined && !isRecord(operation.extensions)) {
+    add("CRDD_SOURCE_TYPE", "$.operation.extensions", "must be an object");
   }
   if (!isRecord(operation.transaction)) {
     add("CRDD_SOURCE_REQUIRED", "$.operation.transaction", "must be an object");

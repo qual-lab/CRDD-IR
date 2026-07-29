@@ -28,6 +28,7 @@ export type TargetGenerationContext = {
 export type TargetAdapter<TProfile = unknown> = {
   id: string;
   description: string;
+  consumesExtensions?: string[];
   profileSchema?: string;
   profileRequired: boolean;
   supportsFlatBatch: boolean;
@@ -66,7 +67,7 @@ const adapters = new Map<string, TargetAdapter>([
       return [
         ...generateUnreal(compilation.ir, unrealProfile ? {
           irSha256: compilation.digest,
-          generatorVersion: "0.2.0",
+          generatorVersion: "0.2.1",
           numericProjection: unrealProfile.numericProjection,
         } : undefined),
         ...(unrealProfile && operationIndex === 0
@@ -90,12 +91,13 @@ const adapters = new Map<string, TargetAdapter>([
       generateUnity(
         compilation.ir,
         (profile as UnityTargetProfile | undefined) ?? unityDefaultProfile,
-        { irSha256: compilation.digest, generatorVersion: "0.2.0" },
+        { irSha256: compilation.digest, generatorVersion: "0.2.1" },
       ),
   }],
   ["assets", {
     id: "assets",
     description: "Deterministic code-generated 3D assets",
+    consumesExtensions: ["crdd.3d-assets"],
     profileRequired: false,
     supportsFlatBatch: false,
     generate: ({ compilation }) => generateAssets(compilation.ir),
@@ -141,6 +143,9 @@ export function describeTarget(adapter: TargetAdapter) {
     capabilities: {
       generate: true,
       flatBatch: adapter.supportsFlatBatch,
+    },
+    extensions: {
+      consumes: [...(adapter.consumesExtensions ?? [])].sort(),
     },
   };
 }

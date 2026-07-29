@@ -131,108 +131,28 @@ export function validateIr(value: unknown): Diagnostic[] {
   }
 
   warnForDuplicates(operation.traces, "$.operation.traces", diagnostics);
-  validateAssets(operation.assets, diagnostics);
+  validateExtensions(operation.extensions, diagnostics);
   validateSemantics(operation, diagnostics);
   return diagnostics;
 }
 
-function validateAssets(value: unknown, diagnostics: Diagnostic[]): void {
+function validateExtensions(value: unknown, diagnostics: Diagnostic[]): void {
   if (value === undefined) return;
-  if (!Array.isArray(value)) {
-    diagnostics.push(error("$.operation.assets", "must be an array"));
-    return;
-  }
-  const ids: string[] = [];
-  value.forEach((asset, index) => {
-    const path = `$.operation.assets[${index}]`;
-    if (!isRecord(asset)) {
-      diagnostics.push(error(path, "must be an object"));
-      return;
-    }
-    const id = requireString(asset, "id", path, diagnostics);
-    if (id) {
-      ids.push(id);
-      if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(id)) {
-        diagnostics.push(error(`${path}.id`, "must be an Unreal-safe identifier"));
-      }
-    }
-    if (asset.type !== "box" && asset.type !== "cylinder") {
-      diagnostics.push(error(`${path}.type`, 'must equal "box" or "cylinder"'));
-    }
-    if (!isRecord(asset.dimensions)) {
-      diagnostics.push(error(`${path}.dimensions`, "must be an object"));
-    } else {
-      for (const axis of ["length", "width", "height"]) {
-        const dimension = asset.dimensions[axis];
-        if (!isRecord(dimension)) {
-          diagnostics.push(error(`${path}.dimensions.${axis}`, "must be an object"));
-          continue;
-        }
-        if (typeof dimension.value !== "number" || dimension.value <= 0) {
-          diagnostics.push(error(`${path}.dimensions.${axis}.value`, "must be greater than zero"));
-        }
-        if (dimension.unit !== "m") {
-          diagnostics.push(error(`${path}.dimensions.${axis}.unit`, 'must equal "m"'));
-        }
-      }
-    }
-    if (
-      !isRecord(asset.material) ||
-      !Array.isArray(asset.material.baseColor) ||
-      asset.material.baseColor.length !== 3 ||
-      asset.material.baseColor.some(
-        (component) => typeof component !== "number" || component < 0 || component > 1,
-      )
-    ) {
-      diagnostics.push(error(`${path}.material.baseColor`, "must contain three numbers from 0 to 1"));
-    }
-    if (!isRecord(asset.collision) ||
-        !["box", "capsule", "sphere", "ndop26"].includes(String(asset.collision.shape))) {
-      diagnostics.push(error(
-        `${path}.collision.shape`,
-        'must equal "box", "capsule", "sphere", or "ndop26"',
-      ));
-    }
-    if (!isRecord(asset.lod) ||
-        !["None", "SmallProp", "LargeProp", "LevelArchitecture"].includes(String(asset.lod.group))) {
-      diagnostics.push(error(
-        `${path}.lod.group`,
-        'must equal "None", "SmallProp", "LargeProp", or "LevelArchitecture"',
-      ));
-    }
-    validateAssetPlacement(asset.placement, `${path}.placement`, diagnostics);
-    requireStringArray(asset, "traces", path, diagnostics);
-  });
-  reportDuplicateIds(ids, "$.operation.assets", "asset ID", diagnostics);
-}
-
-function validateAssetPlacement(
-  value: unknown,
-  path: string,
-  diagnostics: Diagnostic[],
-): void {
   if (!isRecord(value)) {
-    diagnostics.push(error(path, "must be an object"));
+    diagnostics.push(error("$.operation.extensions", "must be an object"));
     return;
   }
-  for (const [groupName, fields, unit] of [
-    ["location", ["x", "y", "z"], "m"],
-    ["rotation", ["pitch", "yaw", "roll"], "deg"],
-  ] as const) {
-    const group = value[groupName];
-    if (!isRecord(group)) {
-      diagnostics.push(error(`${path}.${groupName}`, "must be an object"));
+  for (const [id, extension] of Object.entries(value)) {
+    const path = `$.operation.extensions.${id}`;
+    if (!/^[a-z][a-z0-9.-]*$/.test(id)) {
+      diagnostics.push(error(path, "extension ID must use reverse-domain-style lowercase characters"));
+    }
+    if (!isRecord(extension)) {
+      diagnostics.push(error(path, "must be an object"));
       continue;
     }
-    for (const field of fields) {
-      const component = group[field];
-      if (!isRecord(component) || typeof component.value !== "number" || !Number.isFinite(component.value)) {
-        diagnostics.push(error(`${path}.${groupName}.${field}.value`, "must be a finite number"));
-      }
-      if (!isRecord(component) || component.unit !== unit) {
-        diagnostics.push(error(`${path}.${groupName}.${field}.unit`, `must equal "${unit}"`));
-      }
-    }
+    requireString(extension, "protocol", path, diagnostics);
+    if (!("data" in extension)) diagnostics.push(error(`${path}.data`, "is required"));
   }
 }
 

@@ -55,6 +55,11 @@ export type AssetDefinition = {
   traces: string[];
 };
 
+export type IrExtension = {
+  protocol: string;
+  data: unknown;
+};
+
 export type Requirement = {
   id: string;
   expression: string;
@@ -106,6 +111,8 @@ export type Operation = {
     atomic: boolean;
     rollbackOnFailure: boolean;
   };
+  extensions?: Record<string, IrExtension>;
+  /** @deprecated Read-only compatibility for IR produced before the extension boundary. */
   assets?: AssetDefinition[];
 };
 

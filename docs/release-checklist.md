@@ -1,14 +1,17 @@
-# v0.2.0 release checklist
+# v0.2.1 release checklist
 
-このchecklistは`v0.2.0`を公開する担当者向けです。
+This checklist is for publishing CRDD IR v0.2.1.
 
 ## Source
 
-- [ ] `feature/unity-target`をreviewし、release対象branchへmergeする
-- [ ] working treeがclean
-- [ ] `package.json`と`package-lock.json`が`0.2.0`
-- [ ] 生成コードのgenerator versionが`0.2.0`
-- [ ] Source Contract／IR protocolを意図せず変更していない
+- [ ] `feature/generalize-core-ir` is reviewed and merged into `develop`
+- [ ] `develop` is merged into `main` through a release PR
+- [ ] the working tree is clean
+- [ ] `package.json` and `package-lock.json` use `0.2.1`
+- [ ] generated Unreal and Unity files identify generator `0.2.1`
+- [ ] CRDD Source Contract and Internal IR protocol IDs remain compatible at `v0.1`
+- [ ] newly compiled 3D data uses `operation.extensions["crdd.3d-assets"]`
+- [ ] legacy `operation.assets` input remains readable
 
 ## Automated verification
 
@@ -22,44 +25,42 @@ npm.cmd run verify:unity
 npm.cmd run pack:check
 ```
 
-- [ ] Node testが全件成功
-- [ ] Installer／repairの回帰testが成功
-- [ ] verify lock testが成功
-- [ ] Unreal Editor／Automation／Shipping Cook Packageが成功
-- [ ] Unity EditMode Testが成功
-- [ ] Unity Windows x64 IL2CPP Player Buildが成功
-- [ ] npm pack内容に`src`、`schemas`、`scripts`、`docs`が含まれる
+- [ ] Node tests pass
+- [ ] non-game `AuthorizeInvoice` fixture compiles and validates
+- [ ] Installer and repair regression tests pass
+- [ ] verification lock tests pass
+- [ ] Unreal Editor Build and Automation pass
+- [ ] Unreal Shipping Cook, Stage, Pak, IoStore, Package, and Archive pass
+- [ ] Unity EditMode tests pass
+- [ ] Unity Windows x64 IL2CPP Player Build passes
+- [ ] npm package contains `src`, `schemas`, `scripts`, `docs`, and templates
 
-## Cross-target gate
+## Compatibility gates
 
-```powershell
-node src/cli.ts target parity test/fixtures/create-wall.md `
-  --unreal-profile examples/unreal/profiles/ue-5.8-editor.json `
-  --unity-profile examples/unity/profiles/unity-6-il2cpp.json `
-  --out .crdd-ir/release/target-parity.json
-```
-
-- [ ] `IR-TARGET-001`が成功
-- [ ] `IR-PARITY-001`が成功
-- [ ] `equivalent`が`true`
+- [ ] `IR-TARGET-001` passes
+- [ ] `IR-PARITY-001` passes
+- [ ] Core accepts arbitrary matching units such as `USD`
+- [ ] Core ignores target-owned Extension payload semantics
+- [ ] Asset target rejects invalid 3D Extension payloads
+- [ ] Unreal and Unity generated code remains semantically equivalent
 
 ## Documentation
 
-- [ ] READMEのinstall／generate／verifyコマンドが実装と一致
-- [ ] v0.2.0 release notesにCompatibility、Upgrade、Known boundariesがある
-- [ ] Unity IntegrationとTarget Parityのリンクが有効
-- [ ] Submodule利用者へ検証済みcommitとtagを案内できる
+- [ ] README states that Core IR is domain- and target-neutral
+- [ ] Core Extension ownership and compatibility are documented
+- [ ] v0.2.1 release notes contain compatibility, upgrade, and known boundaries
+- [ ] Submodule users can identify the release tag and verification commands
 
 ## Publish
 
 ```powershell
-git tag -a v0.2.0 -m "CRDD IR v0.2.0"
-git push origin <release-branch>
-git push origin v0.2.0
+git tag -a v0.2.1 -m "CRDD IR v0.2.1"
+git push origin main
+git push origin v0.2.1
 ```
 
-- [ ] tagがrelease commitを指す
-- [ ] GitHub Release titleが`CRDD IR v0.2.0`
-- [ ] release bodyへ`docs/releases/v0.2.0.md`を反映
-- [ ] Source archiveとtagからclean checkoutできる
-- [ ] 適用先でSubmoduleを`v0.2.0`へ固定して再検証する
+- [ ] tag points to the reviewed `main` release commit
+- [ ] GitHub Release title is `CRDD IR v0.2.1`
+- [ ] release body uses `docs/releases/v0.2.1.md`
+- [ ] source archive works from a clean checkout
+- [ ] an adopting repository can pin its Submodule to `v0.2.1`

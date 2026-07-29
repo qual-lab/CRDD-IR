@@ -4,8 +4,11 @@ import { resolve } from "node:path";
 import type { AssetDefinition, CrddIr } from "./model.ts";
 import type { GeneratedFile } from "./unreal.ts";
 
+export const ASSET_EXTENSION_ID = "crdd.3d-assets";
+export const ASSET_EXTENSION_PROTOCOL = "crdd-ir/3d-assets-v0.1";
+
 export function generateAssets(ir: CrddIr): GeneratedFile[] {
-  const assets = ir.operation.assets ?? [];
+  const assets = getAssetDefinitions(ir);
   if (assets.length === 0) return [];
   return [
     ...assets.flatMap((asset) =>
@@ -52,6 +55,90 @@ export function generateAssets(ir: CrddIr): GeneratedFile[] {
       )}\n`,
     ),
   ];
+}
+
+export function getAssetDefinitions(ir: CrddIr): AssetDefinition[] {
+  const extension = ir.operation.extensions?.[ASSET_EXTENSION_ID];
+  if (extension !== undefined) {
+    if (extension.protocol !== ASSET_EXTENSION_PROTOCOL) {
+      throw new Error(
+        `Unsupported ${ASSET_EXTENSION_ID} protocol "${extension.protocol}"`,
+      );
+    }
+    if (!isRecord(extension.data) || !Array.isArray(extension.data.assets)) {
+      throw new Error(`${ASSET_EXTENSION_ID}.data.assets must be an array`);
+    }
+    validateAssetDefinitions(extension.data.assets);
+    return extension.data.assets as AssetDefinition[];
+  }
+
+  // v0.1 IR compatibility. New compilations always use the versioned extension.
+  const legacy = ir.operation.assets ?? [];
+  validateAssetDefinitions(legacy);
+  return legacy;
+}
+
+function validateAssetDefinitions(value: unknown[]): void {
+  const ids = new Set<string>();
+  for (const [index, asset] of value.entries()) {
+    const path = `${ASSET_EXTENSION_ID}.data.assets[${index}]`;
+    if (!isRecord(asset)) throw new Error(`${path} must be an object`);
+    if (typeof asset.id !== "string" || !/^[A-Za-z][A-Za-z0-9_]*$/.test(asset.id)) {
+      throw new Error(`${path}.id must be a portable generated-code identifier`);
+    }
+    if (ids.has(asset.id)) throw new Error(`${path}.id duplicates "${asset.id}"`);
+    ids.add(asset.id);
+    if (asset.type !== "box" && asset.type !== "cylinder") {
+      throw new Error(`${path}.type must equal "box" or "cylinder"`);
+    }
+    if (!isRecord(asset.dimensions)) throw new Error(`${path}.dimensions must be an object`);
+    for (const axis of ["length", "width", "height"]) {
+      const dimension = asset.dimensions[axis];
+      if (!isRecord(dimension) || typeof dimension.value !== "number" || dimension.value <= 0) {
+        throw new Error(`${path}.dimensions.${axis}.value must be greater than zero`);
+      }
+      if (dimension.unit !== "m") throw new Error(`${path}.dimensions.${axis}.unit must equal "m"`);
+    }
+    if (!isRecord(asset.material) || !Array.isArray(asset.material.baseColor) ||
+        asset.material.baseColor.length !== 3 ||
+        asset.material.baseColor.some((item) => typeof item !== "number" || item < 0 || item > 1)) {
+      throw new Error(`${path}.material.baseColor must contain three numbers from 0 to 1`);
+    }
+    if (!isRecord(asset.collision) ||
+        !["box", "capsule", "sphere", "ndop26"].includes(String(asset.collision.shape))) {
+      throw new Error(`${path}.collision.shape is unsupported`);
+    }
+    if (!isRecord(asset.lod) ||
+        !["None", "SmallProp", "LargeProp", "LevelArchitecture"].includes(String(asset.lod.group))) {
+      throw new Error(`${path}.lod.group is unsupported`);
+    }
+    validatePlacement(asset.placement, `${path}.placement`);
+    if (!Array.isArray(asset.traces) || asset.traces.some((trace) => typeof trace !== "string")) {
+      throw new Error(`${path}.traces must be an array of strings`);
+    }
+  }
+}
+
+function validatePlacement(value: unknown, path: string): void {
+  if (!isRecord(value)) throw new Error(`${path} must be an object`);
+  for (const [groupName, fields, unit] of [
+    ["location", ["x", "y", "z"], "m"],
+    ["rotation", ["pitch", "yaw", "roll"], "deg"],
+  ] as const) {
+    const group = value[groupName];
+    if (!isRecord(group)) throw new Error(`${path}.${groupName} must be an object`);
+    for (const field of fields) {
+      const component = group[field];
+      if (!isRecord(component) || typeof component.value !== "number" ||
+          !Number.isFinite(component.value) || component.unit !== unit) {
+        throw new Error(`${path}.${groupName}.${field} must be a finite ${unit} value`);
+      }
+    }
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, any> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export async function removeStaleGeneratedAssets(
