@@ -71,6 +71,30 @@ test("refuses to overwrite a modified product regression bundle", async () => {
   );
 });
 
+test("regenerates unchanged after a Windows CRLF checkout", async () => {
+  const outDir = await mkdtemp(join(tmpdir(), "crdd-regression-crlf-"));
+  await generateRegressionManifest([createSource, updateSource], outDir);
+  for (const name of [
+    "create-entity.conformance.json",
+    "update-entity.conformance.json",
+    "regression.manifest.json",
+    ".crdd-generation.json",
+  ]) {
+    const path = join(outDir, name);
+    const content = await readFile(path, "utf8");
+    await writeFile(path, content.replace(/\n/g, "\r\n"), "utf8");
+  }
+
+  const regenerated = await generateRegressionManifest(
+    [createSource, updateSource],
+    outDir,
+  );
+  assert.deepEqual(
+    regenerated.changes.map((change) => change.action),
+    ["unchanged", "unchanged", "unchanged"],
+  );
+});
+
 test("rejects duplicate operation ownership in a regression manifest", async () => {
   const outDir = await mkdtemp(join(tmpdir(), "crdd-regression-"));
   await assert.rejects(

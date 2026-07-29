@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { generateAssets } from "./assets.ts";
@@ -7,6 +6,7 @@ import { generateUnreal } from "./unreal.ts";
 import { buildUnrealTargetPlan, type UnrealTargetProfile } from "./unreal-target.ts";
 import { generateUnrealReflection } from "./unreal-uht.ts";
 import { withInterprocessLock } from "./interprocess-lock.ts";
+import { generatedTextSha256 } from "./content-hash.ts";
 
 export type BatchTarget = "ir" | "unreal" | "assets";
 export type BatchLayout = "operation-directories" | "flat";
@@ -87,9 +87,7 @@ async function generateBatchLocked(
     }
     const hashedFiles = files.map((file) => ({
       path: file.name,
-      sha256: "sha256" in file
-        ? file.sha256
-        : createHash("sha256").update(file.content).digest("hex"),
+      sha256: generatedTextSha256(file.content),
       content: file.content,
     }));
     const previousOperation = previous?.target === target && previous.layout === layout
@@ -162,9 +160,7 @@ async function rejectModifiedOwnedOutputs(
       : resolve(outDir, operation.outputDirectory);
     for (const file of operation.files) {
       try {
-        const actual = createHash("sha256")
-          .update(await readFile(resolve(directory, file.path)))
-          .digest("hex");
+        const actual = generatedTextSha256(await readFile(resolve(directory, file.path)));
         if (actual !== file.sha256) modified.push(file.path);
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
@@ -201,9 +197,7 @@ async function outputsMatch(
 ): Promise<boolean> {
   try {
     return (await Promise.all(files.map(async (file) =>
-      createHash("sha256")
-        .update(await readFile(resolve(directory, file.path)))
-        .digest("hex") === file.sha256
+      generatedTextSha256(await readFile(resolve(directory, file.path))) === file.sha256
     ))).every(Boolean);
   } catch {
     return false;

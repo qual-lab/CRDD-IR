@@ -95,6 +95,18 @@ test("reuses verified outputs and recovers a corrupt batch manifest", async () =
   assert.equal(recovered, true);
 });
 
+test("reuses batch outputs after a Windows CRLF checkout", async () => {
+  const outDir = await mkdtemp(join(tmpdir(), "crdd-batch-crlf-"));
+  await generateBatch([source], outDir, "unreal");
+  const output = join(outDir, "CreateEntity", "CreateEntity.generated.h");
+  const lf = await readFile(output, "utf8");
+  await writeFile(output, lf.replace(/\n/g, "\r\n"), "utf8");
+
+  const manifest = await generateBatch([source], outDir, "unreal");
+  assert.equal(manifest.operations[0].id, "CreateEntity");
+  assert.equal(await readFile(output, "utf8"), lf.replace(/\n/g, "\r\n"));
+});
+
 test("refuses to overwrite modified owned batch output unless forced", async () => {
   const outDir = await mkdtemp(join(tmpdir(), "crdd-batch-owned-"));
   const manifest = await generateBatch([source], outDir, "unreal", { layout: "flat" });

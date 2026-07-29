@@ -1,5 +1,10 @@
 # Product regression manifest
 
+生成物のownership SHA-256は、テキストの改行をLFへ正規化して計算します。Windowsの
+Git checkoutでLFがCRLFへ変換されても、内容が同一なら`unchanged`として扱われます。
+実際の内容変更は従来どおりconflictになります。リポジトリ内の標準生成物については
+`.gitattributes`でもLFを固定しています。
+
 Generate one deterministic regression set for every CRDD Operation used by a
 product:
 

@@ -1,8 +1,9 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import type { GeneratedFile } from "./unreal.ts";
 import { withInterprocessLock } from "./interprocess-lock.ts";
+import { generatedTextSha256 } from "./content-hash.ts";
 
 export type GenerationChange = {
   path: string;
@@ -45,8 +46,9 @@ async function generateLocked(options: {
   for (const file of options.files) {
     const path = resolve(outDir, file.name);
     const current = await digestFile(path);
+    const desiredSha256 = generatedTextSha256(file.content);
     const owned = previous?.files.find((entry) => entry.path === file.name);
-    if (current === file.sha256) {
+    if (current === desiredSha256) {
       changes.push({ path: file.name, action: "unchanged" });
     } else if (current && (!owned || owned.sha256 !== current) && !options.force) {
       changes.push({
@@ -100,7 +102,7 @@ async function generateLocked(options: {
     const manifest: GenerationManifest = {
       protocol: "crdd-ir/generation-v0.1",
       files: options.files
-        .map((file) => ({ path: file.name, sha256: file.sha256 }))
+        .map((file) => ({ path: file.name, sha256: generatedTextSha256(file.content) }))
         .sort((a, b) => a.path.localeCompare(b.path)),
     };
     const temporaryManifest = `${manifestPath}.crdd-tmp-${transaction}`;
@@ -127,7 +129,7 @@ async function loadManifest(path: string): Promise<GenerationManifest | undefine
 
 async function digestFile(path: string): Promise<string | undefined> {
   try {
-    return createHash("sha256").update(await readFile(path)).digest("hex");
+    return generatedTextSha256(await readFile(path));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
     throw error;

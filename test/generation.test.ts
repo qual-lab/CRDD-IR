@@ -44,6 +44,21 @@ test("refuses to overwrite edited generated files", async () => {
   assert.equal(await readFile(join(outDir, "Example.generated.h"), "utf8"), "user edit");
 });
 
+test("treats a Windows CRLF checkout as the owned generated file", async () => {
+  const outDir = await mkdtemp(join(tmpdir(), "crdd-generation-crlf-"));
+  const files = [generated("regression.manifest.json", "{\n  \"ok\": true\n}\n")];
+  await generateTransactionally({ outDir, files });
+  await writeFile(
+    join(outDir, "regression.manifest.json"),
+    "{\r\n  \"ok\": true\r\n}\r\n",
+    "utf8",
+  );
+
+  const changes = await generateTransactionally({ outDir, files, dryRun: true });
+  assert.deepEqual(changes.map((change) => change.action), ["unchanged"]);
+  await generateTransactionally({ outDir, files });
+});
+
 test("deletes only files owned by the previous generation", async () => {
   const outDir = await mkdtemp(join(tmpdir(), "crdd-generation-"));
   await generateTransactionally({
