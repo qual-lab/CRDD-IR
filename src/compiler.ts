@@ -33,6 +33,9 @@ export async function compileMarkdown(path: string): Promise<CompilationResult> 
         expression: normalizeWithContext(requirement.condition, fields, requirement.id),
         error: requirement.error,
       })),
+      ...(contract.operation.portable_rules
+        ? { portableRules: structuredClone(contract.operation.portable_rules) }
+        : {}),
       effects: contract.operation.effects.map((effect) =>
         effect.action === "assign" || effect.action === "increment"
           ? {

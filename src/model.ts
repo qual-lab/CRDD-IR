@@ -51,12 +51,23 @@ export type UnionFieldDefinition = {
   minimum?: never;
 };
 
+export type OpaqueFieldDefinition = {
+  type: "opaque";
+  encoding: "base64";
+  digest: "sha256";
+  optional?: boolean;
+  nullable?: boolean;
+  unit?: never;
+  minimum?: never;
+};
+
 export type FieldDefinition =
   | ScalarFieldDefinition
   | ObjectFieldDefinition
   | ArrayFieldDefinition
   | MapFieldDefinition
-  | UnionFieldDefinition;
+  | UnionFieldDefinition
+  | OpaqueFieldDefinition;
 
 export type IrExtension = {
   protocol: string;
@@ -68,6 +79,83 @@ export type Requirement = {
   expression: string;
   error: string;
 };
+
+export type PortableRule =
+  | {
+      kind: "collection.unique";
+      id: string;
+      error: string;
+      collection: string;
+      key: string;
+    }
+  | {
+      kind: "collection.reference";
+      id: string;
+      error: string;
+      collection: string;
+      reference: string;
+      target: string;
+      targetKey: string;
+      targetType?: { field: string; equals: string };
+    }
+  | {
+      kind: "collection.membership";
+      id: string;
+      error: string;
+      collection: string;
+      parentReference: string;
+      parents: string;
+      parentKey: string;
+    }
+  | {
+      kind: "collection.relation";
+      id: string;
+      error: string;
+      collection: string;
+      from: string;
+      to: string;
+      elements: string;
+      elementKey: string;
+      fromType?: { field: string; equals: string };
+      toType?: { field: string; equals: string };
+    }
+  | {
+      kind: "collection.not-contains";
+      id: string;
+      error: string;
+      value: string;
+      collection: string;
+      targetKey: string;
+    }
+  | {
+      kind: "collection.prospective-unique";
+      id: string;
+      error: string;
+      candidates: string;
+      candidateKey: string;
+      existing: string;
+      existingKey: string;
+    }
+  | {
+      kind: "opaque.integrity";
+      id: string;
+      error: string;
+      target: string;
+    }
+  | {
+      kind: "opaque.immutable-when-inactive";
+      id: string;
+      error: string;
+      current: string;
+      proposed: string;
+    }
+  | {
+      kind: "opaque.reject-edit-when-inactive";
+      id: string;
+      error: string;
+      current: string;
+      intent: string;
+    };
 
 export type Effect =
   | {
@@ -110,6 +198,7 @@ export type Operation = {
   state: Record<string, FieldDefinition>;
   output?: FieldDefinition;
   requires: Requirement[];
+  portableRules?: PortableRule[];
   effects: Effect[];
   errors: CrddError[];
   transaction?: {

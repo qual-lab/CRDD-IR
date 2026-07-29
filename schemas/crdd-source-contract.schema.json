@@ -31,6 +31,10 @@
           "type": "array",
           "items": { "$ref": "#/$defs/requirement" }
         },
+        "portable_rules": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/portableRule" }
+        },
         "effects": {
           "type": "array",
           "items": { "$ref": "#/$defs/effect" }
@@ -81,6 +85,139 @@
       },
       "additionalProperties": false
     },
+    "portableRule": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind", "id", "error", "collection", "key"],
+          "properties": {
+            "kind": { "const": "collection.unique" },
+            "id": { "type": "string", "minLength": 1 },
+            "error": { "type": "string", "minLength": 1 },
+            "collection": { "type": "string", "minLength": 1 },
+            "key": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "id", "error", "collection", "reference", "target", "targetKey"],
+          "properties": {
+            "kind": { "const": "collection.reference" },
+            "id": { "type": "string", "minLength": 1 },
+            "error": { "type": "string", "minLength": 1 },
+            "collection": { "type": "string", "minLength": 1 },
+            "reference": { "type": "string", "minLength": 1 },
+            "target": { "type": "string", "minLength": 1 },
+            "targetKey": { "type": "string", "minLength": 1 },
+            "targetType": { "$ref": "#/$defs/typeFilter" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "id", "error", "collection", "parentReference", "parents", "parentKey"],
+          "properties": {
+            "kind": { "const": "collection.membership" },
+            "id": { "type": "string", "minLength": 1 },
+            "error": { "type": "string", "minLength": 1 },
+            "collection": { "type": "string", "minLength": 1 },
+            "parentReference": { "type": "string", "minLength": 1 },
+            "parents": { "type": "string", "minLength": 1 },
+            "parentKey": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "id", "error", "collection", "from", "to", "elements", "elementKey"],
+          "properties": {
+            "kind": { "const": "collection.relation" },
+            "id": { "type": "string", "minLength": 1 },
+            "error": { "type": "string", "minLength": 1 },
+            "collection": { "type": "string", "minLength": 1 },
+            "from": { "type": "string", "minLength": 1 },
+            "to": { "type": "string", "minLength": 1 },
+            "elements": { "type": "string", "minLength": 1 },
+            "elementKey": { "type": "string", "minLength": 1 },
+            "fromType": { "$ref": "#/$defs/typeFilter" },
+            "toType": { "$ref": "#/$defs/typeFilter" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "id", "error", "value", "collection", "targetKey"],
+          "properties": {
+            "kind": { "const": "collection.not-contains" },
+            "id": { "type": "string", "minLength": 1 },
+            "error": { "type": "string", "minLength": 1 },
+            "value": { "type": "string", "minLength": 1 },
+            "collection": { "type": "string", "minLength": 1 },
+            "targetKey": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "id", "error", "candidates", "candidateKey", "existing", "existingKey"],
+          "properties": {
+            "kind": { "const": "collection.prospective-unique" },
+            "id": { "type": "string", "minLength": 1 },
+            "error": { "type": "string", "minLength": 1 },
+            "candidates": { "type": "string", "minLength": 1 },
+            "candidateKey": { "type": "string", "minLength": 1 },
+            "existing": { "type": "string", "minLength": 1 },
+            "existingKey": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "id", "error", "target"],
+          "properties": {
+            "kind": { "const": "opaque.integrity" },
+            "id": { "type": "string", "minLength": 1 },
+            "error": { "type": "string", "minLength": 1 },
+            "target": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "id", "error", "current", "proposed"],
+          "properties": {
+            "kind": { "const": "opaque.immutable-when-inactive" },
+            "id": { "type": "string", "minLength": 1 },
+            "error": { "type": "string", "minLength": 1 },
+            "current": { "type": "string", "minLength": 1 },
+            "proposed": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "id", "error", "current", "intent"],
+          "properties": {
+            "kind": { "const": "opaque.reject-edit-when-inactive" },
+            "id": { "type": "string", "minLength": 1 },
+            "error": { "type": "string", "minLength": 1 },
+            "current": { "type": "string", "minLength": 1 },
+            "intent": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "typeFilter": {
+      "type": "object",
+      "required": ["field", "equals"],
+      "properties": {
+        "field": { "type": "string", "minLength": 1 },
+        "equals": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
     "effect": {
       "oneOf": [
         {
@@ -121,6 +258,18 @@
             "action": { "const": "update" },
             "where": { "type": "object", "minProperties": 1 },
             "set": { "type": "object", "minProperties": 1 }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "encoding", "digest"],
+          "properties": {
+            "type": { "const": "opaque" },
+            "encoding": { "const": "base64" },
+            "digest": { "const": "sha256" },
+            "optional": { "type": "boolean" },
+            "nullable": { "type": "boolean" }
           },
           "additionalProperties": false
         }

@@ -26,6 +26,10 @@ $tests = Join-Path $Project "Assets\CRDD\Tests\Generated"
 $staging = Join-Path $repository ".crdd-ir\unity-verification\generated"
 $results = Join-Path $repository ".crdd-ir\unity-verification"
 $build = Join-Path $results "Player\CrddCompilerFixture.exe"
+$portableSource = Join-Path $repository "test\fixtures\contracts\portable-contract.md"
+$sources = @($Source, $portableSource) |
+    ForEach-Object { [System.IO.Path]::GetFullPath($_) } |
+    Select-Object -Unique
 
 New-Item -ItemType Directory -Force -Path $runtime, $tests, $staging, $results | Out-Null
 Get-ChildItem -LiteralPath $runtime -Filter "*.cs" -File -ErrorAction SilentlyContinue |
@@ -33,9 +37,10 @@ Get-ChildItem -LiteralPath $runtime -Filter "*.cs" -File -ErrorAction SilentlyCo
 Get-ChildItem -LiteralPath $tests -Filter "*.cs" -File -ErrorAction SilentlyContinue |
     Remove-Item -Force
 
-& node (Join-Path $repository "src\cli.ts") generate unity $Source `
+& node (Join-Path $repository "src\cli.ts") batch unity @sources `
     --profile $Profile `
     --out-dir $staging `
+    --flat `
     --force
 if ($LASTEXITCODE -ne 0) {
     throw "CRDD Unity generation failed: $LASTEXITCODE"
