@@ -1,0 +1,44 @@
+{
+  "protocol": "crdd-ir/regression-manifest-v0.1",
+  "operations": [
+    {
+      "id": "CreateEntity",
+      "adapterKey": "CreateEntity",
+      "source": {
+        "path": "examples/create-entity/05_SPEC/01_Behavior_Specification.md",
+        "sha256": "62da90601ce7ed0ca298b14e74d02ffc8a60fabfc4e466741b1412d633261a51",
+        "irSha256": "958fe9983be73621981e4aada20961d69c42b7d79ed5d8e199338d819d181b26"
+      },
+      "conformance": {
+        "path": "create-entity.conformance.json",
+        "sha256": "64d824c7ec6b7995a94bdb0d22a7c8f7a8280a1337505c53f14d2ae506641f70",
+        "cases": 5,
+        "successCases": 3,
+        "failureCases": 2
+      },
+      "traces": [
+        "DEC-ENTITY-003",
+        "REQ-ENTITY-001"
+      ]
+    },
+    {
+      "id": "UpdateEntity",
+      "adapterKey": "UpdateEntity",
+      "source": {
+        "path": "examples/update-entity/05_SPEC/01_Behavior_Specification.md",
+        "sha256": "380a6d860c7c9352545661375347ac61af0a487b33d5edde99146920e0ebfcdf",
+        "irSha256": "c01d756a4e911e9bf13ffe51b18ce82597359e20ac2543931aaf9721184074e4"
+      },
+      "conformance": {
+        "path": "update-entity.conformance.json",
+        "sha256": "ae1565a0bfc6c6cbde805d3a7c574590a39b29775872c504f4ae6ea3501f7947",
+        "cases": 4,
+        "successCases": 2,
+        "failureCases": 2
+      },
+      "traces": [
+        "REQ-ENTITY-UPDATE-001"
+      ]
+    }
+  ]
+}

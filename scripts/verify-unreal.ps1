@@ -74,6 +74,9 @@ Assert-LastExitCode "CRDD source validation"
 Write-Host "[3/10] Generate Conformance Bundle"
 & node src/cli.ts test bundle $spec --out generated/create-entity.conformance.json
 Assert-LastExitCode "Conformance Bundle generation"
+& node src/cli.ts test regression $spec $updateEntitySpec `
+    --out-dir generated/regression
+Assert-LastExitCode "Product regression manifest generation"
 
 Write-Host "[4/10] Generate Unreal C++ and 3D assets"
 & node src/cli.ts unreal generate $spec --profile $editorProfile --out-dir generated/unreal --force
