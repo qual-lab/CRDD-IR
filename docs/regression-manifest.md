@@ -10,9 +10,9 @@ product:
 
 ```powershell
 node tools/CRDD-IR/src/cli.ts test regression `
-  05_SPEC/CreateEntity.md `
-  05_SPEC/UpdateEntity.md `
-  --out-dir 07_Quality/CRDD_IR/Regression
+  contracts/ApplyRecord.md `
+  contracts/ReviseRecord.md `
+  --out-dir evidence/crdd-ir/Regression
 ```
 
 The output contains:
@@ -20,8 +20,8 @@ The output contains:
 ```text
 Regression/
 ├─ regression.manifest.json
-├─ create-entity.conformance.json
-└─ update-entity.conformance.json
+├─ apply-record.conformance.json
+└─ revise-record.conformance.json
 ```
 
 `regression.manifest.json` conforms to

@@ -1,59 +1,62 @@
 export type ScalarFieldDefinition = {
-  type: "number" | "string" | "boolean";
+  type: "number" | "integer" | "string" | "boolean";
   unit?: string;
   minimum?: number;
+  maximum?: number;
+  minLength?: number;
+  maxLength?: number;
+  pattern?: string;
   enum?: string[];
   optional?: boolean;
+  nullable?: boolean;
   default?: number | string | boolean;
 };
 
 export type ObjectFieldDefinition = {
   type: "object";
-  properties: Record<string, ScalarFieldDefinition>;
+  properties: Record<string, FieldDefinition>;
+  optional?: boolean;
+  nullable?: boolean;
   unit?: never;
   minimum?: never;
 };
 
 export type ArrayFieldDefinition = {
   type: "array";
-  items: ObjectFieldDefinition;
+  items: FieldDefinition;
+  minItems?: number;
+  maxItems?: number;
+  optional?: boolean;
+  nullable?: boolean;
   unit?: never;
   minimum?: never;
 };
 
-export type FieldDefinition = ScalarFieldDefinition | ObjectFieldDefinition | ArrayFieldDefinition;
-
-export type AssetDefinition = {
-  id: string;
-  type: "box" | "cylinder";
-  dimensions: {
-    length: { value: number; unit: "m" };
-    width: { value: number; unit: "m" };
-    height: { value: number; unit: "m" };
-  };
-  material: {
-    baseColor: [number, number, number];
-  };
-  collision: {
-    shape: "box" | "capsule" | "sphere" | "ndop26";
-  };
-  lod: {
-    group: "None" | "SmallProp" | "LargeProp" | "LevelArchitecture";
-  };
-  placement: {
-    location: {
-      x: { value: number; unit: "m" };
-      y: { value: number; unit: "m" };
-      z: { value: number; unit: "m" };
-    };
-    rotation: {
-      pitch: { value: number; unit: "deg" };
-      yaw: { value: number; unit: "deg" };
-      roll: { value: number; unit: "deg" };
-    };
-  };
-  traces: string[];
+export type MapFieldDefinition = {
+  type: "map";
+  values: FieldDefinition;
+  optional?: boolean;
+  nullable?: boolean;
+  unit?: never;
+  minimum?: never;
 };
+
+export type UnionFieldDefinition = {
+  type: "union";
+  discriminator: string;
+  variants: ObjectFieldDefinition[];
+  optional?: boolean;
+  nullable?: boolean;
+  unit?: never;
+  minimum?: never;
+};
+
+export type FieldDefinition =
+  | ScalarFieldDefinition
+  | ObjectFieldDefinition
+  | ArrayFieldDefinition
+  | MapFieldDefinition
+  | UnionFieldDefinition;
 
 export type IrExtension = {
   protocol: string;
@@ -101,19 +104,31 @@ export type CrddError = {
 
 export type Operation = {
   id: string;
+  kind: "command" | "query";
   traces: string[];
   input: Record<string, FieldDefinition>;
   state: Record<string, FieldDefinition>;
+  output?: FieldDefinition;
   requires: Requirement[];
   effects: Effect[];
   errors: CrddError[];
-  transaction: {
+  transaction?: {
     atomic: boolean;
     rollbackOnFailure: boolean;
   };
+  execution?: {
+    mode: "sync" | "async";
+    cancelable?: boolean;
+    timeoutMs?: number;
+    idempotency?: "none" | "optional" | "required";
+  };
+  emits?: Array<{
+    type: string;
+    payload?: FieldDefinition;
+    delivery?: "at-most-once" | "at-least-once";
+    traces: string[];
+  }>;
   extensions?: Record<string, IrExtension>;
-  /** @deprecated Read-only compatibility for IR produced before the extension boundary. */
-  assets?: AssetDefinition[];
 };
 
 export type CrddIr = {

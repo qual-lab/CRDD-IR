@@ -1,10 +1,20 @@
 import { createHash } from "node:crypto";
 import type { ConformanceBundle, CrddIr, TestManifest } from "./model.ts";
-import type { GeneratedFile } from "./unreal.ts";
-import type { UnrealExecutionEvidence } from "./unreal-report.ts";
 import { analyzeTestCoverage } from "./test-manifest.ts";
 import { analyzeMutationCoverage, type MutationReport } from "./mutation.ts";
-import { getAssetDefinitions } from "./assets.ts";
+
+export type TraceabilityArtifact = {
+  path: string;
+  sha256: string;
+  traces: string[];
+};
+
+export type TraceabilityExecution = {
+  path: string;
+  sha256: string;
+  status: "passed" | "failed";
+  tests: string[];
+};
 
 export type TraceabilityManifest = {
   protocol: "crdd-ir/traceability-v0.1";
@@ -13,11 +23,7 @@ export type TraceabilityManifest = {
     path: string;
     irSha256: string;
   };
-  generatedFiles: Array<{
-    path: string;
-    sha256: string;
-    traces: string[];
-  }>;
+  generatedFiles: TraceabilityArtifact[];
   requirements: Array<{
     id: string;
     error: string;
@@ -40,23 +46,17 @@ export type TraceabilityManifest = {
     uncovered: string[];
   };
   mutation: MutationReport;
-  execution?: {
-    path: string;
-    sha256: string;
-    status: "passed" | "failed";
-    tests: string[];
-  };
+  execution?: TraceabilityExecution;
 };
 
 export function generateTraceabilityManifest(
   ir: CrddIr,
   sourcePath: string,
   irDigest: string,
-  generatedFiles: GeneratedFile[],
+  generatedFiles: TraceabilityArtifact[],
   testManifest: TestManifest,
   bundle: ConformanceBundle,
-  execution?: UnrealExecutionEvidence,
-  assetFiles: GeneratedFile[] = [],
+  execution?: TraceabilityExecution,
 ): TraceabilityManifest {
   const errorTraces = new Map(ir.operation.errors.map((error) => [error.code, error.traces]));
   const requirementTraces = new Map(
@@ -72,18 +72,11 @@ export function generateTraceabilityManifest(
     protocol: "crdd-ir/traceability-v0.1",
     operation: ir.operation.id,
     source: { path: normalizePath(sourcePath), irSha256: irDigest },
-    generatedFiles: [
-      ...generatedFiles.map((file) => ({
-        path: `unreal/${file.name}`,
-        sha256: file.sha256,
-        traces: [...ir.operation.traces],
-      })),
-      ...assetFiles.map((file) => ({
-        path: `assets/${file.name}`,
-        sha256: file.sha256,
-        traces: [...(getAssetDefinitions(ir).find((asset) => file.name.startsWith(`${asset.id}.`))?.traces ?? [])],
-      })),
-    ],
+    generatedFiles: generatedFiles.map((file) => ({
+      path: normalizePath(file.path),
+      sha256: file.sha256,
+      traces: [...file.traces],
+    })),
     requirements: ir.operation.requires.map((requirement) => ({
       id: requirement.id,
       error: requirement.error,
@@ -108,16 +101,7 @@ export function generateTraceabilityManifest(
       percentage: coverage.requirements === 0 ? 100 : coverage.covered / coverage.requirements * 100,
     },
     mutation,
-    ...(execution
-      ? {
-          execution: {
-            path: "unreal-execution.json",
-            sha256: sha256(`${JSON.stringify(execution, null, 2)}\n`),
-            status: execution.summary.failed === 0 && execution.summary.notRun === 0 ? "passed" : "failed",
-            tests: execution.tests.map((test) => test.path),
-          } as const,
-        }
-      : {}),
+    ...(execution ? { execution: { ...execution, path: normalizePath(execution.path) } } : {}),
   };
 }
 
@@ -133,7 +117,7 @@ export function generateEvidenceMarkdown(manifest: TraceabilityManifest): string
     .join("\n");
   const execution = manifest.execution
     ? `
-## Unreal Execution
+## Execution
 
 - Status: **${manifest.execution.status.toUpperCase()}**
 - Evidence: \`${manifest.execution.path}\`

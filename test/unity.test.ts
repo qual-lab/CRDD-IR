@@ -9,7 +9,7 @@ import { compileMarkdown } from "../src/compiler.ts";
 import { generateUnity } from "../src/unity.ts";
 import { validateUnityTargetProfile } from "../src/unity-target.ts";
 
-const source = fileURLToPath(new URL("fixtures/create-wall.md", import.meta.url));
+const source = fileURLToPath(new URL("fixtures/contracts/numeric-boundary.md", import.meta.url));
 const profile = validateUnityTargetProfile({
   protocol: "crdd-ir/unity-target-v0.1",
   unityVersion: "6000.0.0f1",
@@ -32,24 +32,24 @@ test("generates deterministic IL2CPP-safe Unity contracts and bridges", async ()
   const second = generateUnity(compilation.ir, profile, { irSha256: compilation.digest });
   assert.deepEqual(first, second);
   assert.deepEqual(first.map((file) => file.name), [
-    "CreateWall.Generated.cs",
-    "CreateWall.Bridge.Generated.cs",
-    "CreateWall.Bridge.Generated.Tests.cs",
-    "CreateWall.Conformance.Generated.Tests.cs",
+    "AppendRecord.Generated.cs",
+    "AppendRecord.Bridge.Generated.cs",
+    "AppendRecord.Bridge.Generated.Tests.cs",
+    "AppendRecord.Conformance.Generated.Tests.cs",
   ]);
 
   const contract = first[0].content;
   const bridge = first[1].content;
-  assert.match(contract, /public long LengthMillimeters/);
-  assert.match(contract, /checked\(input\.OpeningOffsetMillimeters \+ input\.OpeningWidthMillimeters/);
+  assert.match(contract, /public long SpanMm/);
+  assert.match(contract, /checked\(input\.OffsetMm \+ input\.SegmentSpanMm/);
   assert.match(contract, /catch \(OverflowException\)/);
   assert.match(contract, /State = CloneState\(initialState\)/);
   assert.doesNotMatch(contract, /UnityEditor|System\.Reflection|dynamic/);
-  assert.match(bridge, /interface ICreateWallProductAdapter/);
+  assert.match(bridge, /interface IAppendRecordProductAdapter/);
   assert.match(bridge, /original\.Revision == ulong\.MaxValue/);
   assert.ok(bridge.indexOf("if (!contract.Succeeded)") < bridge.indexOf("TryCommitSnapshot(candidate"));
-  assert.match(first[3].content, /public void OpeningFitsWidthFalsified/);
-  assert.match(first[3].content, /Assert\.That\(result\.State\.Walls\.Count/);
+  assert.match(first[3].content, /public void SegmentFitsSpanFalsified/);
+  assert.match(first[3].content, /Assert\.That\(result\.State\.Records\.Count/);
   assert.doesNotMatch(first[3].content, /\d+\.\d+L/);
 });
 
@@ -57,14 +57,14 @@ test("generates collision-safe Unity batches with owned outputs", async () => {
   const outDir = await mkdtemp(join(tmpdir(), "crdd-unity-batch-"));
   const manifest = await generateBatch([source], outDir, "unity", {
     layout: "flat",
-    unityProfile: profile,
+    profile,
   });
   assert.equal(manifest.target, "unity");
   assert.deepEqual((await readdir(outDir)).sort(), [
-    "CreateWall.Bridge.Generated.Tests.cs",
-    "CreateWall.Bridge.Generated.cs",
-    "CreateWall.Conformance.Generated.Tests.cs",
-    "CreateWall.Generated.cs",
+    "AppendRecord.Bridge.Generated.Tests.cs",
+    "AppendRecord.Bridge.Generated.cs",
+    "AppendRecord.Conformance.Generated.Tests.cs",
+    "AppendRecord.Generated.cs",
     "batch.manifest.json",
   ]);
   assert.equal(manifest.operations[0].files.length, 4);

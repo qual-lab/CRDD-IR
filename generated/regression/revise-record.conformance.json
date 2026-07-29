@@ -1,0 +1,184 @@
+{
+  "protocol": "crdd-ir/conformance-v0.1",
+  "operation": "ReviseRecord",
+  "traces": [
+    "REQ-RECORD-UPDATE-001"
+  ],
+  "cases": [
+    {
+      "id": "revise-record-success",
+      "description": "ReviseRecord succeeds when every precondition is satisfied",
+      "request": {
+        "input": {
+          "record_id": "sample",
+          "new_length": 1,
+          "options": {
+            "mode": "replace"
+          }
+        },
+        "state": {
+          "audit": {
+            "mode": "preserve_metadata"
+          },
+          "records": [
+            {
+              "record_id": "sample",
+              "length": 0
+            }
+          ]
+        }
+      },
+      "expected": {
+        "ok": true,
+        "operation": "ReviseRecord",
+        "state": {
+          "audit": {
+            "mode": "replace"
+          },
+          "records": [
+            {
+              "record_id": "sample",
+              "length": 1
+            }
+          ]
+        },
+        "traces": [
+          "REQ-RECORD-UPDATE-001"
+        ]
+      }
+    },
+    {
+      "id": "minimum-record-length-at-boundary",
+      "description": "new_length equal to 0.3 is accepted",
+      "sourceRequirement": "minimum-record-length",
+      "request": {
+        "input": {
+          "record_id": "sample",
+          "new_length": 0.3,
+          "options": {
+            "mode": "replace"
+          }
+        },
+        "state": {
+          "audit": {
+            "mode": "preserve_metadata"
+          },
+          "records": [
+            {
+              "record_id": "sample",
+              "length": 0
+            }
+          ]
+        }
+      },
+      "expected": {
+        "ok": true,
+        "operation": "ReviseRecord",
+        "state": {
+          "audit": {
+            "mode": "replace"
+          },
+          "records": [
+            {
+              "record_id": "sample",
+              "length": 0.3
+            }
+          ]
+        },
+        "traces": [
+          "REQ-RECORD-UPDATE-001"
+        ]
+      }
+    },
+    {
+      "id": "minimum-record-length-below-boundary",
+      "description": "new_length below 0.3 is rejected without state changes",
+      "sourceRequirement": "minimum-record-length",
+      "request": {
+        "input": {
+          "record_id": "sample",
+          "new_length": 0.299,
+          "options": {
+            "mode": "replace"
+          }
+        },
+        "state": {
+          "audit": {
+            "mode": "preserve_metadata"
+          },
+          "records": [
+            {
+              "record_id": "sample",
+              "length": 0
+            }
+          ]
+        }
+      },
+      "expected": {
+        "ok": false,
+        "operation": "ReviseRecord",
+        "error": "RECORD_TOO_SMALL",
+        "failedRequirement": "minimum-record-length",
+        "state": {
+          "audit": {
+            "mode": "preserve_metadata"
+          },
+          "records": [
+            {
+              "record_id": "sample",
+              "length": 0
+            }
+          ]
+        },
+        "traces": [
+          "REQ-RECORD-UPDATE-001"
+        ]
+      }
+    },
+    {
+      "id": "valid-record-id-falsified",
+      "description": "valid-record-id is rejected by a deterministic counterexample",
+      "sourceRequirement": "valid-record-id",
+      "request": {
+        "input": {
+          "record_id": "",
+          "new_length": 1,
+          "options": {
+            "mode": "replace"
+          }
+        },
+        "state": {
+          "audit": {
+            "mode": "preserve_metadata"
+          },
+          "records": [
+            {
+              "record_id": "sample",
+              "length": 0
+            }
+          ]
+        }
+      },
+      "expected": {
+        "ok": false,
+        "operation": "ReviseRecord",
+        "error": "RECORD_ID_REQUIRED",
+        "failedRequirement": "valid-record-id",
+        "state": {
+          "audit": {
+            "mode": "preserve_metadata"
+          },
+          "records": [
+            {
+              "record_id": "sample",
+              "length": 0
+            }
+          ]
+        },
+        "traces": [
+          "REQ-RECORD-UPDATE-001"
+        ]
+      }
+    }
+  ]
+}

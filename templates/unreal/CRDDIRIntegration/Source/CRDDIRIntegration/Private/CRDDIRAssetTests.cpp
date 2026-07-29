@@ -31,6 +31,15 @@ struct FAssetExpectation
     FString LodGroup;
 };
 
+FString UnrealLodGroup(const FString& Policy)
+{
+    if (Policy == TEXT("none")) return TEXT("None");
+    if (Policy == TEXT("small")) return TEXT("SmallProp");
+    if (Policy == TEXT("large")) return TEXT("LargeProp");
+    if (Policy == TEXT("architectural")) return TEXT("LevelArchitecture");
+    return TEXT("");
+}
+
 bool ReadManifest(
     FAutomationTestBase& Test,
     FString& OutScene,
@@ -54,23 +63,26 @@ bool ReadManifest(
         Test.AddError(TEXT("Invalid CRDD asset manifest JSON"));
         return false;
     }
-    if (Root->GetStringField(TEXT("protocol")) != TEXT("crdd-ir/assets-v0.1"))
+    if (Root->GetStringField(TEXT("protocol")) != TEXT("crdd-ir/assets-v0.2"))
     {
         Test.AddError(TEXT("Unsupported CRDD asset manifest protocol"));
         return false;
     }
 
-    OutScene = Root->GetObjectField(TEXT("scene"))->GetStringField(TEXT("unrealLevel"));
+    OutScene = FString::Printf(
+        TEXT("/Game/CRDD/Generated/%s"),
+        *Root->GetObjectField(TEXT("scene"))->GetStringField(TEXT("id"))
+    );
     for (const TSharedPtr<FJsonValue>& Value : Root->GetArrayField(TEXT("assets")))
     {
         const TSharedPtr<FJsonObject> Asset = Value->AsObject();
-        const TSharedPtr<FJsonObject> Dimensions = Asset->GetObjectField(TEXT("dimensionsCm"));
+        const TSharedPtr<FJsonObject> Dimensions = Asset->GetObjectField(TEXT("dimensions"));
         const TSharedPtr<FJsonObject> Placement = Asset->GetObjectField(TEXT("placement"));
-        const TSharedPtr<FJsonObject> Location = Placement->GetObjectField(TEXT("locationCm"));
-        const TSharedPtr<FJsonObject> Rotation = Placement->GetObjectField(TEXT("rotationDeg"));
+        const TSharedPtr<FJsonObject> Location = Placement->GetObjectField(TEXT("location"));
+        const TSharedPtr<FJsonObject> Rotation = Placement->GetObjectField(TEXT("rotation"));
         OutAssets.Add({
             Asset->GetStringField(TEXT("id")),
-            Asset->GetStringField(TEXT("unrealDestination")),
+            TEXT("/Game/CRDD/Generated"),
             FVector(
                 Dimensions->GetNumberField(TEXT("length")),
                 Dimensions->GetNumberField(TEXT("width")),
@@ -86,7 +98,9 @@ bool ReadManifest(
                 Rotation->GetNumberField(TEXT("yaw")),
                 Rotation->GetNumberField(TEXT("roll"))
             ),
-            Asset->GetObjectField(TEXT("lod"))->GetStringField(TEXT("group"))
+            UnrealLodGroup(
+                Asset->GetObjectField(TEXT("lod"))->GetStringField(TEXT("policy"))
+            )
         });
     }
     return Test.TestTrue(TEXT("Manifest declares assets"), OutAssets.Num() > 0);

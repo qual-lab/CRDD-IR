@@ -30,26 +30,24 @@ npm.cmd ci --prefix tools/CRDD-IR
 .\tools\CRDD-IR\scripts\install-project.ps1 `
   -ProjectRoot . `
   -Source @(
-    "05_SPEC/operations/create-entity.md",
-    "05_SPEC/operations/update-entity.md"
+    "contracts/operations/apply-record.md",
+    "contracts/operations/revise-record.md"
   ) `
-  -AssetSource "05_SPEC/operations/create-entity.md" `
-  -GeneratedSource "40_Develop/MyGame/Source/MyGame/Generated" `
-  -GeneratedAssets "40_Develop/Generated/Assets" `
-  -UnrealProject "40_Develop/MyGame/MyGame.uproject" `
-  -UnrealEngineRoot "C:/Program Files/Epic Games/UE_5.8"
+  -Target @("typescript", "unreal") `
+  -GeneratedRoot "generated" `
+  -Evidence "evidence/crdd-ir"
 ```
 
 `-Source`が1件なら`-AssetSource`は省略できます。Unrealを使わない場合は
 `-UnrealProject`と`-UnrealEngineRoot`を省略します。
 
-このInstallerはv0.2.1でもUnreal適用先のscaffoldを担当します。Unity適用先では
+このInstallerはv0.3.0でもUnreal適用先のscaffoldを担当します。Unity適用先では
 [Unity integration](docs/unity-integration.md)に従い、Target ProfileとRuntime/Test
 assemblyを配置してください。
 
 Installerは次を適用先へ追加します。
 
-- `crdd-ir.config.json`: 適用先固有のパスとUnreal設定
+- `crdd-ir.config.json`: Source、Target、出力先、Target別Option
 - `tools/crdd-ir.ps1`: 日常操作用Wrapper
 - `Config/CRDD/*.json`: Editor/Shipping Target Profile
 - `Plugins/CRDDIRIntegration`: Runtime/Editor分離済みUnreal Plugin
@@ -66,9 +64,9 @@ Installerは次を適用先へ追加します。
 .\tools\crdd-ir.ps1 generate
 ```
 
-- `doctor`: 設定、Submodule、入力、出力先、Unreal前提条件を事前診断
+- `doctor`: 設定、Submodule、入力、出力先、選択Targetの前提条件を事前診断
 - `check`: CRDD Structured Contractを検証
-- `generate`: Unreal C++と3D Assetを再生成
+- `generate`: Target Registryで選択した成果物を再生成
 - `verify`: 上記に加えてContract Test、UE Build、Asset import、
   Automation、Shipping Cook/Package、Evidence生成を実行
 
@@ -82,7 +80,7 @@ Unity targetの生成と検証は次を使用します。
 
 ```powershell
 node .\tools\CRDD-IR\src\cli.ts generate unity `
-  .\05_SPEC\operations\create-entity.md `
+  .\contracts\operations\apply-record.md `
   --profile .\Config\CRDD\unity-6-il2cpp.json `
   --out-dir .\Assets\CRDD\Generated
 
@@ -93,14 +91,14 @@ Unreal／Unityの静的意味同値性は`target parity`で検証します。
 
 ```powershell
 node .\tools\CRDD-IR\src\cli.ts target parity `
-  .\05_SPEC\operations\create-entity.md `
+  .\contracts\operations\apply-record.md `
   --unreal-profile .\Config\CRDD\ue-5.8-editor.json `
   --unity-profile .\Config\CRDD\unity-6-il2cpp.json `
-  --out .\07_Quality\CRDD_IR\target-parity.json
+  --out .\evidence\crdd-ir\target-parity.json
 ```
 
 中間IR、ログ、Packageは`.crdd-ir/`へ置かれ、Git管理しません。
-追跡可能な検証要約は`07_Quality/CRDD_IR/`へ生成されます。
+追跡可能な検証要約は`evidence/crdd-ir/`へ生成されます。
 
 ## チームメンバーがCloneする
 
@@ -128,7 +126,6 @@ git -C tools/CRDD-IR fetch origin
 git -C tools/CRDD-IR checkout <tested-commit-or-tag>
 npm.cmd ci --prefix tools/CRDD-IR
 
-.\tools\CRDD-IR\scripts\repair-project.ps1 -ProjectRoot .
 .\tools\crdd-ir.ps1 doctor
 .\tools\crdd-ir.ps1 verify
 
@@ -137,7 +134,6 @@ git add -A
 git commit -m "Update CRDD IR"
 ```
 
-`repair-project.ps1`は現在の設定を使って管理ファイルとPluginを更新します。
 変更済みの管理対象を上書きする前に`.crdd-ir/backups/`へ退避します。
 
 ## 生成物を手で編集しない
@@ -146,7 +142,7 @@ git commit -m "Update CRDD IR"
 明示的な`--force`なしでは上書きしません。製品固有ロジックは生成コードではなく、
 生成物を呼び出すAdapter、Subsystem、Componentなどへ実装してください。
 
-CRDD Markdownが正本です。Internal IR instanceを`30_IR`などへ恒久保存する必要は
+CRDD Markdownが正本です。Internal IR instanceを専用フォルダへ恒久保存する必要は
 ありません。
 
 ## 詳細
@@ -163,7 +159,8 @@ CRDD Markdownが正本です。Internal IR instanceを`30_IR`などへ恒久保�
 - [Verify lock events](docs/verify-events.md)
 - [v0.1.2 release notes](docs/releases/v0.1.2.md)
 - [v0.2.1 release notes](docs/releases/v0.2.1.md)
-- [v0.2.1 release checklist](docs/release-checklist.md)
+- [v0.3.0 release notes](docs/releases/v0.3.0.md)
+- [v0.3.0 release checklist](docs/release-checklist.md)
 - [Unreal fixture](examples/unreal/CrddCompilerFixture/README.md)
 - [Unity fixture](examples/unity/CrddCompilerFixture/README.md)
 

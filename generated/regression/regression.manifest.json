@@ -2,42 +2,42 @@
   "protocol": "crdd-ir/regression-manifest-v0.1",
   "operations": [
     {
-      "id": "CreateEntity",
-      "adapterKey": "CreateEntity",
+      "id": "ApplyRecord",
+      "adapterKey": "ApplyRecord",
       "source": {
-        "path": "examples/create-entity/05_SPEC/01_Behavior_Specification.md",
-        "sha256": "62da90601ce7ed0ca298b14e74d02ffc8a60fabfc4e466741b1412d633261a51",
-        "irSha256": "6eb598a96c896437db816f4992bca751e98f62e5f9e01f24007f8cbc3e09e3aa"
+        "path": "examples/apply-record/contract.md",
+        "sha256": "896cee46d31037ddf3c391c362ebf767bb081b9fc61ad6dfe2ac931843f5de06",
+        "irSha256": "82dd4ea090d92c9a0bc628c24db35296843828e3968169ee398764b9bf12756c"
       },
       "conformance": {
-        "path": "create-entity.conformance.json",
-        "sha256": "64d824c7ec6b7995a94bdb0d22a7c8f7a8280a1337505c53f14d2ae506641f70",
+        "path": "apply-record.conformance.json",
+        "sha256": "c948ab6b7ebc60d3d02e8e90c005454adafcf5a750e86893f022a9b2972803b8",
         "cases": 5,
         "successCases": 3,
         "failureCases": 2
       },
       "traces": [
-        "DEC-ENTITY-003",
-        "REQ-ENTITY-001"
+        "DEC-CAPACITY-001",
+        "REQ-RECORD-001"
       ]
     },
     {
-      "id": "UpdateEntity",
-      "adapterKey": "UpdateEntity",
+      "id": "ReviseRecord",
+      "adapterKey": "ReviseRecord",
       "source": {
-        "path": "examples/update-entity/05_SPEC/01_Behavior_Specification.md",
-        "sha256": "380a6d860c7c9352545661375347ac61af0a487b33d5edde99146920e0ebfcdf",
-        "irSha256": "c01d756a4e911e9bf13ffe51b18ce82597359e20ac2543931aaf9721184074e4"
+        "path": "examples/revise-record/contract.md",
+        "sha256": "2aacf12fcefd7ed072cc84bc6804a0555ea4c44e1fb0fa75785e52ab7e86e807",
+        "irSha256": "5a1f6ae8c91b8a9fa8d45d3e0ccf168a7d1eb698c25f4694e7d491065d0c222d"
       },
       "conformance": {
-        "path": "update-entity.conformance.json",
-        "sha256": "ae1565a0bfc6c6cbde805d3a7c574590a39b29775872c504f4ae6ea3501f7947",
+        "path": "revise-record.conformance.json",
+        "sha256": "bc995de7f3870daff6793529fe5214fec8e41255e9c1bce7c7489b6b82b85b32",
         "cases": 4,
         "successCases": 2,
         "failureCases": 2
       },
       "traces": [
-        "REQ-ENTITY-UPDATE-001"
+        "REQ-RECORD-UPDATE-001"
       ]
     }
   ]

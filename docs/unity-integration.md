@@ -8,7 +8,7 @@ Framework向けNUnit fixtureを決定的に生成します。`MonoBehaviour`、`
 
 ```powershell
 node tools/CRDD-IR/src/cli.ts generate unity `
-  05_SPEC/operations/create-entity.md `
+  contracts/operations/apply-record.md `
   --profile Config/CRDD/unity-6-il2cpp.json `
   --out-dir .crdd-ir/unity-generated
 ```
@@ -17,8 +17,8 @@ node tools/CRDD-IR/src/cli.ts generate unity `
 
 ```powershell
 node tools/CRDD-IR/src/cli.ts batch unity `
-  05_SPEC/operations/create-entity.md `
-  05_SPEC/operations/update-entity.md `
+  contracts/operations/apply-record.md `
+  contracts/operations/revise-record.md `
   --profile Config/CRDD/unity-6-il2cpp.json `
   --out-dir Assets/CRDD/Generated `
   --flat

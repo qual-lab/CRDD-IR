@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://crdd.dev/schema/extensions/3d-assets/v0.1.json",
+  "title": "CRDD 3D Assets Extension v0.1",
+  "type": "object",
+  "required": ["protocol", "data"],
+  "properties": {
+    "protocol": { "const": "crdd-ir/3d-assets-v0.1" },
+    "data": {
+      "type": "object",
+      "required": ["assets"],
+      "properties": {
+        "assets": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/asset" }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "asset": {
+      "type": "object",
+      "required": ["id", "type", "dimensions", "material", "collision", "lod", "placement", "traces"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*$" },
+        "type": { "enum": ["box", "cylinder"] },
+        "dimensions": {
+          "type": "object",
+          "required": ["length", "width", "height"],
+          "properties": {
+            "length": { "$ref": "#/$defs/distance" },
+            "width": { "$ref": "#/$defs/distance" },
+            "height": { "$ref": "#/$defs/distance" }
+          },
+          "additionalProperties": false
+        },
+        "material": {
+          "type": "object",
+          "required": ["baseColor"],
+          "properties": {
+            "baseColor": {
+              "type": "array",
+              "minItems": 3,
+              "maxItems": 3,
+              "items": { "type": "number", "minimum": 0, "maximum": 1 }
+            }
+          },
+          "additionalProperties": false
+        },
+        "collision": {
+          "type": "object",
+          "required": ["shape"],
+          "properties": { "shape": { "enum": ["box", "capsule", "sphere", "convex"] } },
+          "additionalProperties": false
+        },
+        "lod": {
+          "type": "object",
+          "required": ["policy"],
+          "properties": {
+            "policy": { "enum": ["none", "small", "large", "architectural"] }
+          },
+          "additionalProperties": false
+        },
+        "placement": {
+          "type": "object",
+          "required": ["location", "rotation"],
+          "properties": {
+            "location": {
+              "type": "object",
+              "required": ["x", "y", "z"],
+              "properties": {
+                "x": { "$ref": "#/$defs/signedDistance" },
+                "y": { "$ref": "#/$defs/signedDistance" },
+                "z": { "$ref": "#/$defs/signedDistance" }
+              },
+              "additionalProperties": false
+            },
+            "rotation": {
+              "type": "object",
+              "required": ["pitch", "yaw", "roll"],
+              "properties": {
+                "pitch": { "$ref": "#/$defs/angle" },
+                "yaw": { "$ref": "#/$defs/angle" },
+                "roll": { "$ref": "#/$defs/angle" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "traces": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      },
+      "additionalProperties": false
+    },
+    "distance": {
+      "type": "object",
+      "required": ["value", "unit"],
+      "properties": {
+        "value": { "type": "number", "exclusiveMinimum": 0 },
+        "unit": { "const": "m" }
+      },
+      "additionalProperties": false
+    },
+    "signedDistance": {
+      "type": "object",
+      "required": ["value", "unit"],
+      "properties": { "value": { "type": "number" }, "unit": { "const": "m" } },
+      "additionalProperties": false
+    },
+    "angle": {
+      "type": "object",
+      "required": ["value", "unit"],
+      "properties": { "value": { "type": "number" }, "unit": { "const": "deg" } },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

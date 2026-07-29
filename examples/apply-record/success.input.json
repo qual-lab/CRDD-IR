@@ -1,0 +1,12 @@
+{
+  "input": {
+    "length": 0.3,
+    "amount": 12000
+  },
+  "state": {
+    "capacity": {
+      "remaining": 50000
+    },
+    "records": []
+  }
+}

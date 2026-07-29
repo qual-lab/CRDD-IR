@@ -1,17 +1,27 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://crdd.dev/schema/assets-manifest/v0.1.json",
-  "title": "CRDD Generated Assets Manifest v0.1",
+  "$id": "https://crdd.dev/schema/assets-manifest/v0.2.json",
+  "title": "CRDD Generated Assets Manifest v0.2",
   "type": "object",
-  "required": ["protocol", "operation", "scene", "assets"],
+  "required": ["protocol", "operation", "coordinateSystem", "units", "scene", "assets"],
   "properties": {
-    "protocol": { "const": "crdd-ir/assets-v0.1" },
+    "protocol": { "const": "crdd-ir/assets-v0.2" },
     "operation": { "type": "string", "minLength": 1 },
+    "coordinateSystem": { "const": "right-handed-z-up" },
+    "units": {
+      "type": "object",
+      "required": ["distance", "angle"],
+      "properties": {
+        "distance": { "const": "cm" },
+        "angle": { "const": "deg" }
+      },
+      "additionalProperties": false
+    },
     "scene": {
       "type": "object",
-      "required": ["unrealLevel"],
+      "required": ["id"],
       "properties": {
-        "unrealLevel": { "type": "string", "pattern": "^/Game(?:/[A-Za-z][A-Za-z0-9_]*)+$" }
+        "id": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*$" }
       },
       "additionalProperties": false
     },
@@ -20,13 +30,12 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["id", "source", "unrealDestination", "previewLevel", "dimensionsCm", "collision", "lod", "placement", "traces"],
+        "required": ["id", "source", "previewScene", "dimensions", "collision", "lod", "placement", "traces"],
         "properties": {
           "id": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*$" },
           "source": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*\\.generated\\.obj$" },
-          "unrealDestination": { "type": "string", "pattern": "^/Game(?:/[A-Za-z][A-Za-z0-9_]*)+$" },
-          "previewLevel": { "type": "string", "pattern": "^/Game(?:/[A-Za-z][A-Za-z0-9_]*)+$" },
-          "dimensionsCm": {
+          "previewScene": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*$" },
+          "dimensions": {
             "type": "object",
             "required": ["length", "width", "height"],
             "properties": {
@@ -40,10 +49,10 @@
           "lod": { "$ref": "#/$defs/lod" },
           "placement": {
             "type": "object",
-            "required": ["locationCm", "rotationDeg"],
+            "required": ["location", "rotation"],
             "properties": {
-              "locationCm": { "$ref": "#/$defs/vector" },
-              "rotationDeg": { "$ref": "#/$defs/rotation" }
+              "location": { "$ref": "#/$defs/vector" },
+              "rotation": { "$ref": "#/$defs/rotation" }
             },
             "additionalProperties": false
           },
@@ -63,15 +72,15 @@
       "type": "object",
       "required": ["shape"],
       "properties": {
-        "shape": { "enum": ["box", "capsule", "sphere", "ndop26"] }
+        "shape": { "enum": ["box", "capsule", "sphere", "convex"] }
       },
       "additionalProperties": false
     },
     "lod": {
       "type": "object",
-      "required": ["group"],
+      "required": ["policy"],
       "properties": {
-        "group": { "enum": ["None", "SmallProp", "LargeProp", "LevelArchitecture"] }
+        "policy": { "enum": ["none", "small", "large", "architectural"] }
       },
       "additionalProperties": false
     },

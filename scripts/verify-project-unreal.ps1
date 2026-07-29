@@ -10,11 +10,16 @@ $toolRoot = Split-Path -Parent $PSScriptRoot
 $resolvedProjectRoot = [System.IO.Path]::GetFullPath($ProjectRoot)
 $configPath = Join-Path $resolvedProjectRoot "crdd-ir.config.json"
 $config = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
-if ($config.protocol -ne "crdd-ir/project-config-v0.1") {
+if ($config.protocol -ne "crdd-ir/project-config-v0.2") {
     throw "Unsupported CRDD-IR project config protocol: $($config.protocol)"
 }
-if ($null -eq $config.unreal) {
+if ($null -eq $config.targets.unreal) {
     throw "Unreal integration is not configured in $configPath"
+}
+$targetConfig = $config.targets.unreal
+$unreal = $targetConfig.options
+if ($null -eq $unreal) {
+    throw "Unreal target requires target.options for project verification"
 }
 
 function Resolve-ProjectPath([string]$RelativePath) {
@@ -27,7 +32,7 @@ function Assert-ExitCode([string]$Step) {
     }
 }
 
-$project = Resolve-ProjectPath $config.unreal.project
+$project = Resolve-ProjectPath $unreal.project
 . (Join-Path $PSScriptRoot "verify-lock.ps1")
 $verifyLock = Enter-CrddVerifyLock `
     -ProjectPath $project `
@@ -35,36 +40,36 @@ $verifyLock = Enter-CrddVerifyLock `
     -TimeoutSeconds $LockTimeoutSeconds
 $verifySucceeded = $false
 try {
-$engineRoot = [System.IO.Path]::GetFullPath($config.unreal.engineRoot)
+$engineRoot = [System.IO.Path]::GetFullPath($unreal.engineRoot)
 $buildTool = Join-Path $engineRoot "Engine\Build\BatchFiles\Build.bat"
 $runUat = Join-Path $engineRoot "Engine\Build\BatchFiles\RunUAT.bat"
 $editorCmd = Join-Path $engineRoot "Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
 $manifest = Resolve-ProjectPath (
-    Join-Path $config.generatedAssets "assets.manifest.json"
+    Join-Path ([string]$unreal.assetsOutput) "assets.manifest.json"
 )
-$sources = @($config.source | ForEach-Object { Resolve-ProjectPath ([string]$_) })
+$sources = @($config.sources | ForEach-Object { Resolve-ProjectPath ([string]$_) })
 $evidence = Resolve-ProjectPath $config.evidence
-$editorProfile = Resolve-ProjectPath $config.unreal.editorProfile
-$shippingProfile = Resolve-ProjectPath $config.unreal.shippingProfile
+$editorProfile = Resolve-ProjectPath ([string]$targetConfig.profile)
+$shippingProfile = Resolve-ProjectPath ([string]$unreal.shippingProfile)
 $pythonScript = Join-Path $resolvedProjectRoot "tools\crdd-import-generated-assets.py"
 $projectName = [System.IO.Path]::GetFileNameWithoutExtension($project)
-$editorTarget = if ([string]::IsNullOrWhiteSpace($config.unreal.editorTarget)) {
+$editorTarget = if ([string]::IsNullOrWhiteSpace($unreal.editorTarget)) {
     "${projectName}Editor"
 }
 else {
-    $config.unreal.editorTarget
+    $unreal.editorTarget
 }
-$gameTarget = if ([string]::IsNullOrWhiteSpace($config.unreal.gameTarget)) {
+$gameTarget = if ([string]::IsNullOrWhiteSpace($unreal.gameTarget)) {
     $projectName
 }
 else {
-    $config.unreal.gameTarget
+    $unreal.gameTarget
 }
-$configuration = if ([string]::IsNullOrWhiteSpace($config.unreal.configuration)) {
+$configuration = if ([string]::IsNullOrWhiteSpace($unreal.configuration)) {
     "Development"
 }
 else {
-    $config.unreal.configuration
+    $unreal.configuration
 }
 
 foreach ($requiredPath in @(
@@ -122,9 +127,9 @@ if (Test-Path -LiteralPath $previousManifest) {
     )
     foreach ($removed in @($previous.assets | Where-Object { $_.id -notin $currentIds })) {
         $virtualFiles = @(
-            @{ Path = "$($removed.unrealDestination)/$($removed.id)"; Extension = ".uasset" },
-            @{ Path = "$($removed.unrealDestination)/$($removed.id)Material"; Extension = ".uasset" },
-            @{ Path = $removed.previewLevel; Extension = ".umap" }
+            @{ Path = "/Game/CRDD/Generated/$($removed.id)"; Extension = ".uasset" },
+            @{ Path = "/Game/CRDD/Generated/$($removed.id)Material"; Extension = ".uasset" },
+            @{ Path = "/Game/CRDD/Generated/$($removed.previewScene)"; Extension = ".umap" }
         )
         foreach ($virtualFile in $virtualFiles) {
             if (-not $virtualFile.Path.StartsWith("/Game/", [System.StringComparison]::Ordinal)) {
@@ -163,7 +168,7 @@ if (-not (Test-Path -LiteralPath $reportPath)) {
 Assert-ExitCode "CRDD Unreal Shipping build"
 
 $assetManifest = Get-Content -LiteralPath $manifest -Raw | ConvertFrom-Json
-$runtimeMap = [string]$assetManifest.scene.unrealLevel
+$runtimeMap = "/Game/CRDD/Generated/$([string]$assetManifest.scene.id)"
 if ([string]::IsNullOrWhiteSpace($runtimeMap) -or
     -not $runtimeMap.StartsWith("/Game/", [System.StringComparison]::Ordinal)) {
     throw "Generated asset manifest must declare a /Game/ runtime scene"
@@ -189,7 +194,7 @@ foreach ($source in $sources) {
     Assert-ExitCode "CRDD operation inspection"
     $operationId = [string](($json | ConvertFrom-Json).operation.id)
     & node $cli generate evidence `
-        $source --out-dir (Join-Path $evidence $operationId) --unreal-report $reportPath
+        $source --out-dir (Join-Path $evidence $operationId)
     Assert-ExitCode "CRDD evidence generation for $operationId"
     & node $cli unreal evidence $source `
         --profile $shippingProfile `

@@ -1,5 +1,16 @@
 /.crdd-ir/
 /node_modules/
+/.coverage/
+/coverage/
+/dist/
+/*.log
+/.vs/
+/.vscode/
+/.idea/
+*.user
+*.suo
+*.tmp
+*.bak
 /examples/unreal/CrddCompilerFixture/Binaries/
 /examples/unreal/CrddCompilerFixture/DerivedDataCache/
 /examples/unreal/CrddCompilerFixture/Intermediate/

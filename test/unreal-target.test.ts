@@ -20,7 +20,7 @@ import {
 import { generateUnreal } from "../src/unreal.ts";
 
 const source = fileURLToPath(new URL(
-  "../examples/create-entity/05_SPEC/01_Behavior_Specification.md",
+  "../examples/apply-record/contract.md",
   import.meta.url,
 ));
 
@@ -242,7 +242,7 @@ test("validates Asset, Config, Serialization, Delegate, Projection, and performa
         arguments: [{ name: "Revision", type: "uint64" }],
       }],
       projection: {
-        domainId: "entity.id",
+        domainId: "record.id",
         actorIsAuthoritative: false,
         diff: ["spawn", "update", "destroy"],
         objectPool: false,
@@ -319,7 +319,7 @@ test("resolves an engine dialect and reports semantic target changes", async () 
 });
 
 test("projects a unit to an explicit integer C++ and JSON representation", async () => {
-  const compilation = await compileMarkdown("test/fixtures/create-wall.md");
+  const compilation = await compileMarkdown("test/fixtures/contracts/numeric-boundary.md");
   const profile: UnrealTargetProfile = {
     ...shipping,
     numericProjection: {
@@ -346,16 +346,16 @@ test("projects a unit to an explicit integer C++ and JSON representation", async
   )!;
   assert.ok(numericFixture);
   assert.match(header, /CRDD-IR Numeric Projection: mm -> int64/);
-  assert.match(header, /int64 Length = 0;/);
+  assert.match(header, /int64 SpanMm = 0;/);
   assert.match(header, /TryParseProjectedInt64/);
-  assert.match(cpp, /CrddTryAddInt64\(Input\.OpeningOffset, Input\.OpeningWidth/);
-  assert.match(cpp, /bCrddOverflow4_1 \|\| !\(\(CrddChecked4_0 <= Input\.Length\)\)/);
+  assert.match(cpp, /CrddTryAddInt64\(Input\.OffsetMm, Input\.SegmentSpanMm/);
+  assert.match(cpp, /bCrddOverflow4_1 \|\| !\(\(CrddChecked4_0 <= Input\.SpanMm\)\)/);
   assert.match(cpp, /if \(!LexTryParseString\(OutValue, \*Decimal\)\)/);
   assert.match(cpp, /return LexToString\(OutValue\) == Decimal/);
   assert.match(cpp, /return LexToString\(Value\)/);
   assert.match(numericFixture.content, /NumericBoundary\.Generated/);
   assert.match(numericFixture.content, /std::numeric_limits<int64>::max\(\)/);
-  assert.match(numericFixture.content, /opening-fits-width/);
+  assert.match(numericFixture.content, /segment-fits-span/);
   assert.match(numericFixture.content, /9223372036854775808/);
 
   const changed = buildUnrealTargetPlan(compilation.ir, compilation.digest, {

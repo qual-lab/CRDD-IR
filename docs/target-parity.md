@@ -8,10 +8,10 @@ CRDD IR tracks two target requirements:
 Run the static parity gate with:
 
 ```powershell
-node tools/CRDD-IR/src/cli.ts target parity 05_SPEC/MyOperation.md `
+node tools/CRDD-IR/src/cli.ts target parity contracts/MyOperation.md `
   --unreal-profile Config/CRDD/ue-5.8-editor.json `
   --unity-profile Config/CRDD/unity-6-il2cpp.json `
-  --out 07_Quality/CRDD_IR/target-parity.json
+  --out evidence/crdd-ir/target-parity.json
 ```
 
 The report records the shared source IR and conformance digests, both target profile

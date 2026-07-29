@@ -8,9 +8,10 @@
     "irVersion": { "const": "0.1" },
     "operation": {
       "type": "object",
-      "required": ["id", "traces", "input", "state", "requires", "effects", "errors", "transaction"],
+      "required": ["id", "kind", "traces", "input", "state", "requires", "effects", "errors"],
       "properties": {
         "id": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["command", "query"] },
         "traces": {
           "type": "array",
           "minItems": 1,
@@ -25,13 +26,18 @@
           "type": "object",
           "additionalProperties": { "$ref": "#/$defs/field" }
         },
-        "requires": { "type": "array", "minItems": 1 },
+        "output": { "$ref": "#/$defs/field" },
+        "requires": { "type": "array" },
         "effects": {
           "type": "array",
-          "minItems": 1,
           "items": { "$ref": "#/$defs/effect" }
         },
-        "errors": { "type": "array", "minItems": 1 },
+        "errors": { "type": "array" },
+        "execution": { "$ref": "#/$defs/execution" },
+        "emits": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/event" }
+        },
         "extensions": {
           "type": "object",
           "propertyNames": { "pattern": "^[a-z][a-z0-9.-]*$" },
@@ -108,9 +114,13 @@
       "type": "object",
       "required": ["type"],
       "properties": {
-        "type": { "enum": ["number", "string", "boolean"] },
+        "type": { "enum": ["number", "integer", "string", "boolean"] },
         "unit": { "type": "string", "minLength": 1 },
         "minimum": { "type": "number" },
+        "maximum": { "type": "number" },
+        "minLength": { "type": "integer", "minimum": 0 },
+        "maxLength": { "type": "integer", "minimum": 0 },
+        "pattern": { "type": "string" },
         "enum": {
           "type": "array",
           "minItems": 1,
@@ -118,6 +128,7 @@
           "items": { "type": "string", "minLength": 1 }
         },
         "optional": { "type": "boolean" },
+        "nullable": { "type": "boolean" },
         "default": { "type": ["number", "string", "boolean"] }
       },
       "additionalProperties": false
@@ -130,8 +141,10 @@
         "properties": {
           "type": "object",
           "minProperties": 1,
-          "additionalProperties": { "$ref": "#/$defs/scalar" }
-        }
+          "additionalProperties": { "$ref": "#/$defs/field" }
+        },
+        "optional": { "type": "boolean" },
+        "nullable": { "type": "boolean" }
       },
       "additionalProperties": false
     },
@@ -144,121 +157,64 @@
           "required": ["type", "items"],
           "properties": {
             "type": { "const": "array" },
-            "items": { "$ref": "#/$defs/object" }
+            "items": { "$ref": "#/$defs/field" },
+            "minItems": { "type": "integer", "minimum": 0 },
+            "maxItems": { "type": "integer", "minimum": 0 },
+            "optional": { "type": "boolean" },
+            "nullable": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "values"],
+          "properties": {
+            "type": { "const": "map" },
+            "values": { "$ref": "#/$defs/field" },
+            "optional": { "type": "boolean" },
+            "nullable": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "discriminator", "variants"],
+          "properties": {
+            "type": { "const": "union" },
+            "discriminator": { "type": "string", "minLength": 1 },
+            "variants": {
+              "type": "array",
+              "minItems": 2,
+              "items": { "$ref": "#/$defs/object" }
+            },
+            "optional": { "type": "boolean" },
+            "nullable": { "type": "boolean" }
           },
           "additionalProperties": false
         }
       ]
     },
-    "asset": {
+    "execution": {
       "type": "object",
-      "required": ["id", "type", "dimensions", "material", "collision", "lod", "placement", "traces"],
+      "required": ["mode"],
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
-        "type": { "enum": ["box", "cylinder"] },
-        "dimensions": { "$ref": "#/$defs/dimensions" },
-        "material": {
-          "type": "object",
-          "required": ["baseColor"],
-          "properties": {
-            "baseColor": { "$ref": "#/$defs/color" }
-          },
-          "additionalProperties": false
-        },
-        "collision": { "$ref": "#/$defs/collision" },
-        "lod": { "$ref": "#/$defs/lod" },
-        "placement": { "$ref": "#/$defs/placement" },
+        "mode": { "enum": ["sync", "async"] },
+        "cancelable": { "type": "boolean" },
+        "timeoutMs": { "type": "integer", "exclusiveMinimum": 0 },
+        "idempotency": { "enum": ["none", "optional", "required"] }
+      },
+      "additionalProperties": false
+    },
+    "event": {
+      "type": "object",
+      "required": ["type", "traces"],
+      "properties": {
+        "type": { "type": "string", "minLength": 1 },
+        "payload": { "$ref": "#/$defs/field" },
+        "delivery": { "enum": ["at-most-once", "at-least-once"] },
         "traces": { "$ref": "#/$defs/traces" }
       },
       "additionalProperties": false
-    },
-    "dimensions": {
-      "type": "object",
-      "required": ["length", "width", "height"],
-      "properties": {
-        "length": { "$ref": "#/$defs/meter" },
-        "width": { "$ref": "#/$defs/meter" },
-        "height": { "$ref": "#/$defs/meter" }
-      },
-      "additionalProperties": false
-    },
-    "collision": {
-      "type": "object",
-      "required": ["shape"],
-      "properties": {
-        "shape": { "enum": ["box", "capsule", "sphere", "ndop26"] }
-      },
-      "additionalProperties": false
-    },
-    "lod": {
-      "type": "object",
-      "required": ["group"],
-      "properties": {
-        "group": { "enum": ["None", "SmallProp", "LargeProp", "LevelArchitecture"] }
-      },
-      "additionalProperties": false
-    },
-    "meter": {
-      "type": "object",
-      "required": ["value", "unit"],
-      "properties": {
-        "value": { "type": "number", "exclusiveMinimum": 0 },
-        "unit": { "const": "m" }
-      },
-      "additionalProperties": false
-    },
-    "placement": {
-      "type": "object",
-      "required": ["location", "rotation"],
-      "properties": {
-        "location": { "$ref": "#/$defs/location" },
-        "rotation": { "$ref": "#/$defs/rotation" }
-      },
-      "additionalProperties": false
-    },
-    "location": {
-      "type": "object",
-      "required": ["x", "y", "z"],
-      "properties": {
-        "x": { "$ref": "#/$defs/signedMeter" },
-        "y": { "$ref": "#/$defs/signedMeter" },
-        "z": { "$ref": "#/$defs/signedMeter" }
-      },
-      "additionalProperties": false
-    },
-    "signedMeter": {
-      "type": "object",
-      "required": ["value", "unit"],
-      "properties": {
-        "value": { "type": "number" },
-        "unit": { "const": "m" }
-      },
-      "additionalProperties": false
-    },
-    "rotation": {
-      "type": "object",
-      "required": ["pitch", "yaw", "roll"],
-      "properties": {
-        "pitch": { "$ref": "#/$defs/degrees" },
-        "yaw": { "$ref": "#/$defs/degrees" },
-        "roll": { "$ref": "#/$defs/degrees" }
-      },
-      "additionalProperties": false
-    },
-    "degrees": {
-      "type": "object",
-      "required": ["value", "unit"],
-      "properties": {
-        "value": { "type": "number" },
-        "unit": { "const": "deg" }
-      },
-      "additionalProperties": false
-    },
-    "color": {
-      "type": "array",
-      "minItems": 3,
-      "maxItems": 3,
-      "items": { "type": "number", "minimum": 0, "maximum": 1 }
     },
     "traces": {
       "type": "array",

@@ -8,8 +8,6 @@ import {
   validateTargetProfile,
   type TargetAdapter,
 } from "./target-registry.ts";
-import type { UnrealTargetProfile } from "./unreal-target.ts";
-import type { UnityTargetProfile } from "./unity-target.ts";
 
 export type BatchTarget = string;
 export type BatchLayout = "operation-directories" | "flat";
@@ -35,8 +33,6 @@ export async function generateBatch(
     layout?: BatchLayout;
     force?: boolean;
     profile?: unknown;
-    unrealProfile?: UnrealTargetProfile;
-    unityProfile?: UnityTargetProfile;
   } = {},
 ): Promise<BatchManifest> {
   return withInterprocessLock(resolve(outDir), () =>
@@ -52,8 +48,6 @@ async function generateBatchLocked(
     layout?: BatchLayout;
     force?: boolean;
     profile?: unknown;
-    unrealProfile?: UnrealTargetProfile;
-    unityProfile?: UnityTargetProfile;
   } = {},
 ): Promise<BatchManifest> {
   const layout = options.layout ?? "operation-directories";
@@ -64,10 +58,9 @@ async function generateBatchLocked(
   if (sources.length === 0) throw new Error("Batch requires at least one CRDD Markdown source");
   const compilations = await Promise.all(sources.map((source) => compileMarkdown(source)));
   rejectDuplicateOperations(compilations);
-  const profileValue = options.profile ?? options.unrealProfile ?? options.unityProfile;
-  const profile = profileValue === undefined
+  const profile = options.profile === undefined
     ? undefined
-    : validateTargetProfile(adapter, profileValue);
+    : validateTargetProfile(adapter, options.profile);
   rejectOutputCollisions(compilations, adapter, layout, profile);
   const operations: BatchManifest["operations"] = [];
   const manifestPath = resolve(outDir, "batch.manifest.json");
@@ -85,8 +78,10 @@ async function generateBatchLocked(
       : resolve(outDir, compilation.ir.operation.id);
     await mkdir(operationDir, { recursive: true });
     const files = adapter.generate({ compilation, profile, operationIndex: compilationIndex });
-    if (target === "assets" && files.length === 0) {
-      throw new Error(`Operation "${compilation.ir.operation.id}" declares no assets`);
+    if (files.length === 0) {
+      throw new Error(
+        `Target "${target}" produced no files for operation "${compilation.ir.operation.id}"`,
+      );
     }
     const hashedFiles = files.map((file) => ({
       path: file.name,

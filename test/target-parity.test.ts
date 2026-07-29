@@ -6,7 +6,7 @@ import { verifyTargetParity } from "../src/target-parity.ts";
 import { validateUnityTargetProfile } from "../src/unity-target.ts";
 import { validateUnrealTargetProfile } from "../src/unreal-target.ts";
 
-const source = "test/fixtures/create-wall.md";
+const source = "test/fixtures/contracts/numeric-boundary.md";
 
 async function profiles() {
   return {

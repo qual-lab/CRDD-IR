@@ -1,0 +1,181 @@
+{
+  "protocol": "crdd-ir/conformance-v0.1",
+  "operation": "ApplyRecord",
+  "traces": [
+    "REQ-RECORD-001",
+    "DEC-CAPACITY-001"
+  ],
+  "cases": [
+    {
+      "id": "apply-record-success",
+      "description": "ApplyRecord succeeds when every precondition is satisfied",
+      "request": {
+        "input": {
+          "length": 1,
+          "amount": 1
+        },
+        "state": {
+          "capacity": {
+            "remaining": 1000000
+          },
+          "records": []
+        }
+      },
+      "expected": {
+        "ok": true,
+        "operation": "ApplyRecord",
+        "state": {
+          "capacity": {
+            "remaining": 999999
+          },
+          "records": [
+            {
+              "length": 1,
+              "amount": 1
+            }
+          ]
+        },
+        "traces": [
+          "REQ-RECORD-001",
+          "DEC-CAPACITY-001"
+        ]
+      }
+    },
+    {
+      "id": "minimum-record-length-at-boundary",
+      "description": "length equal to 0.3 is accepted",
+      "sourceRequirement": "minimum-record-length",
+      "request": {
+        "input": {
+          "length": 0.3,
+          "amount": 1
+        },
+        "state": {
+          "capacity": {
+            "remaining": 1000000
+          },
+          "records": []
+        }
+      },
+      "expected": {
+        "ok": true,
+        "operation": "ApplyRecord",
+        "state": {
+          "capacity": {
+            "remaining": 999999
+          },
+          "records": [
+            {
+              "length": 0.3,
+              "amount": 1
+            }
+          ]
+        },
+        "traces": [
+          "REQ-RECORD-001",
+          "DEC-CAPACITY-001"
+        ]
+      }
+    },
+    {
+      "id": "minimum-record-length-below-boundary",
+      "description": "length below 0.3 is rejected without state changes",
+      "sourceRequirement": "minimum-record-length",
+      "request": {
+        "input": {
+          "length": 0.299,
+          "amount": 1
+        },
+        "state": {
+          "capacity": {
+            "remaining": 1000000
+          },
+          "records": []
+        }
+      },
+      "expected": {
+        "ok": false,
+        "operation": "ApplyRecord",
+        "error": "RECORD_TOO_SMALL",
+        "failedRequirement": "minimum-record-length",
+        "state": {
+          "capacity": {
+            "remaining": 1000000
+          },
+          "records": []
+        },
+        "traces": [
+          "REQ-RECORD-001"
+        ]
+      }
+    },
+    {
+      "id": "sufficient-capacity-exact",
+      "description": "capacity.remaining equal to amount is accepted",
+      "sourceRequirement": "sufficient-capacity",
+      "request": {
+        "input": {
+          "length": 1,
+          "amount": 1
+        },
+        "state": {
+          "capacity": {
+            "remaining": 1
+          },
+          "records": []
+        }
+      },
+      "expected": {
+        "ok": true,
+        "operation": "ApplyRecord",
+        "state": {
+          "capacity": {
+            "remaining": 0
+          },
+          "records": [
+            {
+              "length": 1,
+              "amount": 1
+            }
+          ]
+        },
+        "traces": [
+          "REQ-RECORD-001",
+          "DEC-CAPACITY-001"
+        ]
+      }
+    },
+    {
+      "id": "sufficient-capacity-insufficient",
+      "description": "capacity.remaining one unit below amount is rejected without state changes",
+      "sourceRequirement": "sufficient-capacity",
+      "request": {
+        "input": {
+          "length": 1,
+          "amount": 1
+        },
+        "state": {
+          "capacity": {
+            "remaining": 0
+          },
+          "records": []
+        }
+      },
+      "expected": {
+        "ok": false,
+        "operation": "ApplyRecord",
+        "error": "INSUFFICIENT_CAPACITY",
+        "failedRequirement": "sufficient-capacity",
+        "state": {
+          "capacity": {
+            "remaining": 0
+          },
+          "records": []
+        },
+        "traces": [
+          "DEC-CAPACITY-001"
+        ]
+      }
+    }
+  ]
+}

@@ -1,84 +1,67 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {
-  PROJECT_CONFIG_PROTOCOL,
-  validateProjectConfig,
-} from "../src/project-config.ts";
+import { PROJECT_CONFIG_PROTOCOL, validateProjectConfig } from "../src/project-config.ts";
 
 function validConfig() {
   return {
     protocol: PROJECT_CONFIG_PROTOCOL,
     toolRoot: "tools/CRDD-IR",
-    source: "05_SPEC/01_Behavior_Specification.md",
-    generatedSource: "40_Develop/Generated/Source",
-    generatedAssets: "40_Develop/Generated/Assets",
-    evidence: "07_Quality/CRDD_IR",
-    unreal: null,
+    sources: ["contracts/change.md"],
+    evidence: "quality/crdd-ir",
+    targets: {
+      typescript: { output: "generated/typescript" },
+    },
   };
 }
 
-test("accepts a complete project configuration", () => {
+test("accepts a target-neutral project configuration", () => {
   assert.deepEqual(validateProjectConfig(validConfig()), validConfig());
 });
 
-test("accepts multiple sources with an explicit asset source", () => {
+test("accepts independent target outputs, modules, profiles, and options", () => {
   const config = {
     ...validConfig(),
-    source: ["05_SPEC/create.md", "05_SPEC/update.md"],
-    assetSource: "05_SPEC/create.md",
+    targets: {
+      typescript: { output: "generated/typescript" },
+      adapter: {
+        output: "generated/adapter",
+        module: "tools/crdd-target-adapter/register.ts",
+        profile: "config/adapter.json",
+        options: { mode: "strict" },
+      },
+    },
   };
   assert.deepEqual(validateProjectConfig(config), config);
 });
 
-test("rejects duplicate sources and an asset source outside the source set", () => {
+test("rejects duplicate sources and invalid target IDs", () => {
   assert.throws(
-    () => validateProjectConfig({
-      ...validConfig(),
-      source: ["05_SPEC/spec.md", "05_SPEC/spec.md"],
-    }),
+    () => validateProjectConfig({ ...validConfig(), sources: ["contracts/a.md", "contracts/a.md"] }),
     /must not contain duplicates/,
   );
   assert.throws(
     () => validateProjectConfig({
       ...validConfig(),
-      source: ["05_SPEC/create.md", "05_SPEC/update.md"],
-      assetSource: "05_SPEC/assets.md",
+      targets: { "Invalid Target": { output: "generated/output" } },
     }),
-    /must also be listed/,
+    /invalid target ID/,
   );
 });
 
-test("rejects unknown project configuration fields", () => {
+test("rejects unknown fields and escaping paths", () => {
   assert.throws(
-    () => validateProjectConfig({ ...validConfig(), typo: true }),
-    /unknown field\(s\): typo/,
+    () => validateProjectConfig({ ...validConfig(), unreal: null }),
+    /unknown field\(s\): unreal/,
   );
-});
-
-test("rejects project paths that escape the project root", () => {
-  assert.throws(
-    () => validateProjectConfig({ ...validConfig(), generatedAssets: "../outside" }),
-    /must not escape the project root/,
-  );
-  assert.throws(
-    () => validateProjectConfig({ ...validConfig(), source: "C:/outside/spec.md" }),
-    /must be relative to the project root/,
-  );
-});
-
-test("validates Unreal configuration fields", () => {
   assert.throws(
     () => validateProjectConfig({
       ...validConfig(),
-      unreal: {
-        project: "Game/Game.uproject",
-        engineRoot: "C:/Program Files/Epic Games/UE_5.8",
-        editorTarget: "GameEditor",
-        gameTarget: "Game",
-        configuration: "Fast",
-        integrationPlugin: "CRDDIRIntegration",
-      },
+      targets: { typescript: { output: "../outside" } },
     }),
-    /configuration is not supported/,
+    /must not escape the project root/,
+  );
+  assert.throws(
+    () => validateProjectConfig({ ...validConfig(), sources: ["C:/outside/spec.md"] }),
+    /must be relative to the project root/,
   );
 });

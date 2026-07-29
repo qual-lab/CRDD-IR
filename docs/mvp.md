@@ -28,7 +28,7 @@ Compiler本体は、CRDD Structured Contractに適合する任意ドメインの
 FrontendはMarkdown内の`crdd-contract` Fenceだけを解析する。周辺の自然言語や通常のYAML Fenceを推測で解釈しない。
 
 ```text
-05_SPEC/01_Behavior_Specification.md
+contracts/contract.md
 → Source Contract
 → Expression AST
 → Canonical CRDD IR

@@ -12,7 +12,7 @@ if (-not $Project) {
     $Project = Join-Path $repository "examples\unity\CrddCompilerFixture"
 }
 if (-not $Source) {
-    $Source = Join-Path $repository "test\fixtures\create-wall.md"
+    $Source = Join-Path $repository "test\fixtures\contracts\numeric-boundary.md"
 }
 if (-not $Profile) {
     $Profile = Join-Path $repository "examples\unity\profiles\unity-6-il2cpp.json"

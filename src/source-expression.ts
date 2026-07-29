@@ -1,4 +1,5 @@
 import type { FieldDefinition } from "./model.ts";
+import { defaultUnitRegistry, type UnitRegistry } from "./unit-registry.ts";
 
 type Token =
   | { kind: "reference"; value: string; offset: number }
@@ -19,19 +20,13 @@ type ValueType = {
   unit?: string;
 };
 
-const units: Record<string, { dimension: string; factor: number }> = {
-  m: { dimension: "length", factor: 1 },
-  cm: { dimension: "length", factor: 0.01 },
-  mm: { dimension: "length", factor: 0.001 },
-  JPY: { dimension: "money", factor: 1 },
-};
-
 export function normalizeSourceExpression(
   expression: string,
   fields: Record<string, FieldDefinition>,
+  unitRegistry: UnitRegistry = defaultUnitRegistry,
 ): string {
   const ast = parseSourceExpression(expression);
-  inferAndNormalize(ast, fields);
+  inferAndNormalize(ast, fields, unitRegistry);
   return printExpression(ast);
 }
 
@@ -169,6 +164,7 @@ function tokenize(expression: string): Token[] {
 function inferAndNormalize(
   node: ExpressionNode,
   fields: Record<string, FieldDefinition>,
+  unitRegistry: UnitRegistry,
 ): ValueType {
   if (node.kind === "reference") {
     const field = fields[node.path];
@@ -179,14 +175,14 @@ function inferAndNormalize(
     return { kind: typeof node.value as ValueType["kind"], unit: node.unit };
   }
   if (node.kind === "unary") {
-    const operand = inferAndNormalize(node.operand, fields);
+    const operand = inferAndNormalize(node.operand, fields, unitRegistry);
     if (node.operator === "!" && operand.kind !== "boolean") throw new Error("operator ! requires boolean");
     if (node.operator === "-" && operand.kind !== "number") throw new Error("unary - requires number");
     return operand;
   }
 
-  const left = inferAndNormalize(node.left, fields);
-  const right = inferAndNormalize(node.right, fields);
+  const left = inferAndNormalize(node.left, fields, unitRegistry);
+  const right = inferAndNormalize(node.right, fields, unitRegistry);
   if (node.operator === "&&" || node.operator === "||") {
     if (left.kind !== "boolean" || right.kind !== "boolean") {
       throw new Error(`operator ${node.operator} requires boolean operands`);
@@ -194,14 +190,14 @@ function inferAndNormalize(
     return { kind: "boolean" };
   }
   if (["==", "!=", ">", ">=", "<", "<="].includes(node.operator)) {
-    normalizePair(node.left, left, node.right, right);
+    normalizePair(node.left, left, node.right, right, unitRegistry);
     if ([">", ">=", "<", "<="].includes(node.operator) && left.kind !== "number") {
       throw new Error(`operator ${node.operator} requires numeric operands`);
     }
     return { kind: "boolean" };
   }
   if (node.operator === "+" || node.operator === "-") {
-    normalizePair(node.left, left, node.right, right);
+    normalizePair(node.left, left, node.right, right, unitRegistry);
     return left.unit ? left : right;
   }
   throw new Error(`unsupported operator "${node.operator}"`);
@@ -212,16 +208,17 @@ function normalizePair(
   left: ValueType,
   rightNode: ExpressionNode,
   right: ValueType,
+  unitRegistry: UnitRegistry,
 ): void {
   if (left.kind !== right.kind) throw new Error(`incompatible types "${left.kind}" and "${right.kind}"`);
   if (left.kind !== "number") return;
 
   if (left.unit && right.unit) {
-    assertCompatibleUnits(left.unit, right.unit);
+    assertCompatibleUnits(left.unit, right.unit, unitRegistry);
     if (leftNode.kind === "literal" && rightNode.kind !== "literal") {
-      convertLiteral(leftNode, right.unit);
+      convertLiteral(leftNode, right.unit, unitRegistry);
     } else if (rightNode.kind === "literal" && leftNode.kind !== "literal") {
-      convertLiteral(rightNode, left.unit);
+      convertLiteral(rightNode, left.unit, unitRegistry);
     } else if (left.unit !== right.unit) {
       throw new Error(`field units "${left.unit}" and "${right.unit}" require explicit normalization`);
     }
@@ -234,21 +231,24 @@ function normalizePair(
   }
 }
 
-function convertLiteral(node: Extract<ExpressionNode, { kind: "literal" }>, targetUnit: string): void {
+function convertLiteral(
+  node: Extract<ExpressionNode, { kind: "literal" }>,
+  targetUnit: string,
+  unitRegistry: UnitRegistry,
+): void {
   if (typeof node.value !== "number") throw new Error("only numeric literals can carry units");
   if (!node.unit) {
     node.unit = targetUnit;
     return;
   }
-  assertCompatibleUnits(node.unit, targetUnit);
+  assertCompatibleUnits(node.unit, targetUnit, unitRegistry);
   if (node.unit === targetUnit) return;
-  node.value = node.value * units[node.unit].factor / units[targetUnit].factor;
+  node.value = unitRegistry.convert(node.value, node.unit, targetUnit);
   node.unit = targetUnit;
 }
 
-function assertCompatibleUnits(left: string, right: string): void {
-  if (left === right) return;
-  if (!units[left] || !units[right] || units[left].dimension !== units[right].dimension) {
+function assertCompatibleUnits(left: string, right: string, unitRegistry: UnitRegistry): void {
+  if (!unitRegistry.compatible(left, right)) {
     throw new Error(`incompatible units "${left}" and "${right}"`);
   }
 }
