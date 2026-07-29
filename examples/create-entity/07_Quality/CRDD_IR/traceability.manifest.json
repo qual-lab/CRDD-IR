@@ -23,6 +23,30 @@
       ]
     },
     {
+      "path": "unreal/CreateEntity.bridge.generated.h",
+      "sha256": "1fbc3889f5dceca2e578517fb4c592aeae7a17346225ae0ee7979cc36563df13",
+      "traces": [
+        "REQ-ENTITY-001",
+        "DEC-ENTITY-003"
+      ]
+    },
+    {
+      "path": "unreal/CreateEntity.bridge.generated.cpp",
+      "sha256": "cc9d97c29ba10dc22b855dc55c440706cfdfb529bac4384cc5aad5ae86885c31",
+      "traces": [
+        "REQ-ENTITY-001",
+        "DEC-ENTITY-003"
+      ]
+    },
+    {
+      "path": "unreal/CreateEntity.bridge.generated.spec.cpp",
+      "sha256": "2a90652783c13c929094b0c42b9facf94873d12df7cc088f2632969cd89d3557",
+      "traces": [
+        "REQ-ENTITY-001",
+        "DEC-ENTITY-003"
+      ]
+    },
+    {
       "path": "assets/EntityPreview.generated.obj",
       "sha256": "a8cbc7e791cef05227bae119f4e561af4747f8740f75586778871c7978718f7a",
       "traces": [
@@ -136,15 +160,18 @@
   },
   "execution": {
     "path": "unreal-execution.json",
-    "sha256": "7f39d3fece77dd4e279a4f49bcc907023ac71368e23247f5c9666497e5870545",
+    "sha256": "30f50544114aeefedd221cb79a9a2de5767e2f74f52a83f862e19c7776d491d0",
     "status": "passed",
     "tests": [
       "CRDD.Assets.GeneratedMeshes",
       "CRDD.Assets.GeneratedPreviewLevels",
       "CRDD.Assets.GeneratedScene",
+      "CRDD.CreateEntity.Bridge.AtomicFailure.Generated",
       "CRDD.CreateEntity.Conformance",
+      "CRDD.CreateWall.Bridge.AtomicFailure.Generated",
       "CRDD.CreateWall.NumericBoundary.Generated",
-      "CRDD.Integration.GeneratedAssets"
+      "CRDD.Integration.GeneratedAssets",
+      "CRDD.UpdateEntity.Bridge.AtomicFailure.Generated"
     ]
   }
 }

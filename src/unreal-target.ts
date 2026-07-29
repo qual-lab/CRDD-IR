@@ -296,6 +296,9 @@ export function buildUnrealTargetPlan(
       files: [
         `${operationName}.generated.h`,
         `${operationName}.generated.cpp`,
+        `${operationName}.bridge.generated.h`,
+        `${operationName}.bridge.generated.cpp`,
+        `${operationName}.bridge.generated.spec.cpp`,
         ...adapter.declarations.map((declaration) => `${declaration.name}.generated-adapter.h`),
       ],
     },

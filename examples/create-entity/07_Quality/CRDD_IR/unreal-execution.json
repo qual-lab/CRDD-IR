@@ -1,13 +1,13 @@
 {
   "protocol": "crdd-ir/unreal-execution-v0.1",
   "operation": "CreateEntity",
-  "reportCreatedOn": "2026.07.29-03.00.25",
-  "sourceReportSha256": "8d9b5f0ab335330eb685083591f19629bd5776b88992b3baf1cc0aedcf46caf0",
+  "reportCreatedOn": "2026.07.29-03.11.04",
+  "sourceReportSha256": "68181a237a15b1c36d4807426a64d831a91efde8f2ce1bbf5494b220cf31e18a",
   "platforms": [
     "WindowsEditor"
   ],
   "summary": {
-    "succeeded": 6,
+    "succeeded": 9,
     "failed": 0,
     "notRun": 0
   },
@@ -15,42 +15,63 @@
     {
       "path": "CRDD.Assets.GeneratedMeshes",
       "state": "Success",
-      "durationSeconds": 0.04265959933400154,
+      "durationSeconds": 0.03508489951491356,
       "warnings": 0,
       "errors": 0
     },
     {
       "path": "CRDD.Assets.GeneratedPreviewLevels",
       "state": "Success",
-      "durationSeconds": 0.5091968774795532,
+      "durationSeconds": 0.5069180727005005,
       "warnings": 0,
       "errors": 0
     },
     {
       "path": "CRDD.Assets.GeneratedScene",
       "state": "Success",
-      "durationSeconds": 0.2277158945798874,
+      "durationSeconds": 0.19903379678726196,
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "path": "CRDD.CreateEntity.Bridge.AtomicFailure.Generated",
+      "state": "Success",
+      "durationSeconds": 0.010941799730062485,
       "warnings": 0,
       "errors": 0
     },
     {
       "path": "CRDD.CreateEntity.Conformance",
       "state": "Success",
-      "durationSeconds": 0.013788998126983643,
+      "durationSeconds": 0.01616640016436577,
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "path": "CRDD.CreateWall.Bridge.AtomicFailure.Generated",
+      "state": "Success",
+      "durationSeconds": 0.016275402158498764,
       "warnings": 0,
       "errors": 0
     },
     {
       "path": "CRDD.CreateWall.NumericBoundary.Generated",
       "state": "Success",
-      "durationSeconds": 0.01653140038251877,
+      "durationSeconds": 0.01667119935154915,
       "warnings": 0,
       "errors": 0
     },
     {
       "path": "CRDD.Integration.GeneratedAssets",
       "state": "Success",
-      "durationSeconds": 0.19023190438747406,
+      "durationSeconds": 0.19536550343036652,
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "path": "CRDD.UpdateEntity.Bridge.AtomicFailure.Generated",
+      "state": "Success",
+      "durationSeconds": 0.01614699885249138,
       "warnings": 0,
       "errors": 0
     }

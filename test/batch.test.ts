@@ -22,7 +22,13 @@ test("generates an operation-scoped deterministic batch", async () => {
   assert.equal(manifest.operations[0].id, "CreateEntity");
   assert.deepEqual(
     manifest.operations[0].files.map((file) => file.path),
-    ["CreateEntity.generated.cpp", "CreateEntity.generated.h"],
+    [
+      "CreateEntity.bridge.generated.cpp",
+      "CreateEntity.bridge.generated.h",
+      "CreateEntity.bridge.generated.spec.cpp",
+      "CreateEntity.generated.cpp",
+      "CreateEntity.generated.h",
+    ],
   );
   assert.ok(manifest.operations[0].files.every((file) => /^[a-f0-9]{64}$/.test(file.sha256)));
   const persisted = JSON.parse(await readFile(join(outDir, "batch.manifest.json"), "utf8"));
@@ -43,8 +49,14 @@ test("generates multiple Unreal operations into one collision-safe directory", a
   assert.deepEqual(
     (await readdir(outDir)).sort(),
     [
+      "CreateEntity.bridge.generated.cpp",
+      "CreateEntity.bridge.generated.h",
+      "CreateEntity.bridge.generated.spec.cpp",
       "CreateEntity.generated.cpp",
       "CreateEntity.generated.h",
+      "UpdateEntity.bridge.generated.cpp",
+      "UpdateEntity.bridge.generated.h",
+      "UpdateEntity.bridge.generated.spec.cpp",
       "UpdateEntity.generated.cpp",
       "UpdateEntity.generated.h",
       "batch.manifest.json",

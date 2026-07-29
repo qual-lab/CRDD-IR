@@ -3,6 +3,7 @@ import type { CrddIr, Effect, FieldDefinition, Operation } from "./model.ts";
 import { parseSourceExpression, type ExpressionNode } from "./source-expression.ts";
 import { generateTestManifest } from "./test-manifest.ts";
 import type { UnrealNumericProjection } from "./unreal-target.ts";
+import { generateUnrealBridge } from "./unreal-bridge.ts";
 
 export type GeneratedFile = {
   name: string;
@@ -24,6 +25,7 @@ export function generateUnreal(
   const files = [
     { name: `${operationName}.generated.h`, content: generateHeader(operation, metadata) },
     { name: `${operationName}.generated.cpp`, content: generateSource(operation, metadata.numericProjection ?? {}) },
+    ...generateUnrealBridge(operation),
     ...(hasIntegerProjection(operation)
       ? [{
           name: `${operationName}.numeric.generated.spec.cpp`,
