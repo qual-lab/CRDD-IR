@@ -2,7 +2,7 @@
 
 - Protocol: `crdd-ir/traceability-v0.1`
 - Source: `examples/create-entity/05_SPEC/01_Behavior_Specification.md`
-- Internal IR SHA-256: `958fe9983be73621981e4aada20961d69c42b7d79ed5d8e199338d819d181b26`
+- Internal IR SHA-256: `6eb598a96c896437db816f4992bca751e98f62e5f9e01f24007f8cbc3e09e3aa`
 - Conformance Bundle SHA-256: `fae4e3882c30f88222e4c1976bff9d1920c7ad9a3063e1a1e68d34f7a529ee1c`
 - Conformance Cases: 5
 - Requirement Failure Coverage: 2/2 (100%)
@@ -33,5 +33,5 @@
 
 - Status: **PASSED**
 - Evidence: `unreal-execution.json`
-- Evidence SHA-256: `81f0ce8865360037556d79acd97d284a5fa10e28d3c49cfae6c2cfcd9fc909be`
+- Evidence SHA-256: `f9be4e5040d2febf741c5c0d7b15a594e922c32e872968462044ffec0653d49d`
 - Tests: CRDD.Assets.GeneratedMeshes, CRDD.Assets.GeneratedPreviewLevels, CRDD.Assets.GeneratedScene, CRDD.CreateEntity.Bridge.AtomicFailure.Generated, CRDD.CreateEntity.Conformance, CRDD.CreateWall.Bridge.AtomicFailure.Generated, CRDD.CreateWall.NumericBoundary.Generated, CRDD.Integration.GeneratedAssets, CRDD.UpdateEntity.Bridge.AtomicFailure.Generated

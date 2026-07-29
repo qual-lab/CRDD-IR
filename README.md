@@ -1,5 +1,9 @@
 # CRDD IR
 
+CRDD IR Core is domain- and target-neutral. Operation, typed input/state,
+requirements, effects, errors, and transactions form the stable semantics.
+Game-engine and 3D data use versioned extensions validated by their target.
+
 CRDD Markdownに記録した構造化契約を検証し、Unreal C++、Unity C#、3D Asset、
 Conformance Test、Traceability Evidenceへ決定的に変換するCompilerです。
 
@@ -39,7 +43,7 @@ npm.cmd ci --prefix tools/CRDD-IR
 `-Source`が1件なら`-AssetSource`は省略できます。Unrealを使わない場合は
 `-UnrealProject`と`-UnrealEngineRoot`を省略します。
 
-このInstallerはv0.2.0でもUnreal適用先のscaffoldを担当します。Unity適用先では
+このInstallerはv0.2.1でもUnreal適用先のscaffoldを担当します。Unity適用先では
 [Unity integration](docs/unity-integration.md)に従い、Target ProfileとRuntime/Test
 assemblyを配置してください。
 
@@ -155,10 +159,11 @@ CRDD Markdownが正本です。Internal IR instanceを`30_IR`などへ恒久保�
 - [Unity integration](docs/unity-integration.md)
 - [Target adapter registry](docs/target-adapters.md)
 - [Unreal and Unity target parity](docs/target-parity.md)
+- [Core IR extensions](docs/core-extensions.md)
 - [Verify lock events](docs/verify-events.md)
 - [v0.1.2 release notes](docs/releases/v0.1.2.md)
-- [v0.2.0 release notes](docs/releases/v0.2.0.md)
-- [v0.2.0 release checklist](docs/release-checklist.md)
+- [v0.2.1 release notes](docs/releases/v0.2.1.md)
+- [v0.2.1 release checklist](docs/release-checklist.md)
 - [Unreal fixture](examples/unreal/CrddCompilerFixture/README.md)
 - [Unity fixture](examples/unity/CrddCompilerFixture/README.md)
 

@@ -351,7 +351,7 @@ async function main(argv: string[]): Promise<void> {
     );
     await runGeneration(outDir, generateUnity(compilation.ir, profile, {
       irSha256: compilation.digest,
-      generatorVersion: "0.2.0",
+      generatorVersion: "0.2.1",
     }), argv);
     return;
   }

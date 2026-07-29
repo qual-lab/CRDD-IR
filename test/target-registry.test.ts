@@ -28,6 +28,12 @@ test("built-in targets expose generation capabilities through one registry", () 
       generate: true,
       flatBatch: true,
     },
+    extensions: {
+      consumes: [],
+    },
+  });
+  assert.deepEqual(describeTarget(getTargetAdapter("assets")).extensions, {
+    consumes: ["crdd.3d-assets"],
   });
 });
 

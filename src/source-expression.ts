@@ -176,7 +176,6 @@ function inferAndNormalize(
     return { kind: field.type, unit: field.unit };
   }
   if (node.kind === "literal") {
-    if (node.unit && !units[node.unit]) throw new Error(`uses unsupported unit "${node.unit}"`);
     return { kind: typeof node.value as ValueType["kind"], unit: node.unit };
   }
   if (node.kind === "unary") {
@@ -242,11 +241,13 @@ function convertLiteral(node: Extract<ExpressionNode, { kind: "literal" }>, targ
     return;
   }
   assertCompatibleUnits(node.unit, targetUnit);
+  if (node.unit === targetUnit) return;
   node.value = node.value * units[node.unit].factor / units[targetUnit].factor;
   node.unit = targetUnit;
 }
 
 function assertCompatibleUnits(left: string, right: string): void {
+  if (left === right) return;
   if (!units[left] || !units[right] || units[left].dimension !== units[right].dimension) {
     throw new Error(`incompatible units "${left}" and "${right}"`);
   }

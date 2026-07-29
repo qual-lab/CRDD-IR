@@ -4,6 +4,7 @@ import type { GeneratedFile } from "./unreal.ts";
 import type { UnrealExecutionEvidence } from "./unreal-report.ts";
 import { analyzeTestCoverage } from "./test-manifest.ts";
 import { analyzeMutationCoverage, type MutationReport } from "./mutation.ts";
+import { getAssetDefinitions } from "./assets.ts";
 
 export type TraceabilityManifest = {
   protocol: "crdd-ir/traceability-v0.1";
@@ -80,7 +81,7 @@ export function generateTraceabilityManifest(
       ...assetFiles.map((file) => ({
         path: `assets/${file.name}`,
         sha256: file.sha256,
-        traces: [...(ir.operation.assets?.find((asset) => file.name.startsWith(`${asset.id}.`))?.traces ?? [])],
+        traces: [...(getAssetDefinitions(ir).find((asset) => file.name.startsWith(`${asset.id}.`))?.traces ?? [])],
       })),
     ],
     requirements: ir.operation.requires.map((requirement) => ({

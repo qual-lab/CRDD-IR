@@ -7,7 +7,7 @@
     },
     {
       "path": "regression.manifest.json",
-      "sha256": "ecbfddb234a2fca25f7a6edfb5553ec4aec3c0047070481c39e68fc247a11da9"
+      "sha256": "bf74df95965c65d4a330718e15b6075be8e57a05af258060d32a2aa89583e283"
     },
     {
       "path": "update-entity.conformance.json",

@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { compileMarkdown } from "../src/compiler.ts";
-import { generateAssets, removeStaleGeneratedAssets } from "../src/assets.ts";
+import { generateAssets, getAssetDefinitions, removeStaleGeneratedAssets } from "../src/assets.ts";
 import { generateConformanceBundle } from "../src/conformance.ts";
 import { normalizeSourceExpression, parseSourceExpression } from "../src/source-expression.ts";
 import { extractContractFences } from "../src/source-contract.ts";
@@ -477,19 +477,17 @@ test("generates deterministic Unreal-scale 3D assets from CRDD", async () => {
 
 test("rejects unsupported collision shapes and LOD groups", async () => {
   const ir = structuredClone((await compileMarkdown(fileURLToPath(sourcePath))).ir);
-  const asset = ir.operation.assets?.[0];
+  const asset = getAssetDefinitions(ir)[0];
   assert.ok(asset);
   if (!asset) return;
   asset.collision.shape = "triangle-mesh" as typeof asset.collision.shape;
   asset.lod.group = "Cinematic" as typeof asset.lod.group;
-  const diagnostics = validateIr(ir);
-  assert.ok(diagnostics.some((item) => item.path.endsWith(".collision.shape")));
-  assert.ok(diagnostics.some((item) => item.path.endsWith(".lod.group")));
+  assert.throws(() => generateAssets(ir), /collision\.shape is unsupported/);
 });
 
 test("generates one manifest entry for every declared 3D asset", async () => {
   const ir = structuredClone((await compileMarkdown(fileURLToPath(sourcePath))).ir);
-  ir.operation.assets?.push({
+  getAssetDefinitions(ir).push({
     id: "SecondaryPreview2",
     type: "box",
     dimensions: {
@@ -528,12 +526,15 @@ test("generates one manifest entry for every declared 3D asset", async () => {
 
 test("generates deterministic cylinder geometry with UVs and normals", async () => {
   const ir = structuredClone((await compileMarkdown(fileURLToPath(sourcePath))).ir);
-  const cylinder = structuredClone(ir.operation.assets?.[0]);
+  const cylinder = structuredClone(getAssetDefinitions(ir)[0]);
   assert.ok(cylinder);
   if (!cylinder) return;
   cylinder.id = "ColumnPreview";
   cylinder.type = "cylinder";
-  ir.operation.assets = [cylinder];
+  const extension = ir.operation.extensions?.["crdd.3d-assets"];
+  assert.ok(extension && typeof extension.data === "object" && extension.data !== null);
+  if (!extension || typeof extension.data !== "object" || extension.data === null) return;
+  (extension.data as { assets: unknown[] }).assets = [cylinder];
   const first = generateAssets(ir);
   const second = generateAssets(ir);
   assert.deepEqual(first, second);
