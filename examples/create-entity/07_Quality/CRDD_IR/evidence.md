@@ -21,6 +21,9 @@
 | --- | --- | --- |
 | unreal/CreateEntity.generated.h | `3877104986613e3236836d6e3b1381463d8942fcbf6b526fbc348c5efa8e2ca7` | REQ-ENTITY-001, DEC-ENTITY-003 |
 | unreal/CreateEntity.generated.cpp | `cca122e2679818fcd4d41d3faf32547306c560d1dd9d79611ee4fdb0177650b2` | REQ-ENTITY-001, DEC-ENTITY-003 |
+| unreal/CreateEntity.bridge.generated.h | `1fbc3889f5dceca2e578517fb4c592aeae7a17346225ae0ee7979cc36563df13` | REQ-ENTITY-001, DEC-ENTITY-003 |
+| unreal/CreateEntity.bridge.generated.cpp | `cc9d97c29ba10dc22b855dc55c440706cfdfb529bac4384cc5aad5ae86885c31` | REQ-ENTITY-001, DEC-ENTITY-003 |
+| unreal/CreateEntity.bridge.generated.spec.cpp | `2a90652783c13c929094b0c42b9facf94873d12df7cc088f2632969cd89d3557` | REQ-ENTITY-001, DEC-ENTITY-003 |
 | assets/EntityPreview.generated.obj | `a8cbc7e791cef05227bae119f4e561af4747f8740f75586778871c7978718f7a` | REQ-ENTITY-001 |
 | assets/EntityPreview.generated.mtl | `75fd255dfafcf433ffe9555e602569be2dbed9dff76c90badd9d8dc492909792` | REQ-ENTITY-001 |
 | assets/SecondaryPreview.generated.obj | `d186e821dffacccb1a1ca8db42c95faf20f1ce868d631ca2399d93af0b079023` | REQ-ENTITY-001 |
@@ -30,5 +33,5 @@
 
 - Status: **PASSED**
 - Evidence: `unreal-execution.json`
-- Evidence SHA-256: `b17ab34e9bf6086dd098126ed592090e57ed44d81e48ba2ac80916896f932f10`
-- Tests: CRDD.Assets.GeneratedMeshes, CRDD.Assets.GeneratedPreviewLevels, CRDD.Assets.GeneratedScene, CRDD.CreateEntity.Conformance, CRDD.CreateWall.NumericBoundary.Generated, CRDD.Integration.GeneratedAssets
+- Evidence SHA-256: `3762ec32e7f11e8f6dff562aa09dc4a150a7bcaaf777e9e8aed3c515c528c067`
+- Tests: CRDD.Assets.GeneratedMeshes, CRDD.Assets.GeneratedPreviewLevels, CRDD.Assets.GeneratedScene, CRDD.CreateEntity.Bridge.AtomicFailure.Generated, CRDD.CreateEntity.Conformance, CRDD.CreateWall.Bridge.AtomicFailure.Generated, CRDD.CreateWall.NumericBoundary.Generated, CRDD.Integration.GeneratedAssets, CRDD.UpdateEntity.Bridge.AtomicFailure.Generated

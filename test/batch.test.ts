@@ -22,7 +22,13 @@ test("generates an operation-scoped deterministic batch", async () => {
   assert.equal(manifest.operations[0].id, "CreateEntity");
   assert.deepEqual(
     manifest.operations[0].files.map((file) => file.path),
-    ["CreateEntity.generated.cpp", "CreateEntity.generated.h"],
+    [
+      "CreateEntity.bridge.generated.cpp",
+      "CreateEntity.bridge.generated.h",
+      "CreateEntity.bridge.generated.spec.cpp",
+      "CreateEntity.generated.cpp",
+      "CreateEntity.generated.h",
+    ],
   );
   assert.ok(manifest.operations[0].files.every((file) => /^[a-f0-9]{64}$/.test(file.sha256)));
   const persisted = JSON.parse(await readFile(join(outDir, "batch.manifest.json"), "utf8"));
@@ -43,8 +49,14 @@ test("generates multiple Unreal operations into one collision-safe directory", a
   assert.deepEqual(
     (await readdir(outDir)).sort(),
     [
+      "CreateEntity.bridge.generated.cpp",
+      "CreateEntity.bridge.generated.h",
+      "CreateEntity.bridge.generated.spec.cpp",
       "CreateEntity.generated.cpp",
       "CreateEntity.generated.h",
+      "UpdateEntity.bridge.generated.cpp",
+      "UpdateEntity.bridge.generated.h",
+      "UpdateEntity.bridge.generated.spec.cpp",
       "UpdateEntity.generated.cpp",
       "UpdateEntity.generated.h",
       "batch.manifest.json",
@@ -81,6 +93,18 @@ test("reuses verified outputs and recovers a corrupt batch manifest", async () =
   const recovered = (await readdir(outDir))
     .some((name) => name.startsWith("batch.manifest.json.corrupt."));
   assert.equal(recovered, true);
+});
+
+test("reuses batch outputs after a Windows CRLF checkout", async () => {
+  const outDir = await mkdtemp(join(tmpdir(), "crdd-batch-crlf-"));
+  await generateBatch([source], outDir, "unreal");
+  const output = join(outDir, "CreateEntity", "CreateEntity.generated.h");
+  const lf = await readFile(output, "utf8");
+  await writeFile(output, lf.replace(/\n/g, "\r\n"), "utf8");
+
+  const manifest = await generateBatch([source], outDir, "unreal");
+  assert.equal(manifest.operations[0].id, "CreateEntity");
+  assert.equal(await readFile(output, "utf8"), lf.replace(/\n/g, "\r\n"));
 });
 
 test("refuses to overwrite modified owned batch output unless forced", async () => {

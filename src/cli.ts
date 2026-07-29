@@ -29,9 +29,13 @@ import {
 } from "./unreal-dialect.ts";
 import { applyUnrealConfigToProject } from "./unreal-config.ts";
 import { validateUnrealTargetProfile } from "./unreal-target.ts";
-import { createUnrealBuildEvidence } from "./unreal-build-evidence.ts";
+import {
+  createUnrealBuildEvidence,
+  loadVerificationLockEvidence,
+} from "./unreal-build-evidence.ts";
 import { normalizeUnrealDiagnostics } from "./unreal-diagnostics.ts";
 import { generateUnrealReflection } from "./unreal-uht.ts";
+import { generateRegressionManifest } from "./regression-manifest.ts";
 import type { SimulationRequest, TestManifest } from "./model.ts";
 
 const args = process.argv.slice(2);
@@ -233,10 +237,21 @@ async function main(argv: string[]): Promise<void> {
       await readFile(reportPath, "utf8"),
       compilation.ir.operation.id,
     );
+    const verifyEventsPath = option(argv, "--verify-events");
+    const verifyRunId = option(argv, "--verify-run-id");
+    if ((verifyEventsPath && !verifyRunId) || (!verifyEventsPath && verifyRunId)) {
+      throw new Error("--verify-events and --verify-run-id must be provided together");
+    }
     const evidence = await createUnrealBuildEvidence(
       plan,
       execution,
       option(argv, "--package-dir"),
+      verifyEventsPath && verifyRunId
+        ? await loadVerificationLockEvidence(
+          verifyEventsPath,
+          verifyRunId,
+        )
+        : undefined,
     );
     await writeJson(out, evidence);
     if (evidence.stages.automation !== "passed") process.exitCode = 1;
@@ -310,6 +325,28 @@ async function main(argv: string[]): Promise<void> {
     const out = option(argv, "--out") ?? `generated/${fileSlug(ir.operation.id)}.conformance.json`;
     await writeJson(out, generateConformanceBundle(ir, manifest));
     console.log(`Generated ${out}`);
+    return;
+  }
+
+  if (command === "test" && subcommand === "regression") {
+    const outDir = option(argv, "--out-dir") ?? "generated/regression";
+    const sources = operandsAfter(argv, 2);
+    const result = await generateRegressionManifest(sources, outDir, {
+      dryRun: argv.includes("--dry-run"),
+      force: argv.includes("--force"),
+      rootDir: option(argv, "--project-root"),
+    });
+    console.table(result.changes);
+    if (argv.includes("--dry-run")) {
+      if (result.changes.some((change) => change.action === "conflict")) {
+        process.exitCode = 1;
+      }
+      return;
+    }
+    console.log(
+      `Generated regression manifest for ${result.manifest.operations.length} operation(s) ` +
+      `in ${resolve(outDir)}`,
+    );
     return;
   }
 
@@ -478,7 +515,7 @@ function operandsAfter(argv: string[], start: number): string[] {
   const result: string[] = [];
   for (let index = start; index < argv.length; index += 1) {
     if (argv[index].startsWith("--")) {
-      if (!["--flat", "--force"].includes(argv[index])) index += 1;
+      if (!["--flat", "--force", "--dry-run"].includes(argv[index])) index += 1;
       continue;
     }
     result.push(argv[index]);
@@ -515,7 +552,8 @@ Commands:
   unreal diff <before-plan.json> <after-plan.json>
   unreal config apply <profile.json> --project-root <directory> [--dry-run]
   unreal evidence <spec.md> --profile <profile.json> --automation-report <index.json>
-                  --package-dir <directory> --out <evidence.json>
+                  --package-dir <directory> [--verify-events <events.jsonl>
+                  --verify-run-id <id>] --out <evidence.json>
   unreal diagnostics <unreal.log> [--source <spec.md>]
   unreal generate <spec.md> --profile <profile.json> --out-dir <directory>
                   [--dry-run] [--force]
@@ -523,6 +561,8 @@ Commands:
   simulate <ir.json> --input <input.json>
   test generate <ir.json> [--out <file>]
   test bundle <ir.json> [--manifest <file>] [--out <file>]
+  test regression <spec.md>... [--out-dir <directory>] [--project-root <directory>]
+                  [--dry-run] [--force]
   test run <ir.json> [--manifest <file>] [--adapter <module>]
                                       [--command <executable> [--arg <value>...]]
                                       [--timeout-ms <milliseconds>]

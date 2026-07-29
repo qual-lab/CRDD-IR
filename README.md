@@ -123,6 +123,10 @@ CRDD Markdownが正本です。Internal IR instanceを`30_IR`などへ恒久保�
 - [Git Submodule導入・運用ガイド](docs/crdd-integration.md)
 - [対応範囲と設計境界](docs/mvp.md)
 - [Process Adapter Protocol](docs/process-adapter-protocol.md)
+- [Product regression manifest](docs/regression-manifest.md)
+- [Unreal product bridge](docs/unreal-product-bridge.md)
+- [Verify lock events](docs/verify-events.md)
+- [v0.1.2 release notes](docs/releases/v0.1.2.md)
 - [Unreal fixture](examples/unreal/CrddCompilerFixture/README.md)
 
 ## このリポジトリを開発する

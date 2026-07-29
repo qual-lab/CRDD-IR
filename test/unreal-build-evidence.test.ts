@@ -5,7 +5,10 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { compileMarkdown } from "../src/compiler.ts";
-import { createUnrealBuildEvidence } from "../src/unreal-build-evidence.ts";
+import {
+  createUnrealBuildEvidence,
+  loadVerificationLockEvidence,
+} from "../src/unreal-build-evidence.ts";
 import { buildUnrealTargetPlan } from "../src/unreal-target.ts";
 import type { UnrealExecutionEvidence } from "../src/unreal-report.ts";
 
@@ -53,4 +56,48 @@ test("normalizes Shipping Build, Cook, Package, and Automation evidence", async 
   assert.equal(first.stages.cook, "passed");
   assert.equal(first.packageFiles.length, 1);
   assert.doesNotMatch(JSON.stringify(first), /host-specific-time|123\.45/);
+});
+
+test("loads machine-readable verification lock timing evidence", async () => {
+  const root = await mkdtemp(join(tmpdir(), "crdd-verify-events-"));
+  const eventPath = join(root, "verify-events.jsonl");
+  await writeFile(eventPath, [
+    JSON.stringify({
+      protocol: "crdd-ir/verify-event-v0.1",
+      event: "verify.lock.waiting",
+      runId: "other-run",
+      timestamp: "2026-07-29T00:00:00.000Z",
+    }),
+    JSON.stringify({
+      protocol: "crdd-ir/verify-event-v0.1",
+      event: "verify.lock.acquired",
+      runId: "run-1",
+      project: "c:/project/product/product.uproject",
+      timestamp: "2026-07-29T00:00:01.000Z",
+      waitMilliseconds: 1250,
+      recoveredAbandoned: false,
+    }),
+    JSON.stringify({
+      protocol: "crdd-ir/verify-event-v0.1",
+      event: "verify.lock.released",
+      runId: "run-1",
+      project: "c:/project/product/product.uproject",
+      timestamp: "2026-07-29T00:02:01.000Z",
+      holdMilliseconds: 120000,
+      outcome: "succeeded",
+    }),
+    "",
+  ].join("\n"), "utf8");
+
+  assert.deepEqual(await loadVerificationLockEvidence(eventPath, "run-1"), {
+    runId: "run-1",
+    project: "c:/project/product/product.uproject",
+    status: "released",
+    waitMilliseconds: 1250,
+    holdMilliseconds: 120000,
+    recoveredAbandoned: false,
+    acquiredAt: "2026-07-29T00:00:01.000Z",
+    releasedAt: "2026-07-29T00:02:01.000Z",
+    outcome: "succeeded",
+  });
 });

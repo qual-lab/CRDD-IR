@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://crdd.dev/schema/verify-event/v0.1.json",
+  "title": "CRDD Verify Event v0.1",
+  "type": "object",
+  "required": ["protocol", "event", "runId", "pid", "timestamp", "project"],
+  "properties": {
+    "protocol": { "const": "crdd-ir/verify-event-v0.1" },
+    "event": {
+      "enum": [
+        "verify.lock.waiting",
+        "verify.lock.acquired",
+        "verify.lock.timeout",
+        "verify.lock.released"
+      ]
+    },
+    "runId": { "type": "string", "minLength": 1 },
+    "pid": { "type": "integer", "minimum": 1 },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "project": { "type": "string", "minLength": 1 },
+    "timeoutSeconds": { "type": "integer", "minimum": 1 },
+    "waitMilliseconds": { "type": "integer", "minimum": 0 },
+    "holdMilliseconds": { "type": "integer", "minimum": 0 },
+    "recoveredAbandoned": { "type": "boolean" },
+    "outcome": { "enum": ["succeeded", "failed"] }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "event": { "const": "verify.lock.waiting" } }
+      },
+      "then": { "required": ["timeoutSeconds"] }
+    },
+    {
+      "if": {
+        "properties": { "event": { "const": "verify.lock.acquired" } }
+      },
+      "then": { "required": ["waitMilliseconds", "recoveredAbandoned"] }
+    },
+    {
+      "if": {
+        "properties": { "event": { "const": "verify.lock.timeout" } }
+      },
+      "then": { "required": ["waitMilliseconds"] }
+    },
+    {
+      "if": {
+        "properties": { "event": { "const": "verify.lock.released" } }
+      },
+      "then": { "required": ["holdMilliseconds", "outcome"] }
+    }
+  ],
+  "additionalProperties": false
+}

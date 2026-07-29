@@ -150,7 +150,7 @@ test("Unreal implementation carries contracts, effects, and CRDD trace IDs", () 
   assert.match(combined, /Input\.LengthMeters >= 0\.3/);
   assert.match(combined, /Result\.State\.Entities\.Add/);
   assert.match(combined, /Result\.State\.BudgetRemainingJPY - Input\.CostJPY/);
-  assert.equal(generated.length, 2);
+  assert.equal(generated.length, 5);
   assert.ok(generated.every((file) => /^[a-f0-9]{64}$/.test(file.sha256)));
 });
 
@@ -211,12 +211,37 @@ test("generates Unreal code for a second operation without CreateEntity names", 
   const combined = generated.map((file) => file.content).join("\n");
   assert.deepEqual(
     generated.map((file) => file.name),
-    ["PurchaseItem.generated.h", "PurchaseItem.generated.cpp"],
+    [
+      "PurchaseItem.generated.h",
+      "PurchaseItem.generated.cpp",
+      "PurchaseItem.bridge.generated.h",
+      "PurchaseItem.bridge.generated.cpp",
+      "PurchaseItem.bridge.generated.spec.cpp",
+    ],
   );
   assert.match(combined, /FCrddPurchaseItemOperation/);
   assert.match(combined, /TArray<FCrddPurchaseItemPurchasesItem>/);
   assert.match(combined, /Result\.State\.Purchases\.Add\(\{Input\.Quantity, Input\.PriceJPY\}\)/);
   assert.doesNotMatch(combined, /CreateEntity/);
+});
+
+test("generates a product bridge with atomic snapshot ownership", () => {
+  const generated = generateUnreal(ir);
+  const header = generated.find((file) => file.name === "CreateEntity.bridge.generated.h")!.content;
+  const source = generated.find((file) => file.name === "CreateEntity.bridge.generated.cpp")!.content;
+  const fixture = generated.find(
+    (file) => file.name === "CreateEntity.bridge.generated.spec.cpp",
+  )!.content;
+
+  assert.match(header, /class ICrddCreateEntityProductAdapter/);
+  assert.match(header, /virtual bool CommitSnapshot/);
+  assert.match(header, /uint64 ExpectedRevision/);
+  assert.match(source, /if \(!ContractResult\.bSucceeded\)/);
+  assert.match(source, /Candidate\.Revision = OriginalSnapshot\.Revision \+ 1/);
+  assert.ok(source.indexOf("if (!ContractResult.bSucceeded)") < source.indexOf("CommitSnapshot("));
+  assert.match(source, /BRIDGE_REVISION_OVERFLOW/);
+  assert.match(fixture, /Request failure does not commit/);
+  assert.match(fixture, /Loaded revision is preserved/);
 });
 
 test("reports a requirement that references an undeclared error", () => {

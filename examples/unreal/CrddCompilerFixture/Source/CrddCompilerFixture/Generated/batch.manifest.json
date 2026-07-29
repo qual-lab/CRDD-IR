@@ -10,6 +10,18 @@
       "outputDirectory": ".",
       "files": [
         {
+          "path": "CreateEntity.bridge.generated.cpp",
+          "sha256": "cc9d97c29ba10dc22b855dc55c440706cfdfb529bac4384cc5aad5ae86885c31"
+        },
+        {
+          "path": "CreateEntity.bridge.generated.h",
+          "sha256": "1fbc3889f5dceca2e578517fb4c592aeae7a17346225ae0ee7979cc36563df13"
+        },
+        {
+          "path": "CreateEntity.bridge.generated.spec.cpp",
+          "sha256": "2a90652783c13c929094b0c42b9facf94873d12df7cc088f2632969cd89d3557"
+        },
+        {
           "path": "CreateEntity.generated.cpp",
           "sha256": "cca122e2679818fcd4d41d3faf32547306c560d1dd9d79611ee4fdb0177650b2"
         },
@@ -25,6 +37,18 @@
       "digest": "eb68492132bb28b21bdf6d6fbf30c4d8b80130f7a8fbb628266d1bb5627bb696",
       "outputDirectory": ".",
       "files": [
+        {
+          "path": "CreateWall.bridge.generated.cpp",
+          "sha256": "e9cc9b4ffd21f6ca40327a4c633aa4a8bf912ee15606e373a33d02b6706c635e"
+        },
+        {
+          "path": "CreateWall.bridge.generated.h",
+          "sha256": "cc090f3020b634ceca433923e585f02fe5c821afd26a243b787b3a1660482ea5"
+        },
+        {
+          "path": "CreateWall.bridge.generated.spec.cpp",
+          "sha256": "23685886e4274de31b73b3f02de47e155b379bc99db52361ca6e9fc0fa37dafd"
+        },
         {
           "path": "CreateWall.generated.cpp",
           "sha256": "b7f336e449f9e507332dbf16bc88688ade670b4636b4a6ea003c0782f9b73c8a"
@@ -45,6 +69,18 @@
       "digest": "c01d756a4e911e9bf13ffe51b18ce82597359e20ac2543931aaf9721184074e4",
       "outputDirectory": ".",
       "files": [
+        {
+          "path": "UpdateEntity.bridge.generated.cpp",
+          "sha256": "5d99fa6e059152657fcbb3fb66505cf9e3f5e858f5f124cd1cc4b271a1154a7a"
+        },
+        {
+          "path": "UpdateEntity.bridge.generated.h",
+          "sha256": "995a7c063ca150c4f210c6ec2fbb3d1be762658e4bbf1d33acdd2095d2ee04ae"
+        },
+        {
+          "path": "UpdateEntity.bridge.generated.spec.cpp",
+          "sha256": "f294b9f5bc4690ef9e9336c973015cc404a98309b2400f67d5f27fd66bbfbf85"
+        },
         {
           "path": "UpdateEntity.generated.cpp",
           "sha256": "806823d458e55c85684b65f32b9a1eb6cf9665cd8699a824e380a7499e1d8fca"

@@ -1,0 +1,17 @@
+{
+  "protocol": "crdd-ir/generation-v0.1",
+  "files": [
+    {
+      "path": "create-entity.conformance.json",
+      "sha256": "64d824c7ec6b7995a94bdb0d22a7c8f7a8280a1337505c53f14d2ae506641f70"
+    },
+    {
+      "path": "regression.manifest.json",
+      "sha256": "ecbfddb234a2fca25f7a6edfb5553ec4aec3c0047070481c39e68fc247a11da9"
+    },
+    {
+      "path": "update-entity.conformance.json",
+      "sha256": "ae1565a0bfc6c6cbde805d3a7c574590a39b29775872c504f4ae6ea3501f7947"
+    }
+  ]
+}

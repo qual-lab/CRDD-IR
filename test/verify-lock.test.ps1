@@ -71,6 +71,31 @@ try {
     if (Test-Path -LiteralPath (Join-Path $root ".crdd-ir\verify.lock.json")) {
         throw "Verify lock owner metadata was not cleaned up"
     }
+    $eventPath = Join-Path $root ".crdd-ir\verify-events.jsonl"
+    $lockEvents = @(
+        Get-Content -LiteralPath $eventPath |
+            ForEach-Object { $_ | ConvertFrom-Json }
+    )
+    $eventNames = @($lockEvents | ForEach-Object { $_.event })
+    foreach ($requiredEvent in @(
+        "verify.lock.waiting",
+        "verify.lock.acquired",
+        "verify.lock.released"
+    )) {
+        if ($requiredEvent -notin $eventNames) {
+            throw "Missing machine-readable verify event: $requiredEvent"
+        }
+    }
+    $acquiredEvents = @(
+        $lockEvents | Where-Object { $_.event -eq "verify.lock.acquired" }
+    )
+    if ($acquiredEvents.Count -ne 2 -or
+        @($acquiredEvents | Where-Object {
+            $_.waitMilliseconds -isnot [long] -and
+            $_.waitMilliseconds -isnot [int]
+        }).Count -ne 0) {
+        throw "Verify acquired events must record waitMilliseconds"
+    }
     Write-Host "CRDD verify lock integration test succeeded."
 }
 finally {

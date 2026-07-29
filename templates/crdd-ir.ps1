@@ -98,6 +98,14 @@ function Invoke-Generate {
         ))
     }
     Invoke-CrddIr @("generate", "assets", $assetSource, "--out-dir", $generatedAssets)
+    Invoke-CrddIr (
+        @("test", "regression") +
+        $sources +
+        @(
+            "--out-dir", (Join-Path $evidence "Regression"),
+            "--project-root", $projectRoot
+        )
+    )
 }
 
 $projectMutex = $null

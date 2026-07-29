@@ -48,6 +48,17 @@ export type UnrealBuildEvidence = {
     warnings: number;
     errors: number;
   };
+  verificationLock?: {
+    runId: string;
+    project: string;
+    status: "acquired" | "released";
+    waitMilliseconds: number;
+    holdMilliseconds?: number;
+    recoveredAbandoned: boolean;
+    acquiredAt: string;
+    releasedAt?: string;
+    outcome?: "succeeded" | "failed";
+  };
   packageFiles: Array<{ path: string; sha256: string }>;
 };
 
@@ -55,6 +66,7 @@ export async function createUnrealBuildEvidence(
   plan: UnrealTargetPlan,
   execution: UnrealExecutionEvidence,
   packageDirectory?: string,
+  verificationLock?: UnrealBuildEvidence["verificationLock"],
 ): Promise<UnrealBuildEvidence> {
   const packageFiles = packageDirectory
     ? await hashDirectory(packageDirectory)
@@ -128,7 +140,56 @@ export async function createUnrealBuildEvidence(
       warnings: execution.tests.reduce((sum, item) => sum + item.warnings, 0),
       errors: execution.tests.reduce((sum, item) => sum + item.errors, 0),
     },
+    ...(verificationLock ? { verificationLock } : {}),
     packageFiles,
+  };
+}
+
+export async function loadVerificationLockEvidence(
+  eventPath: string,
+  runId: string,
+): Promise<NonNullable<UnrealBuildEvidence["verificationLock"]>> {
+  const events = (await readFile(eventPath, "utf8"))
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map((line, index) => {
+      try {
+        return JSON.parse(line) as Record<string, unknown>;
+      } catch {
+        throw new Error(`Invalid verify event JSON at line ${index + 1}`);
+      }
+    })
+    .filter((event) => event.runId === runId);
+  const acquired = events.find((event) => event.event === "verify.lock.acquired");
+  if (!acquired) throw new Error(`Verify lock run "${runId}" has no acquired event`);
+  const released = events.find((event) => event.event === "verify.lock.released");
+  const project = requireString(acquired.project, "project");
+  const acquiredAt = requireTimestamp(acquired.timestamp, "acquired timestamp");
+  const waitMilliseconds = requireNonNegativeInteger(
+    acquired.waitMilliseconds,
+    "waitMilliseconds",
+  );
+  const recoveredAbandoned = acquired.recoveredAbandoned;
+  if (typeof recoveredAbandoned !== "boolean") {
+    throw new Error("Verify lock acquired event is missing recoveredAbandoned");
+  }
+  return {
+    runId,
+    project,
+    status: released ? "released" : "acquired",
+    waitMilliseconds,
+    recoveredAbandoned,
+    acquiredAt,
+    ...(released
+      ? {
+        holdMilliseconds: requireNonNegativeInteger(
+          released.holdMilliseconds,
+          "holdMilliseconds",
+        ),
+        releasedAt: requireTimestamp(released.timestamp, "released timestamp"),
+        outcome: requireOutcome(released.outcome),
+      }
+      : {}),
   };
 }
 
@@ -163,4 +224,33 @@ function canonicalJson(value: unknown): string {
       .join(",")}}`;
   }
   return JSON.stringify(value);
+}
+
+function requireString(value: unknown, label: string): string {
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(`Verify lock event is missing ${label}`);
+  }
+  return value;
+}
+
+function requireTimestamp(value: unknown, label: string): string {
+  const timestamp = requireString(value, label);
+  if (!Number.isFinite(Date.parse(timestamp))) {
+    throw new Error(`Verify lock event has invalid ${label}`);
+  }
+  return timestamp;
+}
+
+function requireNonNegativeInteger(value: unknown, label: string): number {
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
+    throw new Error(`Verify lock event has invalid ${label}`);
+  }
+  return value;
+}
+
+function requireOutcome(value: unknown): "succeeded" | "failed" {
+  if (value !== "succeeded" && value !== "failed") {
+    throw new Error("Verify lock released event has invalid outcome");
+  }
+  return value;
 }
