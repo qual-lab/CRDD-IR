@@ -34,10 +34,15 @@ import {
   loadVerificationLockEvidence,
 } from "./unreal-build-evidence.ts";
 import { normalizeUnrealDiagnostics } from "./unreal-diagnostics.ts";
-import { generateUnrealReflection } from "./unreal-uht.ts";
 import { generateRegressionManifest } from "./regression-manifest.ts";
 import { generateUnity } from "./unity.ts";
 import { validateUnityTargetProfile } from "./unity-target.ts";
+import {
+  describeTarget,
+  getTargetAdapter,
+  listTargetAdapters,
+  validateTargetProfile,
+} from "./target-registry.ts";
 import type { SimulationRequest, TestManifest } from "./model.ts";
 
 const args = process.argv.slice(2);
@@ -109,21 +114,17 @@ async function main(argv: string[]): Promise<void> {
 
   if (command === "batch") {
     const target = required(argv[1], "batch target") as BatchTarget;
-    if (!["ir", "unreal", "unity", "assets"].includes(target)) {
-      throw new Error(`Unsupported batch target: ${target}`);
-    }
+    const adapter = getTargetAdapter(target);
     const outDir = option(argv, "--out-dir") ?? `generated/batch/${target}`;
     const sources = operandsAfter(argv, 2);
     const profilePath = option(argv, "--profile");
+    const profile = profilePath
+      ? validateTargetProfile(adapter, JSON.parse(await readFile(profilePath, "utf8")))
+      : undefined;
     const manifest = await generateBatch(sources, outDir, target, {
       layout: argv.includes("--flat") ? "flat" : "operation-directories",
       force: argv.includes("--force"),
-      unrealProfile: target === "unreal" && profilePath
-        ? validateUnrealTargetProfile(JSON.parse(await readFile(profilePath, "utf8")))
-        : undefined,
-      unityProfile: target === "unity" && profilePath
-        ? validateUnityTargetProfile(JSON.parse(await readFile(profilePath, "utf8")))
-        : undefined,
+      profile,
     });
     console.log(`Generated ${manifest.operations.length} operation(s) in ${resolve(outDir)}`);
     return;
@@ -283,21 +284,32 @@ async function main(argv: string[]): Promise<void> {
     if (!profilePath || !outDir) {
       throw new Error("unreal generate requires --profile and --out-dir");
     }
+    const target = getTargetAdapter("unreal");
     const compilation = await compileMarkdown(sourcePath);
-    const plan = buildUnrealTargetPlan(
-      compilation.ir,
-      compilation.digest,
+    const profile = validateTargetProfile(
+      target,
       JSON.parse(await readFile(profilePath, "utf8")),
     );
-    const files = [
-      ...generateUnreal(compilation.ir, {
-        irSha256: compilation.digest,
-        generatorVersion: "0.1.0",
-        numericProjection: plan.profile.numericProjection,
-      }),
-      ...generateUnrealReflection(plan),
-    ];
-    await runGeneration(outDir, files, argv);
+    await runGeneration(
+      outDir,
+      target.generate({ compilation, profile, operationIndex: 0 }),
+      argv,
+    );
+    return;
+  }
+
+  if (command === "target" && subcommand === "list") {
+    console.log(JSON.stringify({
+      protocol: "crdd-ir/target-registry-v0.1",
+      targets: listTargetAdapters().map(describeTarget),
+    }, null, 2));
+    return;
+  }
+
+  if (command === "target" && subcommand === "describe") {
+    console.log(JSON.stringify(describeTarget(
+      getTargetAdapter(required(argv[2], "target ID")),
+    ), null, 2));
     return;
   }
 
@@ -410,8 +422,26 @@ async function main(argv: string[]): Promise<void> {
 
   if (command === "generate" && subcommand === "unreal") {
     const irPath = required(argv[2], "IR file");
-    const ir = await loadInput(irPath);
     const outDir = option(argv, "--out-dir") ?? "generated/unreal";
+    const profilePath = option(argv, "--profile");
+    if (profilePath) {
+      if (extname(irPath).toLowerCase() !== ".md") {
+        throw new Error("Profiled target generation requires CRDD Markdown source");
+      }
+      const target = getTargetAdapter("unreal");
+      const compilation = await compileMarkdown(irPath);
+      const profile = validateTargetProfile(
+        target,
+        JSON.parse(await readFile(profilePath, "utf8")),
+      );
+      await runGeneration(
+        outDir,
+        target.generate({ compilation, profile, operationIndex: 0 }),
+        argv,
+      );
+      return;
+    }
+    const ir = await loadInput(irPath);
     console.warn(
       "Unprofiled Unreal generation is preview-only; use `unreal generate --profile` for distributable builds.",
     );
@@ -466,6 +496,31 @@ async function main(argv: string[]): Promise<void> {
     return;
   }
 
+  if (command === "generate") {
+    const target = getTargetAdapter(required(subcommand, "target"));
+    const sourcePath = required(argv[2], "CRDD Markdown file");
+    if (extname(sourcePath).toLowerCase() !== ".md") {
+      throw new Error(
+        `Generic target generation requires CRDD Markdown; use a source contract instead of ${sourcePath}`,
+      );
+    }
+    const profilePath = option(argv, "--profile");
+    if (target.profileRequired && !profilePath) {
+      throw new Error(`Target "${target.id}" requires --profile <profile.json>`);
+    }
+    const profile = profilePath
+      ? validateTargetProfile(target, JSON.parse(await readFile(profilePath, "utf8")))
+      : undefined;
+    const compilation = await compileMarkdown(sourcePath);
+    const outDir = option(argv, "--out-dir") ?? `generated/${target.id}`;
+    const files = target.generate({ compilation, profile, operationIndex: 0 });
+    if (target.id === "assets" && files.length === 0) {
+      throw new Error(`Operation "${compilation.ir.operation.id}" declares no assets`);
+    }
+    await runGeneration(outDir, files, argv);
+    return;
+  }
+
   if (command === "view" && subcommand === "trace") {
     const irPath = required(argv[2], "IR file");
     const ir = await loadInput(irPath);
@@ -494,7 +549,7 @@ async function writeText(path: string, value: string): Promise<void> {
 
 async function runGeneration(
   outDir: string,
-  files: ReturnType<typeof generateUnreal>,
+  files: Array<{ name: string; content: string; sha256?: string }>,
   argv: string[],
 ): Promise<void> {
   const changes = await generateTransactionally({
@@ -566,7 +621,12 @@ function printHelp(): void {
 
 Commands:
   compile <spec.md> [--out <debug-ir.json>]
-  batch <ir|unreal|unity|assets> <spec.md>... [--out-dir <directory>] [--flat] [--force]
+  target list
+  target describe <target>
+  generate <target> <spec.md> [--profile <profile.json>] [--out-dir <directory>]
+                           [--dry-run] [--force]
+  batch <target> <spec.md>... [--profile <profile.json>] [--out-dir <directory>]
+                             [--flat] [--force]
   check <spec.md> [--format json]
   project check <crdd-ir.config.json>
   project doctor <crdd-ir.config.json> [--format json]

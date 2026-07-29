@@ -6,7 +6,7 @@
   "required": ["protocol", "target", "layout", "operations"],
   "properties": {
     "protocol": { "const": "crdd-ir/batch-v0.1" },
-    "target": { "enum": ["ir", "unreal", "assets"] },
+    "target": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
     "layout": { "enum": ["operation-directories", "flat"] },
     "operations": {
       "type": "array",
