@@ -97,7 +97,12 @@ async function generateBatchLocked(
         entry.id === compilation.ir.operation.id && entry.digest === compilation.digest
       )
       : undefined;
-    const cacheHit = previousOperation &&
+    const expectedFiles = hashedFiles
+      .map(({ path, sha256 }) => ({ path, sha256 }))
+      .sort((a, b) => a.path.localeCompare(b.path));
+    const cacheHit = !options.force &&
+      previousOperation &&
+      sameFiles(previousOperation.files, expectedFiles) &&
       await outputsMatch(operationDir, previousOperation.files);
     if (!cacheHit) {
       for (const file of hashedFiles) {
@@ -109,9 +114,7 @@ async function generateBatchLocked(
       source: compilation.sourceMap.sourcePath.replaceAll("\\", "/"),
       digest: compilation.digest,
       outputDirectory: layout === "flat" ? "." : compilation.ir.operation.id,
-      files: hashedFiles
-        .map(({ path, sha256 }) => ({ path, sha256 }))
-        .sort((a, b) => a.path.localeCompare(b.path)),
+      files: expectedFiles,
     });
   }
 
@@ -136,6 +139,16 @@ async function generateBatchLocked(
   await mkdir(outDir, { recursive: true });
   await writeIfChanged(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
   return manifest;
+}
+
+function sameFiles(
+  left: Array<{ path: string; sha256: string }>,
+  right: Array<{ path: string; sha256: string }>,
+): boolean {
+  return left.length === right.length &&
+    left.every((file, index) =>
+      file.path === right[index]?.path && file.sha256 === right[index]?.sha256
+    );
 }
 
 async function rejectModifiedOwnedOutputs(

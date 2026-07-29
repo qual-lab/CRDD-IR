@@ -1,13 +1,13 @@
 {
   "protocol": "crdd-ir/unreal-execution-v0.1",
   "operation": "CreateEntity",
-  "reportCreatedOn": "2026.07.28-17.01.00",
-  "sourceReportSha256": "95f986d836b917e41a9759938ed839caffe254c83a41cdf2dca120dcc9684eb6",
+  "reportCreatedOn": "2026.07.29-00.46.46",
+  "sourceReportSha256": "754332450b38e1b95206af33c2a46030f34e6532e9d174823517fe1b3140c672",
   "platforms": [
     "WindowsEditor"
   ],
   "summary": {
-    "succeeded": 5,
+    "succeeded": 6,
     "failed": 0,
     "notRun": 0
   },
@@ -15,35 +15,42 @@
     {
       "path": "CRDD.Assets.GeneratedMeshes",
       "state": "Success",
-      "durationSeconds": 0.03426609933376312,
+      "durationSeconds": 0.028386998921632767,
       "warnings": 0,
       "errors": 0
     },
     {
       "path": "CRDD.Assets.GeneratedPreviewLevels",
       "state": "Success",
-      "durationSeconds": 0.472586989402771,
+      "durationSeconds": 0.4247158169746399,
       "warnings": 0,
       "errors": 0
     },
     {
       "path": "CRDD.Assets.GeneratedScene",
       "state": "Success",
-      "durationSeconds": 0.17316299676895142,
+      "durationSeconds": 0.11800700426101685,
       "warnings": 0,
       "errors": 0
     },
     {
       "path": "CRDD.CreateEntity.Conformance",
       "state": "Success",
-      "durationSeconds": 0.01231750100851059,
+      "durationSeconds": 0.012537401169538498,
       "warnings": 0,
       "errors": 0
     },
     {
       "path": "CRDD.Integration.GeneratedAssets",
       "state": "Success",
-      "durationSeconds": 0.2006078064441681,
+      "durationSeconds": 0.11544829607009888,
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "path": "CRDD.NumericProjection.CheckedArithmeticAndSerialization",
+      "state": "Success",
+      "durationSeconds": 0.010312501341104507,
       "warnings": 0,
       "errors": 0
     }

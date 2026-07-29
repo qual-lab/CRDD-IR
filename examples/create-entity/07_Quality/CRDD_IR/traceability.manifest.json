@@ -8,7 +8,7 @@
   "generatedFiles": [
     {
       "path": "unreal/CreateEntity.generated.h",
-      "sha256": "d1162f88d82efcb2f55dfd4308c5eca371e487b910267cc91cebf2cefbb1a290",
+      "sha256": "3877104986613e3236836d6e3b1381463d8942fcbf6b526fbc348c5efa8e2ca7",
       "traces": [
         "REQ-ENTITY-001",
         "DEC-ENTITY-003"
@@ -16,7 +16,7 @@
     },
     {
       "path": "unreal/CreateEntity.generated.cpp",
-      "sha256": "f2de446baa19d0308f188e3c027462659d92ad17652b026b3de5b7a3c3dd7e9d",
+      "sha256": "cca122e2679818fcd4d41d3faf32547306c560d1dd9d79611ee4fdb0177650b2",
       "traces": [
         "REQ-ENTITY-001",
         "DEC-ENTITY-003"
@@ -136,14 +136,15 @@
   },
   "execution": {
     "path": "unreal-execution.json",
-    "sha256": "c8eb2150694217a53522fdcea16d0b9abf0dbf4fad415df80a4fbca40ec0a143",
+    "sha256": "cfd6017776a51dfc19009febaf1201211b2fd6473c66804a0ff566109392a07e",
     "status": "passed",
     "tests": [
       "CRDD.Assets.GeneratedMeshes",
       "CRDD.Assets.GeneratedPreviewLevels",
       "CRDD.Assets.GeneratedScene",
       "CRDD.CreateEntity.Conformance",
-      "CRDD.Integration.GeneratedAssets"
+      "CRDD.Integration.GeneratedAssets",
+      "CRDD.NumericProjection.CheckedArithmeticAndSerialization"
     ]
   }
 }

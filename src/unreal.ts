@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { CrddIr, Effect, FieldDefinition, Operation } from "./model.ts";
+import { parseSourceExpression, type ExpressionNode } from "./source-expression.ts";
 import type { UnrealNumericProjection } from "./unreal-target.ts";
 
 export type GeneratedFile = {
@@ -21,7 +22,7 @@ export function generateUnreal(
 
   const files = [
     { name: `${operationName}.generated.h`, content: generateHeader(operation, metadata) },
-    { name: `${operationName}.generated.cpp`, content: generateSource(operation) },
+    { name: `${operationName}.generated.cpp`, content: generateSource(operation, metadata.numericProjection ?? {}) },
   ];
   return files.map((file) => ({
     ...file,
@@ -126,6 +127,8 @@ public:
     );
 
     static FString ErrorCode(ECrdd${operationName}Error Error);
+    static bool TryParseProjectedInt64(const FString& Decimal, int64& OutValue);
+    static FString SerializeProjectedInt64(int64 Value);
 };
 `;
 }
@@ -151,14 +154,26 @@ function objectStructName(operation: Operation, scope: "Input" | "State", name: 
   return `FCrdd${pascalIdentifier(operation.id)}${scope}${pascalIdentifier(name)}`;
 }
 
-function generateSource(operation: Operation): string {
+function generateSource(
+  operation: Operation,
+  _numericProjection: Record<string, UnrealNumericProjection>,
+): string {
   const operationName = pascalIdentifier(operation.id);
   const checks = operation.requires
-    .map((requirement) => {
+    .map((requirement, requirementIndex) => {
       const error = operation.errors.find((entry) => entry.code === requirement.error);
       if (!error) throw new Error(`Requirement "${requirement.id}" uses unknown error "${requirement.error}"`);
+      const compiled = compileCheckedExpression(
+        requirement.expression,
+        operation,
+        "InitialState",
+        requirementIndex,
+      );
+      const guard = compiled.overflowChecks.length > 0
+        ? `${compiled.overflowChecks.join(" || ")} || !(${compiled.expression})`
+        : `!(${compiled.expression})`;
       return `    // ${requirement.id}: ${requirement.expression}
-    if (!(${cppExpression(requirement.expression, operation, "InitialState")}))
+${compiled.statements.map((statement) => `    ${statement}`).join("\n")}${compiled.statements.length ? "\n" : ""}    if (${guard})
     {
         return Failure(
             ECrdd${operationName}Error::${pascalCase(requirement.error)},
@@ -184,9 +199,32 @@ ${traces(operation)}
 #include "${operationName}.generated.h"
 
 #include <initializer_list>
+#include <limits>
 
 namespace
 {
+bool CrddTryAddInt64(int64 Left, int64 Right, int64& OutValue)
+{
+    if ((Right > 0 && Left > std::numeric_limits<int64>::max() - Right) ||
+        (Right < 0 && Left < std::numeric_limits<int64>::min() - Right))
+    {
+        return false;
+    }
+    OutValue = Left + Right;
+    return true;
+}
+
+bool CrddTrySubtractInt64(int64 Left, int64 Right, int64& OutValue)
+{
+    if ((Right < 0 && Left > std::numeric_limits<int64>::max() + Right) ||
+        (Right > 0 && Left < std::numeric_limits<int64>::min() + Right))
+    {
+        return false;
+    }
+    OutValue = Left - Right;
+    return true;
+}
+
 FCrdd${operationName}Result Failure(
     ECrdd${operationName}Error Error,
     const TCHAR* FailedRequirement,
@@ -232,7 +270,91 @@ ${errorCases}
         return TEXT("UNKNOWN");
     }
 }
+
+bool FCrdd${operationName}Operation::TryParseProjectedInt64(
+    const FString& Decimal,
+    int64& OutValue
+)
+{
+    if (Decimal.IsEmpty() || Decimal.TrimStartAndEnd() != Decimal)
+    {
+        return false;
+    }
+    if (!LexTryParseString(OutValue, *Decimal))
+    {
+        return false;
+    }
+    return LexToString(OutValue) == Decimal;
+}
+
+FString FCrdd${operationName}Operation::SerializeProjectedInt64(int64 Value)
+{
+    return LexToString(Value);
+}
 `;
+}
+
+type CheckedCppExpression = {
+  expression: string;
+  statements: string[];
+  overflowChecks: string[];
+  integer: boolean;
+};
+
+function compileCheckedExpression(
+  expression: string,
+  operation: Operation,
+  stateRoot: string,
+  requirementIndex: number,
+): CheckedCppExpression {
+  let temporaryIndex = 0;
+  const compile = (node: ExpressionNode): CheckedCppExpression => {
+    if (node.kind === "reference") {
+      const field = referenceField(node.path, operation);
+      return {
+        expression: cppReference(node.path, operation, stateRoot),
+        statements: [],
+        overflowChecks: [],
+        integer: cppType(field) === "int32" || cppType(field) === "int64",
+      };
+    }
+    if (node.kind === "literal") {
+      return {
+        expression: typeof node.value === "string"
+          ? `TEXT(${JSON.stringify(node.value)})`
+          : String(node.value),
+        statements: [],
+        overflowChecks: [],
+        integer: typeof node.value === "number" && Number.isInteger(node.value),
+      };
+    }
+    if (node.kind === "unary") {
+      const operand = compile(node.operand);
+      return { ...operand, expression: `(${node.operator}${operand.expression})` };
+    }
+    const left = compile(node.left);
+    const right = compile(node.right);
+    const statements = [...left.statements, ...right.statements];
+    const overflowChecks = [...left.overflowChecks, ...right.overflowChecks];
+    if ((node.operator === "+" || node.operator === "-") && left.integer && right.integer) {
+      const name = `CrddChecked${requirementIndex}_${temporaryIndex++}`;
+      const overflow = `bCrddOverflow${requirementIndex}_${temporaryIndex}`;
+      statements.push(`int64 ${name} = 0;`);
+      statements.push(
+        `const bool ${overflow} = !${node.operator === "+" ? "CrddTryAddInt64" : "CrddTrySubtractInt64"}(` +
+        `${left.expression}, ${right.expression}, ${name});`,
+      );
+      overflowChecks.push(overflow);
+      return { expression: name, statements, overflowChecks, integer: true };
+    }
+    return {
+      expression: `(${left.expression} ${node.operator} ${right.expression})`,
+      statements,
+      overflowChecks,
+      integer: false,
+    };
+  };
+  return compile(parseSourceExpression(expression));
 }
 
 function cppEffect(effect: Effect, operation: Operation): string {
@@ -402,6 +524,28 @@ function cppDefault(field: FieldDefinition): string {
   if (field.type === "boolean") return "false";
   if (field.type === "string") return 'TEXT("")';
   return "{}";
+}
+
+function referenceField(reference: string, operation: Operation): FieldDefinition {
+  const [scope, ...segments] = reference.split(".");
+  const fields = scope === "input"
+    ? operation.input
+    : scope === "state"
+      ? operation.state
+      : undefined;
+  if (!fields) throw new Error(`Unknown Unreal reference "${reference}"`);
+  const relative = segments.join(".");
+  if (fields[relative]) return fields[relative];
+  const [name, ...properties] = segments;
+  let field = fields[name];
+  if (!field) throw new Error(`Unknown Unreal reference "${reference}"`);
+  for (const property of properties) {
+    if (field.type !== "object" || !field.properties[property]) {
+      throw new Error(`Unknown Unreal reference "${reference}"`);
+    }
+    field = field.properties[property];
+  }
+  return field;
 }
 
 function projectNumericTypes(

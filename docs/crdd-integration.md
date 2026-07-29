@@ -274,3 +274,6 @@ backupし、`-ForceManagedRemoval`を指定するまで削除しません。そ�
 - `generate`と`verify`はProject lock、各生成器は正規化した出力先lockを取得する
 - lock timeout時はPID、開始時刻、commandを表示し、生存processのlockを奪わない
 - 単位別数値投影はTarget ProfileでC++型、JSON表現、丸め、overflowを固定する
+- 整数投影されたRequiresの加減算はchecked arithmeticへ展開し、overflowを条件成立として扱わない
+- `decimal-string`投影には生成されたparse/serialize APIを使い、範囲外・小数・非canonical入力を拒否する
+- Target Plan差分は`numericProjection`変更をmigration対象として報告する

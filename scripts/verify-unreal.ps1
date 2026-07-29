@@ -22,6 +22,7 @@ $integrationPluginTarget = Join-Path (
 ) "Plugins\CRDDIRIntegration"
 $spec = "examples/create-entity/05_SPEC/01_Behavior_Specification.md"
 $updateEntitySpec = "examples/update-entity/05_SPEC/01_Behavior_Specification.md"
+$numericProjectionSpec = "test/fixtures/create-wall.md"
 $fixtureGenerated = "examples/unreal/CrddCompilerFixture/Source/CrddCompilerFixture/Generated"
 $evidenceDir = "examples/create-entity/07_Quality/CRDD_IR"
 $editorProfile = "examples/unreal/profiles/ue-5.8-editor.json"
@@ -68,7 +69,7 @@ Assert-LastExitCode "Conformance Bundle generation"
 Write-Host "[4/10] Generate Unreal C++ and 3D assets"
 & node src/cli.ts unreal generate $spec --profile $editorProfile --out-dir generated/unreal --force
 Assert-LastExitCode "Unreal reference generation"
-& node src/cli.ts batch unreal $spec $updateEntitySpec --out-dir $fixtureGenerated --flat --profile $editorProfile --force
+& node src/cli.ts batch unreal $spec $updateEntitySpec $numericProjectionSpec --out-dir $fixtureGenerated --flat --profile $editorProfile --force
 Assert-LastExitCode "Multi-operation Unreal fixture generation"
 & node src/cli.ts generate assets $spec --out-dir generated/assets --force
 Assert-LastExitCode "3D asset generation"

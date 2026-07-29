@@ -336,9 +336,28 @@ test("projects a unit to an explicit integer C++ and JSON representation", async
   assert.deepEqual(plan.verification.numericBoundaryTests[0].cases, [
     "minimum", "maximum", "overflow", "lossy-input", "json-round-trip",
   ]);
-  const header = generateUnreal(compilation.ir, {
+  const generated = generateUnreal(compilation.ir, {
     numericProjection: profile.numericProjection,
-  }).find((file) => file.name.endsWith(".h"))!.content;
+  });
+  const header = generated.find((file) => file.name.endsWith(".h"))!.content;
+  const cpp = generated.find((file) => file.name.endsWith(".cpp"))!.content;
   assert.match(header, /CRDD-IR Numeric Projection: mm -> int64/);
   assert.match(header, /int64 Length = 0;/);
+  assert.match(header, /TryParseProjectedInt64/);
+  assert.match(cpp, /CrddTryAddInt64\(Input\.OpeningOffset, Input\.OpeningWidth/);
+  assert.match(cpp, /bCrddOverflow4_1 \|\| !\(\(CrddChecked4_0 <= Input\.Length\)\)/);
+  assert.match(cpp, /if \(!LexTryParseString\(OutValue, \*Decimal\)\)/);
+  assert.match(cpp, /return LexToString\(OutValue\) == Decimal/);
+  assert.match(cpp, /return LexToString\(Value\)/);
+
+  const changed = buildUnrealTargetPlan(compilation.ir, compilation.digest, {
+    ...profile,
+    numericProjection: {
+      mm: { ...profile.numericProjection!.mm, jsonRepresentation: "number" },
+    },
+  });
+  assert.match(
+    semanticUnrealPlanDiff(plan, changed).join("\n"),
+    /profile\.numericProjection/,
+  );
 });

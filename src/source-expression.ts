@@ -8,7 +8,7 @@ type Token =
   | { kind: "operator"; value: string; offset: number }
   | { kind: "paren"; value: "(" | ")"; offset: number };
 
-type ExpressionNode =
+export type ExpressionNode =
   | { kind: "reference"; path: string }
   | { kind: "literal"; value: number | string | boolean; unit?: string }
   | { kind: "unary"; operator: "!" | "-"; operand: ExpressionNode }

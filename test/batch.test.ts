@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -94,6 +95,24 @@ test("refuses to overwrite modified owned batch output unless forced", async () 
   assert.equal(await readFile(output, "utf8"), "user edit");
   await generateBatch([source], outDir, "unreal", { layout: "flat", force: true });
   assert.notEqual(await readFile(output, "utf8"), "user edit");
+});
+
+test("invalidates a verified cache entry when generated content changes", async () => {
+  const outDir = await mkdtemp(join(tmpdir(), "crdd-batch-generator-change-"));
+  const manifest = await generateBatch([source], outDir, "unreal", { layout: "flat" });
+  const file = manifest.operations[0].files[0];
+  const output = join(outDir, file.path);
+  const stale = "// output from an older generator\n";
+  await writeFile(output, stale, "utf8");
+  file.sha256 = createHash("sha256").update(stale).digest("hex");
+  await writeFile(
+    join(outDir, "batch.manifest.json"),
+    `${JSON.stringify(manifest, null, 2)}\n`,
+    "utf8",
+  );
+
+  await generateBatch([source], outDir, "unreal", { layout: "flat" });
+  assert.notEqual(await readFile(output, "utf8"), stale);
 });
 
 test("rejects duplicate operation IDs before writing outputs", async () => {

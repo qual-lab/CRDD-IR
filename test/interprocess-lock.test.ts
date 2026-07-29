@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { access, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -39,4 +39,25 @@ test("reports lock owner and timeout without stealing a live lock", async () => 
     /CRDD_LOCK_TIMEOUT.*pid=/,
   );
   assert.match(await readFile(`${scope}.crdd-lock`, "utf8"), /"id":"live"/);
+});
+
+test("recovers an expired lock owned by a dead process", async () => {
+  const root = await mkdtemp(join(tmpdir(), "crdd-lock-"));
+  const scope = join(root, "Generated");
+  const lockPath = `${scope}.crdd-lock`;
+  await writeFile(lockPath, JSON.stringify({
+    protocol: "crdd-ir/lock-v0.1",
+    id: "stale",
+    pid: 2147483647,
+    startedAt: new Date(0).toISOString(),
+    scope,
+    command: ["dead-owner"],
+  }));
+  let entered = false;
+  await withInterprocessLock(scope, async () => {
+    entered = true;
+    assert.doesNotMatch(await readFile(lockPath, "utf8"), /"id":"stale"/);
+  }, { timeoutMs: 100, staleAfterMs: 1 });
+  assert.equal(entered, true);
+  await assert.rejects(access(lockPath), /ENOENT/);
 });

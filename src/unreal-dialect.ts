@@ -120,9 +120,25 @@ export function semanticUnrealPlanDiff(
     after.generatedCode.reflection,
     changes,
   );
+  compare(
+    "profile.numericProjection",
+    stableNumericProjection(before.profile.numericProjection),
+    stableNumericProjection(after.profile.numericProjection),
+    changes,
+  );
   compare("verification.cook", before.verification.cook, after.verification.cook, changes);
   compare("verification.package", before.verification.package, after.verification.package, changes);
   return changes;
+}
+
+function stableNumericProjection(
+  projection: UnrealTargetProfile["numericProjection"],
+): string {
+  return JSON.stringify(
+    Object.fromEntries(Object.entries(projection ?? {}).sort(([left], [right]) =>
+      left.localeCompare(right)
+    )),
+  );
 }
 
 function compare(path: string, before: unknown, after: unknown, changes: string[]): void {

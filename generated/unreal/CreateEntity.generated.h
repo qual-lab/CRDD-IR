@@ -52,4 +52,6 @@ public:
     );
 
     static FString ErrorCode(ECrddCreateEntityError Error);
+    static bool TryParseProjectedInt64(const FString& Decimal, int64& OutValue);
+    static FString SerializeProjectedInt64(int64 Value);
 };

@@ -4,9 +4,32 @@
 #include "CreateEntity.generated.h"
 
 #include <initializer_list>
+#include <limits>
 
 namespace
 {
+bool CrddTryAddInt64(int64 Left, int64 Right, int64& OutValue)
+{
+    if ((Right > 0 && Left > std::numeric_limits<int64>::max() - Right) ||
+        (Right < 0 && Left < std::numeric_limits<int64>::min() - Right))
+    {
+        return false;
+    }
+    OutValue = Left + Right;
+    return true;
+}
+
+bool CrddTrySubtractInt64(int64 Left, int64 Right, int64& OutValue)
+{
+    if ((Right < 0 && Left > std::numeric_limits<int64>::max() + Right) ||
+        (Right > 0 && Left < std::numeric_limits<int64>::min() + Right))
+    {
+        return false;
+    }
+    OutValue = Left - Right;
+    return true;
+}
+
 FCrddCreateEntityResult Failure(
     ECrddCreateEntityError Error,
     const TCHAR* FailedRequirement,
@@ -32,7 +55,7 @@ FCrddCreateEntityResult FCrddCreateEntityOperation::Execute(
 )
 {
     // minimum-entity-length: input.length >= 0.3
-    if (!(Input.LengthMeters >= 0.3))
+    if (!((Input.LengthMeters >= 0.3)))
     {
         return Failure(
             ECrddCreateEntityError::EntityTooShort,
@@ -43,7 +66,7 @@ FCrddCreateEntityResult FCrddCreateEntityOperation::Execute(
     }
 
     // sufficient-budget: state.budget.remaining >= input.cost
-    if (!(InitialState.BudgetRemainingJPY >= Input.CostJPY))
+    if (!((InitialState.BudgetRemainingJPY >= Input.CostJPY)))
     {
         return Failure(
             ECrddCreateEntityError::InsufficientBudget,
@@ -75,4 +98,25 @@ FString FCrddCreateEntityOperation::ErrorCode(ECrddCreateEntityError Error)
     default:
         return TEXT("UNKNOWN");
     }
+}
+
+bool FCrddCreateEntityOperation::TryParseProjectedInt64(
+    const FString& Decimal,
+    int64& OutValue
+)
+{
+    if (Decimal.IsEmpty() || Decimal.TrimStartAndEnd() != Decimal)
+    {
+        return false;
+    }
+    if (!LexTryParseString(OutValue, *Decimal))
+    {
+        return false;
+    }
+    return LexToString(OutValue) == Decimal;
+}
+
+FString FCrddCreateEntityOperation::SerializeProjectedInt64(int64 Value)
+{
+    return LexToString(Value);
 }

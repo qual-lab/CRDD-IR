@@ -1,7 +1,9 @@
 param(
     [Parameter(Position = 0)]
     [ValidateSet("doctor", "check", "generate", "verify")]
-    [string]$Command = "check"
+    [string]$Command = "check",
+    [ValidateRange(1, 86400)]
+    [int]$LockTimeoutSeconds = 600
 )
 
 $ErrorActionPreference = "Stop"
@@ -114,7 +116,16 @@ if ($Command -in @("generate", "verify")) {
         $scopeAlgorithm.Dispose()
     }
     $projectMutex = [System.Threading.Mutex]::new($false, "Local\CRDDIR-$scopeHash")
-    if (-not $projectMutex.WaitOne([TimeSpan]::FromSeconds(30))) {
+    $lockAcquired = $false
+    try {
+        $lockAcquired = $projectMutex.WaitOne([TimeSpan]::FromSeconds($LockTimeoutSeconds))
+    }
+    catch [System.Threading.AbandonedMutexException] {
+        # The previous process terminated without releasing the mutex. Windows
+        # transfers ownership to this process, so recovery is safe.
+        $lockAcquired = $true
+    }
+    if (-not $lockAcquired) {
         $owner = if (Test-Path -LiteralPath $projectLockPath) {
             Get-Content -LiteralPath $projectLockPath -Raw
         }
