@@ -1,6 +1,6 @@
 {
   "name": "crdd-ir",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "bin": {
@@ -29,6 +29,7 @@
     "generate:assets": "node src/cli.ts generate assets examples/create-entity/05_SPEC/01_Behavior_Specification.md",
     "generate:evidence": "node src/cli.ts generate evidence examples/create-entity/05_SPEC/01_Behavior_Specification.md --out-dir examples/create-entity/07_Quality/CRDD_IR --unreal-report examples/unreal/CrddCompilerFixture/Saved/TestReports/index.json",
     "verify:unreal": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/verify-unreal.ps1",
+    "verify:unity": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/verify-unity.ps1",
     "pack:check": "npm pack --dry-run",
     "test:installer": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File test/install-project.test.ps1",
     "test:verify-lock": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File test/verify-lock.test.ps1",

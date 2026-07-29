@@ -12,6 +12,7 @@
 | CRDD Markdown | `05_SPEC/operations/*.md` | する・正本 |
 | Compiler Submodule | `tools/CRDD-IR` | pointerを管理 |
 | Unreal生成C++ | `40_Develop/MyGame/Source/MyGame/Generated` | Target方針による |
+| Unity生成C# | `Assets/CRDD/Runtime/Generated` | Target方針による |
 | 3D source asset | `40_Develop/Generated/Assets` | Target方針による |
 | 検証Evidence | `07_Quality/CRDD_IR` | する |
 | Internal IR/cache/package | `.crdd-ir` | しない |
@@ -186,6 +187,9 @@ npm.cmd ci --prefix tools/CRDD-IR
 
 CIでも必ずSubmoduleをcheckoutし、Node依存関係を`npm ci`で復元します。
 Unreal検証にはUE 5.8とVisual Studioを持つWindows runnerが必要です。
+Unity検証にはUnity 6、Windows Build Support (IL2CPP)、C++ Toolchainを持つ
+Windows runnerが必要です。v0.2.0のInstallerはUnreal scaffoldを対象とするため、
+Unityのasmdefと生成物振り分けは[Unity integration](unity-integration.md)に従います。
 
 ## 8. Compilerを更新する
 

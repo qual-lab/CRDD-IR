@@ -1,0 +1,55 @@
+{
+  "protocol": "crdd-ir/batch-v0.1",
+  "target": "unity",
+  "layout": "flat",
+  "operations": [
+    {
+      "id": "CreateEntity",
+      "source": "examples/create-entity/05_SPEC/01_Behavior_Specification.md",
+      "digest": "958fe9983be73621981e4aada20961d69c42b7d79ed5d8e199338d819d181b26",
+      "outputDirectory": ".",
+      "files": [
+        {
+          "path": "CreateEntity.Bridge.Generated.cs",
+          "sha256": "9aa6453f5ec91c04099728dc23cac1557a8d2ab2380f1d26d5af041696b7c536"
+        },
+        {
+          "path": "CreateEntity.Bridge.Generated.Tests.cs",
+          "sha256": "cd08de8ae057e93f47e2e5c123672f9ba2fe3d4a306d9e4712940a7bf1971885"
+        },
+        {
+          "path": "CreateEntity.Conformance.Generated.Tests.cs",
+          "sha256": "befa8f796dac80359529ac585911e31a718827ddf8529752d06d96dda2f37ef0"
+        },
+        {
+          "path": "CreateEntity.Generated.cs",
+          "sha256": "81e5e2bc4a220ddfb5efa5be06b02226490a979e2cf7f25d6ad4a94fdc092b96"
+        }
+      ]
+    },
+    {
+      "id": "UpdateEntity",
+      "source": "examples/update-entity/05_SPEC/01_Behavior_Specification.md",
+      "digest": "c01d756a4e911e9bf13ffe51b18ce82597359e20ac2543931aaf9721184074e4",
+      "outputDirectory": ".",
+      "files": [
+        {
+          "path": "UpdateEntity.Bridge.Generated.cs",
+          "sha256": "1389457062d50e023669920e52b61b885e5d7f3bd3be3e23b364240cf596db80"
+        },
+        {
+          "path": "UpdateEntity.Bridge.Generated.Tests.cs",
+          "sha256": "e8fac1c8ff9326717a7a1a525e9e00c183a440ac36132b232b4b4dc62cf2957e"
+        },
+        {
+          "path": "UpdateEntity.Conformance.Generated.Tests.cs",
+          "sha256": "6acfd81c64301e2ba609e658775f223729de71b02d460f5551ba7b36356ad41c"
+        },
+        {
+          "path": "UpdateEntity.Generated.cs",
+          "sha256": "a3d9fca962c604ec8cb759086f53b93e33e09cd7d0dc12eff165dded4c67e026"
+        }
+      ]
+    }
+  ]
+}

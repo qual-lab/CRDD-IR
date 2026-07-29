@@ -26,8 +26,8 @@
   "hashes": {
     "irSha256": "958fe9983be73621981e4aada20961d69c42b7d79ed5d8e199338d819d181b26",
     "targetPlanSha256": "ee83b331a3d7f335d378d861dc0e522fb46f1070e21d119b51bb93697759ba89",
-    "packageSha256": "a590925e485654bb85be83885de801cdc859a2d19ee0951019168a0b746532bc",
-    "identitySha256": "c703d0d116a89c6476ae607d4c1ef3665cfcaeec4e76012a0f54f0f9cc37c82c"
+    "packageSha256": "9af22fb8aae2f2b14964281338ad6d92bd9068bc3a51298e5c15f0a3393b9b06",
+    "identitySha256": "5d81f2eb4df31ff79590e4b199e8c2312d7b0f21af0fbb11ac03453f654774ad"
   },
   "stages": {
     "uht": "not-required",
@@ -44,12 +44,12 @@
     "errors": 0
   },
   "verificationLock": {
-    "runId": "d203403c7cbf4f17971efa6041661cc2",
+    "runId": "d98d27786b134d2aad4df5e4eb248260",
     "project": "c:/project/crdd-ir/examples/unreal/crddcompilerfixture/crddcompilerfixture.uproject",
     "status": "acquired",
     "waitMilliseconds": 2,
     "recoveredAbandoned": false,
-    "acquiredAt": "2026-07-29T03:16:12.0217914Z"
+    "acquiredAt": "2026-07-29T04:57:27.1507211Z"
   },
   "packageFiles": [
     {
@@ -62,7 +62,7 @@
     },
     {
       "path": "Windows/CrddCompilerFixture/Binaries/Win64/CrddCompilerFixture-Win64-Shipping.pdb",
-      "sha256": "25b08039acd9f40138d6c2ea86e6e503f2f6719dd4b1b83e2e0988d959bb5b95"
+      "sha256": "07aa8a9be0fd99f56908d593f92adfec12f3802b697773eee058444d068c9f44"
     },
     {
       "path": "Windows/CrddCompilerFixture/Binaries/Win64/D3D12/x64/D3D12Core.dll",
@@ -86,15 +86,15 @@
     },
     {
       "path": "Windows/CrddCompilerFixture/Content/Paks/CrddCompilerFixture-Windows.pak",
-      "sha256": "791d236af06718c032ef9cac99c367151c3f4a69bd269a4a85370b2fd5273c6d"
+      "sha256": "3d6e9f969d894df8427e1c3d6e5a108cfa303355f761376a88571f9b97b7fb50"
     },
     {
       "path": "Windows/CrddCompilerFixture/Content/Paks/CrddCompilerFixture-Windows.ucas",
-      "sha256": "83b62542d4bd49361e189cd25e59e6253f03c1a45879db3c584b9927efb2b963"
+      "sha256": "bf1f70926f52117369ed964f2ed7b7c2d48d615eb1e338222a4dd42731796124"
     },
     {
       "path": "Windows/CrddCompilerFixture/Content/Paks/CrddCompilerFixture-Windows.utoc",
-      "sha256": "5cc684ea5936386b35ac7a2931d54c3a5dfb0b5aa773e0e9282ba049ffeee1f5"
+      "sha256": "9c1a0d365b460607ee815f1c980b49fac5f32fab919192baafcf2e2e51dab727"
     },
     {
       "path": "Windows/CrddCompilerFixture/Content/Paks/global.ucas",
@@ -158,15 +158,15 @@
     },
     {
       "path": "Windows/Manifest_DebugFiles_Win64.txt",
-      "sha256": "8d59cb00f5b52ff4613a570a2aa0b8c01f730de1824b8732b65d9f77750b41d9"
+      "sha256": "69c99f22cc2d82253287d1c57aea00e967cc66178ea0ffcb9e1661aa1dbaa682"
     },
     {
       "path": "Windows/Manifest_NonUFSFiles_Win64.txt",
-      "sha256": "97f5b414e0db10ca8f8d32f669c3b45350d2d0788d0c7284a1ccfb0ae2067eff"
+      "sha256": "d4ccbdc7a7d36ca7f24457e9cd6b67204dfa24692b96dd4e51a626f7cb359626"
     },
     {
       "path": "Windows/Manifest_UFSFiles_Win64.txt",
-      "sha256": "f86022c8dba4512e279072f1631cc1473680231df483cbdb162598cbeb384ca7"
+      "sha256": "c52de527078800aa858fc7245e3ff698feec0200249622872f4afb22be849dc2"
     },
     {
       "path": "Windows/NOTICES.txt",
