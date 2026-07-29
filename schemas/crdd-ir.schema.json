@@ -28,6 +28,10 @@
         },
         "output": { "$ref": "#/$defs/field" },
         "requires": { "type": "array" },
+        "portableRules": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/portableRule" }
+        },
         "effects": {
           "type": "array",
           "items": { "$ref": "#/$defs/effect" }
@@ -62,6 +66,46 @@
       "properties": {
         "protocol": { "type": "string", "minLength": 1 },
         "data": {}
+      },
+      "additionalProperties": false
+    },
+    "portableRule": {
+      "type": "object",
+      "required": ["kind", "id", "error"],
+      "properties": {
+        "kind": {
+          "enum": [
+            "collection.unique", "collection.reference", "collection.membership",
+            "collection.relation", "opaque.integrity", "opaque.immutable-when-inactive"
+          ]
+        },
+        "id": { "type": "string", "minLength": 1 },
+        "error": { "type": "string", "minLength": 1 },
+        "collection": { "type": "string", "minLength": 1 },
+        "key": { "type": "string", "minLength": 1 },
+        "reference": { "type": "string", "minLength": 1 },
+        "target": { "type": "string", "minLength": 1 },
+        "targetKey": { "type": "string", "minLength": 1 },
+        "targetType": { "$ref": "#/$defs/typeFilter" },
+        "parentReference": { "type": "string", "minLength": 1 },
+        "parents": { "type": "string", "minLength": 1 },
+        "parentKey": { "type": "string", "minLength": 1 },
+        "from": { "type": "string", "minLength": 1 },
+        "to": { "type": "string", "minLength": 1 },
+        "elements": { "type": "string", "minLength": 1 },
+        "elementKey": { "type": "string", "minLength": 1 },
+        "fromType": { "$ref": "#/$defs/typeFilter" },
+        "toType": { "$ref": "#/$defs/typeFilter" },
+        "current": { "type": "string", "minLength": 1 },
+        "proposed": { "type": "string", "minLength": 1 }
+      }
+    },
+    "typeFilter": {
+      "type": "object",
+      "required": ["field", "equals"],
+      "properties": {
+        "field": { "type": "string", "minLength": 1 },
+        "equals": { "type": "string", "minLength": 1 }
       },
       "additionalProperties": false
     },
@@ -105,6 +149,18 @@
             "action": { "const": "update" },
             "where": { "type": "object", "minProperties": 1 },
             "set": { "type": "object", "minProperties": 1 }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "encoding", "digest"],
+          "properties": {
+            "type": { "const": "opaque" },
+            "encoding": { "const": "base64" },
+            "digest": { "const": "sha256" },
+            "optional": { "type": "boolean" },
+            "nullable": { "type": "boolean" }
           },
           "additionalProperties": false
         }

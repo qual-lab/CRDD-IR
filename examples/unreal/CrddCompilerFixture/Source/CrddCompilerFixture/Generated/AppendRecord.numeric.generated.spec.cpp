@@ -78,5 +78,4 @@ bool FCrddAppendRecordNumericBoundaryTest::RunTest(const FString& Parameters)
     );
     return true;
 }
-
 #endif

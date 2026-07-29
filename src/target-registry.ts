@@ -129,7 +129,7 @@ function assertStateTransitionTargetCompatibility(
     );
   }
   const unsupported = [...Object.values(operation.input), ...Object.values(operation.state)]
-    .find((field) => containsGeneralApplicationType(field));
+    .find((field) => containsGeneralApplicationType(field, true));
   if (unsupported) {
     throw new Error(
       `Target "${target}" does not yet support field type "${unsupported.type}"; use target "ir" or a capable adapter`,
@@ -137,16 +137,23 @@ function assertStateTransitionTargetCompatibility(
   }
 }
 
-function containsGeneralApplicationType(field: import("./model.ts").FieldDefinition):
+function containsGeneralApplicationType(
+  field: import("./model.ts").FieldDefinition,
+  allowObjectMap: boolean,
+):
   import("./model.ts").FieldDefinition | undefined {
-  if (["integer", "map", "union"].includes(field.type) || field.nullable === true) return field;
+  if (["integer", "union"].includes(field.type) || field.nullable === true) return field;
+  if (field.type === "map") {
+    if (!allowObjectMap || field.values.type !== "object") return field;
+    return containsGeneralApplicationType(field.values, allowObjectMap);
+  }
   if (field.type === "object") {
     for (const nested of Object.values(field.properties)) {
-      const unsupported = containsGeneralApplicationType(nested);
+      const unsupported = containsGeneralApplicationType(nested, allowObjectMap);
       if (unsupported) return unsupported;
     }
   }
-  if (field.type === "array") return containsGeneralApplicationType(field.items);
+  if (field.type === "array") return containsGeneralApplicationType(field.items, allowObjectMap);
   return undefined;
 }
 

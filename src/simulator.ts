@@ -1,5 +1,6 @@
 import { evaluateExpression, getPath } from "./expression.ts";
 import type { CrddIr, SimulationRequest, SimulationResult } from "./model.ts";
+import { evaluatePortableRules } from "./portable-rules.ts";
 
 export function simulate(ir: CrddIr, request: SimulationRequest): SimulationResult {
   const input = validateRequest(ir, request);
@@ -19,6 +20,18 @@ export function simulate(ir: CrddIr, request: SimulationRequest): SimulationResu
         traces: tracesForError(ir, requirement.error),
       };
     }
+  }
+
+  const portableFailure = evaluatePortableRules(ir, context);
+  if (portableFailure) {
+    return {
+      ok: false,
+      operation: ir.operation.id,
+      error: portableFailure.error,
+      failedRequirement: portableFailure.id,
+      state: originalState,
+      traces: tracesForError(ir, portableFailure.error),
+    };
   }
 
   try {
@@ -107,7 +120,26 @@ function validateFieldValue(
   }
   if (definition.type === "array") {
     if (!Array.isArray(value)) throw new Error(`${label} must be an array`);
-    return value;
+    return value.map((item, index) => validateFieldValue(item, definition.items, `${label}[${index}]`));
+  }
+  if (definition.type === "map") {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+      throw new Error(`${label} must be a map`);
+    }
+    return Object.fromEntries(Object.entries(value as Record<string, unknown>)
+      .map(([key, item]) => [key, validateFieldValue(item, definition.values, `${label}.${key}`)]));
+  }
+  if (definition.type === "opaque") {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+      throw new Error(`${label} must be an opaque value`);
+    }
+    const candidate = value as Record<string, unknown>;
+    if (typeof candidate.base64 !== "string" || typeof candidate.sha256 !== "string" ||
+        typeof candidate.active !== "boolean" || Object.keys(candidate).some((key) =>
+          !["base64", "sha256", "active"].includes(key))) {
+      throw new Error(`${label} must contain base64, sha256, and active`);
+    }
+    return structuredClone(value);
   }
     if (definition.type === "number" && typeof value !== "number") {
       throw new Error(`${label} must be a number`);

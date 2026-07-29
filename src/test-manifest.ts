@@ -108,6 +108,36 @@ export function generateTestManifest(ir: CrddIr): TestManifest {
     });
   }
 
+  for (const rule of ir.operation.portableRules ?? []) {
+    if (rule.kind === "opaque.immutable-when-inactive") {
+      const editable = structuredClone(baseline);
+      const current = structuredClone(getPath(editable as unknown as Record<string, unknown>, rule.current)) as
+        Record<string, unknown>;
+      current.active = true;
+      setPath(editable as unknown as Record<string, unknown>, rule.current, current);
+      setPath(editable as unknown as Record<string, unknown>, rule.proposed, {
+        base64: "AQ==",
+        sha256: "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+        active: true,
+      });
+      cases.push({
+        id: `${slug(rule.id)}-active-edit`,
+        sourceRequirement: rule.id,
+        description: "an active understood extension can be replaced atomically",
+        arrange: editable,
+        expect: { ok: true },
+      });
+    }
+    const failed = falsifyPortableRule(ir, rule.id, baseline);
+    cases.push({
+      id: `${slug(rule.id)}-rejected`,
+      sourceRequirement: rule.id,
+      description: `${rule.kind} is rejected deterministically without state changes`,
+      arrange: failed,
+      expect: { ok: false, error: rule.error, stateUnchanged: true },
+    });
+  }
+
   return {
     version: "0.1",
     operation: ir.operation.id,
@@ -680,6 +710,15 @@ function baselineFieldValue(field: import("./model.ts").FieldDefinition): unknow
     );
   }
   if (field.type === "array") return [];
+  if (field.type === "map") return {};
+  if (field.type === "opaque") {
+    return {
+      base64: "",
+      sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      active: false,
+    };
+  }
+
   if (field.default !== undefined) return structuredClone(field.default);
   if (field.type === "number" || field.type === "integer") {
     return Math.min(
@@ -689,6 +728,97 @@ function baselineFieldValue(field: import("./model.ts").FieldDefinition): unknow
   }
   if (field.type === "string") return field.enum?.[0] ?? "sample";
   return true;
+}
+
+function falsifyPortableRule(ir: CrddIr, id: string, baseline: SimulationRequest): SimulationRequest {
+  const rule = ir.operation.portableRules?.find((candidate) => candidate.id === id);
+  if (!rule) throw new Error(`Unknown portable rule "${id}"`);
+  const request = structuredClone(baseline);
+  if (rule.kind === "opaque.integrity") {
+    setPath(request as unknown as Record<string, unknown>, rule.target, {
+      base64: "not-canonical!",
+      sha256: "0".repeat(64),
+      active: false,
+    });
+    return request;
+  }
+  if (rule.kind === "opaque.immutable-when-inactive") {
+    setPath(request as unknown as Record<string, unknown>, rule.proposed, {
+      base64: "AQ==",
+      sha256: "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+      active: false,
+    });
+    return request;
+  }
+  const collectionValue = getPath(request as unknown as Record<string, unknown>, rule.collection);
+  const collection = mutableCollection(collectionValue, rule.collection);
+  const field = fieldDefinition(ir, rule.collection);
+  const itemField = field?.type === "array" ? field.items : field?.type === "map" ? field.values : undefined;
+  if (itemField?.type !== "object") {
+    throw new Error(`Portable collection "${rule.collection}" must contain objects`);
+  }
+  const item = baselineFieldValue(itemField) as Record<string, unknown>;
+  if (rule.kind === "collection.unique") {
+    item[rule.key] = "duplicate";
+    collection.add(structuredClone(item));
+    collection.add(structuredClone(item));
+    return request;
+  }
+  if (rule.kind === "collection.reference") {
+    item[rule.reference] = "missing-reference";
+    collection.add(item);
+    return request;
+  }
+  if (rule.kind === "collection.membership") {
+    item[rule.parentReference] = "missing-parent";
+    satisfyEarlierReferences(ir, rule.id, rule.collection, item, request);
+    collection.add(item);
+    return request;
+  }
+  item[rule.from] = "missing-from";
+  item[rule.to] = "missing-to";
+  collection.add(item);
+  return request;
+}
+
+function mutableCollection(value: unknown, path: string): { add(value: unknown): void } {
+  if (Array.isArray(value)) return { add: (item) => value.push(item) };
+  if (value && typeof value === "object") {
+    let index = Object.keys(value as Record<string, unknown>).length;
+    return {
+      add: (item) => {
+        (value as Record<string, unknown>)[`generated-${index++}`] = item;
+      },
+    };
+  }
+  throw new Error(`Portable collection "${path}" is not an array or map`);
+}
+
+function satisfyEarlierReferences(
+  ir: CrddIr,
+  beforeId: string,
+  collectionPath: string,
+  item: Record<string, unknown>,
+  request: SimulationRequest,
+): void {
+  for (const rule of ir.operation.portableRules ?? []) {
+    if (rule.id === beforeId) return;
+    if (rule.kind !== "collection.reference" || rule.collection !== collectionPath) continue;
+    const target = getPath(request as unknown as Record<string, unknown>, rule.target);
+    const targetField = fieldDefinition(ir, rule.target);
+    const targetItem = targetField?.type === "array"
+      ? targetField.items
+      : targetField?.type === "map"
+        ? targetField.values
+        : undefined;
+    if (!targetItem || targetItem.type !== "object") continue;
+    const candidate = baselineFieldValue(targetItem) as Record<string, unknown>;
+    const value = `valid-${slug(rule.id)}`;
+    item[rule.reference] = value;
+    candidate[rule.targetKey] = value;
+    if (rule.targetType) candidate[rule.targetType.field] = rule.targetType.equals;
+    mutableCollection(target, rule.target).add(candidate);
+  }
 }
 
 function resolveTemplate(

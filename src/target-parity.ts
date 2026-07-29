@@ -18,15 +18,17 @@ type NormalizedNumericProjection = {
 
 export type TargetParityReport = {
   protocol: "crdd-ir/target-parity-v0.1";
-  requirements: ["IR-TARGET-001", "IR-PARITY-001"];
+  requirements: string[];
   operation: string;
   irSha256: string;
   conformanceSha256: string;
+  portableRulesSha256: string;
   targets: Array<{
     id: "unreal" | "unity";
     profileSha256: string;
     irSha256: string;
     conformanceSha256: string;
+    portableRulesSha256: string;
     generatedFiles: Array<{ path: string; sha256: string }>;
   }>;
   numericProjections: Array<{
@@ -40,6 +42,7 @@ export type TargetParityReport = {
     sharedSourceIr: boolean;
     sharedConformanceSemantics: boolean;
     equivalentNumericProjections: boolean;
+    sharedPortableRuleSemantics: boolean;
   };
   equivalent: boolean;
 };
@@ -64,6 +67,7 @@ export function verifyTargetParity(
     generateTestManifest(compilation.ir),
   );
   const conformanceSha256 = sha256(canonicalJson(conformance));
+  const portableRulesSha256 = sha256(canonicalJson(compilation.ir.operation.portableRules ?? []));
   const units = collectNumericUnits(compilation.ir.operation.input, compilation.ir.operation.state);
   const numericProjections = [...units].sort().map((unit) => {
     const unreal = normalizeUnreal(unrealProfile.numericProjection?.[unit]);
@@ -90,18 +94,31 @@ export function verifyTargetParity(
       new Set(targets.map((target) => target.conformanceSha256)).size === 1 &&
       targets[0].conformanceSha256 === conformanceSha256,
     equivalentNumericProjections: numericProjections.every((item) => item.equivalent),
+    sharedPortableRuleSemantics:
+      new Set(targets.map((target) => target.portableRulesSha256)).size === 1 &&
+      targets[0].portableRulesSha256 === portableRulesSha256,
   };
   return {
     protocol: "crdd-ir/target-parity-v0.1",
-    requirements: ["IR-TARGET-001", "IR-PARITY-001"],
+    requirements: parityRequirements(compilation),
     operation: compilation.ir.operation.id,
     irSha256: compilation.digest,
     conformanceSha256,
+    portableRulesSha256,
     targets,
     numericProjections,
     checks,
     equivalent: Object.values(checks).every(Boolean),
   };
+}
+
+function parityRequirements(compilation: CompilationResult): string[] {
+  const requirements = ["IR-TARGET-001", "IR-PARITY-001"];
+  const kinds = new Set((compilation.ir.operation.portableRules ?? []).map((rule) => rule.kind));
+  if ([...kinds].some((kind) => kind.startsWith("collection."))) requirements.push("IR-COLLECTION-001");
+  if (kinds.has("opaque.integrity")) requirements.push("IR-OPAQUE-001");
+  if (kinds.has("opaque.immutable-when-inactive")) requirements.push("IR-IMMUTABLE-001");
+  return requirements;
 }
 
 function targetEvidence(
@@ -111,15 +128,27 @@ function targetEvidence(
   irSha256: string,
   conformanceSha256: string,
 ) {
+  const portableRulesSha256 = portableSemanticsDigestFromGenerated(files);
   return {
     id,
     profileSha256: sha256(canonicalJson(profile)),
     irSha256,
     conformanceSha256,
+    portableRulesSha256,
     generatedFiles: files
       .map((file) => ({ path: file.name, sha256: generatedTextSha256(file.content) }))
       .sort((left, right) => left.path.localeCompare(right.path)),
   };
+}
+
+export function portableSemanticsDigestFromGenerated(
+  files: Array<{ name: string; content: string }>,
+): string {
+  const markers = files.flatMap((file) =>
+    [...file.content.matchAll(/CRDD-PORTABLE-SEMANTICS:\s*([A-Za-z0-9+/=]+)/g)]
+      .map((match) => JSON.parse(Buffer.from(match[1], "base64").toString("utf8")) as unknown)
+  );
+  return sha256(canonicalJson(markers));
 }
 
 function collectNumericUnits(
@@ -130,6 +159,7 @@ function collectNumericUnits(
     if (field.type === "number" && field.unit) units.add(field.unit);
     if (field.type === "object") Object.values(field.properties).forEach(visit);
     if (field.type === "array") visit(field.items);
+    if (field.type === "map") visit(field.values);
   };
   collections.forEach((collection) => Object.values(collection).forEach(visit));
   return units;

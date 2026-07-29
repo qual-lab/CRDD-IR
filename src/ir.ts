@@ -3,7 +3,9 @@ import { extractReferences } from "./expression.ts";
 import { DiagnosticError, formatDiagnosticText } from "./diagnostics.ts";
 import type { CrddIr, Diagnostic, FieldDefinition } from "./model.ts";
 
-const allowedFieldTypes = new Set(["number", "integer", "string", "boolean", "array", "object", "map", "union"]);
+const allowedFieldTypes = new Set([
+  "number", "integer", "string", "boolean", "array", "object", "map", "union", "opaque",
+]);
 const allowedEffectActions = new Set(["assign", "append", "increment", "remove", "update"]);
 
 export async function loadIr(path: string): Promise<CrddIr> {
@@ -128,6 +130,7 @@ export function validateIr(value: unknown): Diagnostic[] {
       }
     }
   }
+  validatePortableRules(operation.portableRules, errorCodes, diagnostics);
 
   if (kind !== "query" && !isRecord(operation.transaction)) {
     diagnostics.push(error("$.operation.transaction", "must be an object"));
@@ -147,6 +150,56 @@ export function validateIr(value: unknown): Diagnostic[] {
   validateExtensions(operation.extensions, diagnostics);
   validateSemantics(operation, diagnostics);
   return diagnostics;
+}
+
+function validatePortableRules(
+  value: unknown,
+  errorCodes: Set<string>,
+  diagnostics: Diagnostic[],
+): void {
+  if (value === undefined) return;
+  if (!Array.isArray(value)) {
+    diagnostics.push(error("$.operation.portableRules", "must be an array"));
+    return;
+  }
+  const ids: string[] = [];
+  const requiredByKind: Record<string, string[]> = {
+    "collection.unique": ["collection", "key"],
+    "collection.reference": ["collection", "reference", "target", "targetKey"],
+    "collection.membership": ["collection", "parentReference", "parents", "parentKey"],
+    "collection.relation": ["collection", "from", "to", "elements", "elementKey"],
+    "opaque.integrity": ["target"],
+    "opaque.immutable-when-inactive": ["current", "proposed"],
+  };
+  value.forEach((rule, index) => {
+    const path = `$.operation.portableRules[${index}]`;
+    if (!isRecord(rule)) {
+      diagnostics.push(error(path, "must be an object"));
+      return;
+    }
+    const id = requireString(rule, "id", path, diagnostics);
+    if (id) ids.push(id);
+    const errorCode = requireString(rule, "error", path, diagnostics);
+    if (errorCode && !errorCodes.has(errorCode)) {
+      diagnostics.push(error(`${path}.error`, `references undeclared error "${errorCode}"`));
+    }
+    const required = requiredByKind[String(rule.kind)];
+    if (!required) {
+      diagnostics.push(error(`${path}.kind`, "has an unsupported portable rule kind"));
+      return;
+    }
+    for (const key of required) requireString(rule, key, path, diagnostics);
+    for (const key of ["targetType", "fromType", "toType"]) {
+      if (rule[key] === undefined) continue;
+      if (!isRecord(rule[key])) {
+        diagnostics.push(error(`${path}.${key}`, "must be an object"));
+      } else {
+        requireString(rule[key], "field", `${path}.${key}`, diagnostics);
+        requireString(rule[key], "equals", `${path}.${key}`, diagnostics);
+      }
+    }
+  });
+  reportDuplicateIds(ids, "$.operation.portableRules", "portable rule ID", diagnostics);
 }
 
 function validateExecution(value: unknown, diagnostics: Diagnostic[]): void {
@@ -239,6 +292,18 @@ function validateSemantics(operation: Record<string, unknown>, diagnostics: Diag
       validateComparisonUnits(requirement.expression, path, input, state, diagnostics);
     });
     reportDuplicateIds(requirementIds, "$.operation.requires", "requirement ID", diagnostics);
+  }
+  if (Array.isArray(operation.portableRules)) {
+    operation.portableRules.forEach((candidate, index) => {
+      if (!isRecord(candidate)) return;
+      validatePortableRuleReferences(
+        candidate,
+        `$.operation.portableRules[${index}]`,
+        input,
+        state,
+        diagnostics,
+      );
+    });
   }
 
   if (Array.isArray(operation.errors)) {
@@ -338,6 +403,130 @@ function validateSemantics(operation: Record<string, unknown>, diagnostics: Diag
       }
     }
   }
+}
+
+function validatePortableRuleReferences(
+  rule: Record<string, unknown>,
+  path: string,
+  input: Record<string, FieldDefinition>,
+  state: Record<string, FieldDefinition>,
+  diagnostics: Diagnostic[],
+): void {
+  const field = (key: string) => {
+    const reference = rule[key];
+    if (typeof reference !== "string") return undefined;
+    const resolved = fieldForReference(reference, input, state);
+    if (!resolved) diagnostics.push(error(`${path}.${key}`, `references undefined field "${reference}"`));
+    return resolved;
+  };
+  if (rule.kind === "opaque.integrity") {
+    const target = field("target");
+    if (target && target.type !== "opaque") diagnostics.push(error(`${path}.target`, "must reference an opaque field"));
+    return;
+  }
+  if (rule.kind === "opaque.immutable-when-inactive") {
+    const current = field("current");
+    const proposed = field("proposed");
+    if (current && current.type !== "opaque") diagnostics.push(error(`${path}.current`, "must reference an opaque field"));
+    if (proposed && proposed.type !== "opaque") diagnostics.push(error(`${path}.proposed`, "must reference an opaque field"));
+    return;
+  }
+  const collection = field("collection");
+  const collectionItem = collectionObjectItem(collection);
+  if (!collectionItem) {
+    diagnostics.push(error(`${path}.collection`, "must reference an array or map of objects"));
+    return;
+  }
+  const requireMember = (
+    item: Extract<FieldDefinition, { type: "object" }>,
+    key: string,
+  ) => {
+    const member = rule[key];
+    if (typeof member === "string" && !item.properties[member]) {
+      diagnostics.push(error(`${path}.${key}`, `references undefined collection member "${member}"`));
+    }
+  };
+  const requireTypeFilter = (
+    item: Extract<FieldDefinition, { type: "object" }>,
+    key: string,
+  ) => {
+    const filter = rule[key];
+    if (isRecord(filter) && typeof filter.field === "string" && !item.properties[filter.field]) {
+      diagnostics.push(error(`${path}.${key}.field`, `references undefined type field "${filter.field}"`));
+    }
+  };
+  if (rule.kind === "collection.unique") {
+    requirePortableIdMember(collectionItem, "key");
+    return;
+  }
+  if (rule.kind === "collection.reference" || rule.kind === "collection.membership") {
+    const referenceKey = rule.kind === "collection.reference" ? "reference" : "parentReference";
+    const targetKey = rule.kind === "collection.reference" ? "target" : "parents";
+    const memberKey = rule.kind === "collection.reference" ? "targetKey" : "parentKey";
+    requirePortableIdMember(collectionItem, referenceKey);
+    const target = field(targetKey);
+    const targetItem = collectionObjectItem(target);
+    if (!targetItem) {
+      diagnostics.push(error(`${path}.${targetKey}`, "must reference an array or map of objects"));
+    } else {
+      requirePortableIdMember(targetItem, memberKey);
+      requireCompatibleMembers(collectionItem, referenceKey, targetItem, memberKey);
+      if (rule.kind === "collection.reference") requireTypeFilter(targetItem, "targetType");
+    }
+    return;
+  }
+  if (rule.kind === "collection.relation") {
+    requirePortableIdMember(collectionItem, "from");
+    requirePortableIdMember(collectionItem, "to");
+    const elements = field("elements");
+    const elementItem = collectionObjectItem(elements);
+    if (!elementItem) {
+      diagnostics.push(error(`${path}.elements`, "must reference an array or map of objects"));
+    } else {
+      requirePortableIdMember(elementItem, "elementKey");
+      requireCompatibleMembers(collectionItem, "from", elementItem, "elementKey");
+      requireCompatibleMembers(collectionItem, "to", elementItem, "elementKey");
+      requireTypeFilter(elementItem, "fromType");
+      requireTypeFilter(elementItem, "toType");
+    }
+  }
+
+  function requirePortableIdMember(
+    item: Extract<FieldDefinition, { type: "object" }>,
+    key: string,
+  ): void {
+    requireMember(item, key);
+    const memberName = rule[key];
+    if (typeof memberName !== "string") return;
+    const definition = item.properties[memberName];
+    if (definition && definition.type !== "string" && definition.type !== "integer") {
+      diagnostics.push(error(`${path}.${key}`, "must reference a string or integer member"));
+    }
+  }
+
+  function requireCompatibleMembers(
+    left: Extract<FieldDefinition, { type: "object" }>,
+    leftKey: string,
+    right: Extract<FieldDefinition, { type: "object" }>,
+    rightKey: string,
+  ): void {
+    const leftName = rule[leftKey];
+    const rightName = rule[rightKey];
+    if (typeof leftName !== "string" || typeof rightName !== "string") return;
+    const leftField = left.properties[leftName];
+    const rightField = right.properties[rightName];
+    if (leftField && rightField && leftField.type !== rightField.type) {
+      diagnostics.push(error(`${path}.${leftKey}`, `must have the same type as ${rightKey}`));
+    }
+  }
+}
+
+function collectionObjectItem(
+  field: FieldDefinition | undefined,
+): Extract<FieldDefinition, { type: "object" }> | undefined {
+  if (field?.type === "array" && field.items.type === "object") return field.items;
+  if (field?.type === "map" && field.values.type === "object") return field.values;
+  return undefined;
 }
 
 function validateAppendValue(
@@ -637,6 +826,13 @@ function validateField(rawField: Record<string, unknown>, path: string, diagnost
       return;
     }
     validateFields(rawField.properties, `${path}.properties`, diagnostics);
+  } else if (rawField.type === "opaque") {
+    if (rawField.encoding !== "base64") {
+      diagnostics.push(error(`${path}.encoding`, 'must equal "base64"'));
+    }
+    if (rawField.digest !== "sha256") {
+      diagnostics.push(error(`${path}.digest`, 'must equal "sha256"'));
+    }
   } else if (rawField.type === "union") {
     if (typeof rawField.discriminator !== "string" || rawField.discriminator.length === 0) {
       diagnostics.push(error(`${path}.discriminator`, "must be a non-empty string"));
