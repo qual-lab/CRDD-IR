@@ -94,7 +94,7 @@
     {
       "id": "synchronize-model",
       "source": "test/fixtures/contracts/portable-contract.md",
-      "digest": "483a5c04e19126bb3979874d5140e45b48df7918dde5b63eea001b92356a0bf1",
+      "digest": "068ec972a1ae9e1058466156af17a9956de4f1ff4552997f045e3445f7b2159c",
       "outputDirectory": ".",
       "files": [
         {
@@ -111,15 +111,15 @@
         },
         {
           "path": "SynchronizeModel.generated.cpp",
-          "sha256": "6cf7752fc42cff9104a41f8020276d1b9df50d5e1874160f5eed8ed054f7bcbb"
+          "sha256": "85f036141fe7690b728a0bd9bf240ab01e0640923aa67177357166981289ff79"
         },
         {
           "path": "SynchronizeModel.generated.h",
-          "sha256": "c9d117b5ed35e55d1a346fe438e5b07bfdfaf88394b21829e3861869f52dbd36"
+          "sha256": "796a91b0d5b7eb87877483c5dd8d248f8ac98e869686d3597c81e60fba7b2507"
         },
         {
           "path": "SynchronizeModelConformance.spec.cpp",
-          "sha256": "fb6e1abd32405cf3951aa8e8cc4967eb2f8985c88274eef5c3496a9ec275a64f"
+          "sha256": "e7675ad775117a1868ea17d41488422b1d23f9f50fbae1bb7941afcb5a5674ed"
         }
       ]
     }

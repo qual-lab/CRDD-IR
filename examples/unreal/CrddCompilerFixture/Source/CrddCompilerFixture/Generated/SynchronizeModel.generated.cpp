@@ -213,6 +213,157 @@ FCrddSynchronizeModelResult FCrddSynchronizeModelOperation::Execute(
         }
     }
 
+    // DM-MAP-ELEMENT-ID-UNIQUE: collection.unique
+    // CRDD-PORTABLE-SEMANTICS: eyJjb2xsZWN0aW9uIjoic3RhdGUubWFwX2VsZW1lbnRzIiwiZXJyb3IiOiJEVVBMSUNBVEVfTUFQX0VMRU1FTlRfSUQiLCJpZCI6IkRNLU1BUC1FTEVNRU5ULUlELVVOSVFVRSIsImtleSI6ImlkIiwia2luZCI6ImNvbGxlY3Rpb24udW5pcXVlIn0=
+    {
+        TSet<FString> CrddSeen;
+    for (const auto& CrddItemPair : InitialState.MapElements)
+    {
+        const auto& Item = CrddItemPair.Value;
+            const FString CrddKey = LexToString(Item.Id);
+            if (CrddKey.IsEmpty() || CrddSeen.Contains(CrddKey))
+            {
+                return Failure(
+            ECrddSynchronizeModelError::DuplicateMapElementId,
+            TEXT("DM-MAP-ELEMENT-ID-UNIQUE"),
+            InitialState,
+            {TEXT("IR-COLLECTION-001")}
+        );
+            }
+            CrddSeen.Add(CrddKey);
+    }
+    }
+
+    // DM-MAP-FRAME-REFERENCE: collection.reference
+    // CRDD-PORTABLE-SEMANTICS: eyJjb2xsZWN0aW9uIjoic3RhdGUubWFwX2VsZW1lbnRzIiwiZXJyb3IiOiJNQVBfRlJBTUVfUkVGRVJFTkNFX05PVF9GT1VORCIsImlkIjoiRE0tTUFQLUZSQU1FLVJFRkVSRU5DRSIsImtpbmQiOiJjb2xsZWN0aW9uLnJlZmVyZW5jZSIsInJlZmVyZW5jZSI6ImZyYW1lX2lkIiwidGFyZ2V0IjoiaW5wdXQuZnJhbWVzIiwidGFyZ2V0S2V5IjoiaWQiLCJ0YXJnZXRUeXBlIjp7ImVxdWFscyI6ImNvb3JkaW5hdGUtZnJhbWUiLCJmaWVsZCI6ImtpbmQifX0=
+    for (const auto& CrddItemPair : InitialState.MapElements)
+    {
+        const auto& Item = CrddItemPair.Value;
+        bool bCrddFound = false;
+        for (const auto& Candidate : Input.Frames)
+        {
+            bCrddFound = bCrddFound || (Candidate.Id == Item.FrameId && Candidate.Kind == TEXT("coordinate-frame"));
+        }
+        if (!bCrddFound)
+        {
+            return Failure(
+            ECrddSynchronizeModelError::MapFrameReferenceNotFound,
+            TEXT("DM-MAP-FRAME-REFERENCE"),
+            InitialState,
+            {TEXT("IR-COLLECTION-001")}
+        );
+        }
+    }
+
+    // DM-MAP-PARENT-MEMBERSHIP: collection.membership
+    // CRDD-PORTABLE-SEMANTICS: eyJjb2xsZWN0aW9uIjoic3RhdGUubWFwX2VsZW1lbnRzIiwiZXJyb3IiOiJNQVBfUEFSRU5UX05PVF9GT1VORCIsImlkIjoiRE0tTUFQLVBBUkVOVC1NRU1CRVJTSElQIiwia2luZCI6ImNvbGxlY3Rpb24ubWVtYmVyc2hpcCIsInBhcmVudEtleSI6ImlkIiwicGFyZW50UmVmZXJlbmNlIjoicGFyZW50X2lkIiwicGFyZW50cyI6InN0YXRlLnBhcmVudHMifQ==
+    for (const auto& CrddItemPair : InitialState.MapElements)
+    {
+        const auto& Item = CrddItemPair.Value;
+        bool bCrddFound = false;
+        for (const auto& CrddCandidatePair : InitialState.Parents)
+        {
+            const auto& Candidate = CrddCandidatePair.Value;
+            bCrddFound = bCrddFound || (Candidate.Id == Item.ParentId);
+        }
+        if (!bCrddFound)
+        {
+            return Failure(
+            ECrddSynchronizeModelError::MapParentNotFound,
+            TEXT("DM-MAP-PARENT-MEMBERSHIP"),
+            InitialState,
+            {TEXT("IR-COLLECTION-001")}
+        );
+        }
+    }
+
+    // DM-MAP-RELATION-ENDPOINTS: collection.relation
+    // CRDD-PORTABLE-SEMANTICS: eyJjb2xsZWN0aW9uIjoic3RhdGUubWFwX3JlbGF0aW9ucyIsImVsZW1lbnRLZXkiOiJpZCIsImVsZW1lbnRzIjoic3RhdGUubWFwX2VsZW1lbnRzIiwiZXJyb3IiOiJNQVBfUkVMQVRJT05fRU5EUE9JTlRfSU5WQUxJRCIsImZyb20iOiJmcm9tX2lkIiwiZnJvbVR5cGUiOnsiZXF1YWxzIjoic291cmNlIiwiZmllbGQiOiJraW5kIn0sImlkIjoiRE0tTUFQLVJFTEFUSU9OLUVORFBPSU5UUyIsImtpbmQiOiJjb2xsZWN0aW9uLnJlbGF0aW9uIiwidG8iOiJ0b19pZCIsInRvVHlwZSI6eyJlcXVhbHMiOiJ0YXJnZXQiLCJmaWVsZCI6ImtpbmQifX0=
+    for (const auto& CrddRelationPair : InitialState.MapRelations)
+    {
+        const auto& Relation = CrddRelationPair.Value;
+        bool bFromFound = false;
+        bool bToFound = false;
+        for (const auto& CrddElementPair : InitialState.MapElements)
+        {
+            const auto& Element = CrddElementPair.Value;
+            bFromFound = bFromFound || (Element.Id == Relation.FromId && Element.Kind == TEXT("source"));
+            bToFound = bToFound || (Element.Id == Relation.ToId && Element.Kind == TEXT("target"));
+        }
+        if (!bFromFound || !bToFound)
+        {
+            return Failure(
+            ECrddSynchronizeModelError::MapRelationEndpointInvalid,
+            TEXT("DM-MAP-RELATION-ENDPOINTS"),
+            InitialState,
+            {TEXT("IR-COLLECTION-001")}
+        );
+        }
+    }
+
+    // DM-NEW-ELEMENT-ID-AVAILABLE: collection.not-contains
+    // CRDD-PORTABLE-SEMANTICS: eyJjb2xsZWN0aW9uIjoic3RhdGUuZWxlbWVudHMiLCJlcnJvciI6IkVMRU1FTlRfSURfQUxSRUFEWV9FWElTVFMiLCJpZCI6IkRNLU5FVy1FTEVNRU5ULUlELUFWQUlMQUJMRSIsImtpbmQiOiJjb2xsZWN0aW9uLm5vdC1jb250YWlucyIsInRhcmdldEtleSI6ImlkIiwidmFsdWUiOiJpbnB1dC5uZXdfZWxlbWVudF9pZCJ9
+    for (const auto& Item : InitialState.Elements)
+    {
+        if (Item.Id == Input.NewElementId)
+        {
+            return Failure(
+            ECrddSynchronizeModelError::ElementIdAlreadyExists,
+            TEXT("DM-NEW-ELEMENT-ID-AVAILABLE"),
+            InitialState,
+            {TEXT("IR-COLLECTION-001")}
+        );
+        }
+    }
+
+    // DM-PROPOSED-ELEMENTS-UNIQUE: collection.prospective-unique
+    // CRDD-PORTABLE-SEMANTICS: eyJjYW5kaWRhdGVLZXkiOiJpZCIsImNhbmRpZGF0ZXMiOiJpbnB1dC5wcm9wb3NlZF9lbGVtZW50cyIsImVycm9yIjoiUFJPUE9TRURfRUxFTUVOVF9JRF9DT05GTElDVCIsImV4aXN0aW5nIjoic3RhdGUuZWxlbWVudHMiLCJleGlzdGluZ0tleSI6ImlkIiwiaWQiOiJETS1QUk9QT1NFRC1FTEVNRU5UUy1VTklRVUUiLCJraW5kIjoiY29sbGVjdGlvbi5wcm9zcGVjdGl2ZS11bmlxdWUifQ==
+    {
+        TSet<FString> CrddProposed;
+    for (const auto& CrddCandidatePair : Input.ProposedElements)
+    {
+        const auto& Candidate = CrddCandidatePair.Value;
+            const FString CrddKey = LexToString(Candidate.Id);
+            if (CrddKey.IsEmpty() || CrddProposed.Contains(CrddKey))
+            {
+                return Failure(
+            ECrddSynchronizeModelError::ProposedElementIdConflict,
+            TEXT("DM-PROPOSED-ELEMENTS-UNIQUE"),
+            InitialState,
+            {TEXT("IR-COLLECTION-001")}
+        );
+            }
+            CrddProposed.Add(CrddKey);
+        for (const auto& Current : InitialState.Elements)
+        {
+                if (Current.Id == Candidate.Id)
+                {
+                    return Failure(
+            ECrddSynchronizeModelError::ProposedElementIdConflict,
+            TEXT("DM-PROPOSED-ELEMENTS-UNIQUE"),
+            InitialState,
+            {TEXT("IR-COLLECTION-001")}
+        );
+                }
+        }
+    }
+    }
+
+    // DM-NEW-NUMERIC-ID-AVAILABLE: collection.not-contains
+    // CRDD-PORTABLE-SEMANTICS: eyJjb2xsZWN0aW9uIjoic3RhdGUubnVtZXJpY19lbGVtZW50cyIsImVycm9yIjoiTlVNRVJJQ19JRF9BTFJFQURZX0VYSVNUUyIsImlkIjoiRE0tTkVXLU5VTUVSSUMtSUQtQVZBSUxBQkxFIiwia2luZCI6ImNvbGxlY3Rpb24ubm90LWNvbnRhaW5zIiwidGFyZ2V0S2V5IjoiaWQiLCJ2YWx1ZSI6ImlucHV0Lm5ld19udW1lcmljX2lkIn0=
+    for (const auto& Item : InitialState.NumericElements)
+    {
+        if (Item.Id == Input.NewNumericId)
+        {
+            return Failure(
+            ECrddSynchronizeModelError::NumericIdAlreadyExists,
+            TEXT("DM-NEW-NUMERIC-ID-AVAILABLE"),
+            InitialState,
+            {TEXT("IR-COLLECTION-001")}
+        );
+        }
+    }
+
     // DM-UNKNOWN-BYTES: opaque.integrity
     // CRDD-PORTABLE-SEMANTICS: eyJlcnJvciI6IlVOS05PV05fQllURVNfSU5WQUxJRCIsImlkIjoiRE0tVU5LTk9XTi1CWVRFUyIsImtpbmQiOiJvcGFxdWUuaW50ZWdyaXR5IiwidGFyZ2V0IjoiaW5wdXQucHJvcG9zZWRfZXh0ZW5zaW9uIn0=
     if (!CrddOpaqueValid(Input.ProposedExtension))
@@ -253,6 +404,18 @@ FCrddSynchronizeModelResult FCrddSynchronizeModelOperation::Execute(
         );
     }
 
+    // DM-UNKNOWN-EDIT-INTENT: opaque.reject-edit-when-inactive
+    // CRDD-PORTABLE-SEMANTICS: eyJjdXJyZW50Ijoic3RhdGUudW5rbm93bl9leHRlbnNpb24iLCJlcnJvciI6IlVOS05PV05fRVhURU5TSU9OX0VESVRfUkVKRUNURUQiLCJpZCI6IkRNLVVOS05PV04tRURJVC1JTlRFTlQiLCJpbnRlbnQiOiJpbnB1dC5lZGl0X3Vua25vd24iLCJraW5kIjoib3BhcXVlLnJlamVjdC1lZGl0LXdoZW4taW5hY3RpdmUifQ==
+    if (!CrddOpaqueValid(InitialState.UnknownExtension) || (!InitialState.UnknownExtension.bActive && Input.EditUnknown))
+    {
+        return Failure(
+            ECrddSynchronizeModelError::UnknownExtensionEditRejected,
+            TEXT("DM-UNKNOWN-EDIT-INTENT"),
+            InitialState,
+            {TEXT("IR-IMMUTABLE-001")}
+        );
+    }
+
     FCrddSynchronizeModelResult Result;
     Result.bSucceeded = true;
     Result.State = InitialState;
@@ -275,6 +438,20 @@ FString FCrddSynchronizeModelOperation::ErrorCode(ECrddSynchronizeModelError Err
         return TEXT("PARENT_NOT_FOUND");
     case ECrddSynchronizeModelError::RelationEndpointInvalid:
         return TEXT("RELATION_ENDPOINT_INVALID");
+    case ECrddSynchronizeModelError::DuplicateMapElementId:
+        return TEXT("DUPLICATE_MAP_ELEMENT_ID");
+    case ECrddSynchronizeModelError::MapFrameReferenceNotFound:
+        return TEXT("MAP_FRAME_REFERENCE_NOT_FOUND");
+    case ECrddSynchronizeModelError::MapParentNotFound:
+        return TEXT("MAP_PARENT_NOT_FOUND");
+    case ECrddSynchronizeModelError::MapRelationEndpointInvalid:
+        return TEXT("MAP_RELATION_ENDPOINT_INVALID");
+    case ECrddSynchronizeModelError::ElementIdAlreadyExists:
+        return TEXT("ELEMENT_ID_ALREADY_EXISTS");
+    case ECrddSynchronizeModelError::ProposedElementIdConflict:
+        return TEXT("PROPOSED_ELEMENT_ID_CONFLICT");
+    case ECrddSynchronizeModelError::NumericIdAlreadyExists:
+        return TEXT("NUMERIC_ID_ALREADY_EXISTS");
     case ECrddSynchronizeModelError::UnknownBytesInvalid:
         return TEXT("UNKNOWN_BYTES_INVALID");
     case ECrddSynchronizeModelError::StoredUnknownBytesInvalid:

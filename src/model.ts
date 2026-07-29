@@ -120,6 +120,23 @@ export type PortableRule =
       toType?: { field: string; equals: string };
     }
   | {
+      kind: "collection.not-contains";
+      id: string;
+      error: string;
+      value: string;
+      collection: string;
+      targetKey: string;
+    }
+  | {
+      kind: "collection.prospective-unique";
+      id: string;
+      error: string;
+      candidates: string;
+      candidateKey: string;
+      existing: string;
+      existingKey: string;
+    }
+  | {
       kind: "opaque.integrity";
       id: string;
       error: string;
@@ -131,6 +148,13 @@ export type PortableRule =
       error: string;
       current: string;
       proposed: string;
+    }
+  | {
+      kind: "opaque.reject-edit-when-inactive";
+      id: string;
+      error: string;
+      current: string;
+      intent: string;
     };
 
 export type Effect =

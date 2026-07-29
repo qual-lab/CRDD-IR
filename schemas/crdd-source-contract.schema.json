@@ -147,6 +147,33 @@
         },
         {
           "type": "object",
+          "required": ["kind", "id", "error", "value", "collection", "targetKey"],
+          "properties": {
+            "kind": { "const": "collection.not-contains" },
+            "id": { "type": "string", "minLength": 1 },
+            "error": { "type": "string", "minLength": 1 },
+            "value": { "type": "string", "minLength": 1 },
+            "collection": { "type": "string", "minLength": 1 },
+            "targetKey": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "id", "error", "candidates", "candidateKey", "existing", "existingKey"],
+          "properties": {
+            "kind": { "const": "collection.prospective-unique" },
+            "id": { "type": "string", "minLength": 1 },
+            "error": { "type": "string", "minLength": 1 },
+            "candidates": { "type": "string", "minLength": 1 },
+            "candidateKey": { "type": "string", "minLength": 1 },
+            "existing": { "type": "string", "minLength": 1 },
+            "existingKey": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
           "required": ["kind", "id", "error", "target"],
           "properties": {
             "kind": { "const": "opaque.integrity" },
@@ -165,6 +192,18 @@
             "error": { "type": "string", "minLength": 1 },
             "current": { "type": "string", "minLength": 1 },
             "proposed": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "id", "error", "current", "intent"],
+          "properties": {
+            "kind": { "const": "opaque.reject-edit-when-inactive" },
+            "id": { "type": "string", "minLength": 1 },
+            "error": { "type": "string", "minLength": 1 },
+            "current": { "type": "string", "minLength": 1 },
+            "intent": { "type": "string", "minLength": 1 }
           },
           "additionalProperties": false
         }

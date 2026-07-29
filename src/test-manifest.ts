@@ -750,6 +750,56 @@ function falsifyPortableRule(ir: CrddIr, id: string, baseline: SimulationRequest
     });
     return request;
   }
+  if (rule.kind === "opaque.reject-edit-when-inactive") {
+    setPath(request as unknown as Record<string, unknown>, rule.intent, true);
+    return request;
+  }
+  if (rule.kind === "collection.not-contains") {
+    const field = fieldDefinition(ir, rule.collection);
+    const itemField = field?.type === "array" ? field.items : field?.type === "map" ? field.values : undefined;
+    if (itemField?.type !== "object") throw new Error(`Portable collection "${rule.collection}" must contain objects`);
+    const item = baselineFieldValue(itemField) as Record<string, unknown>;
+    const targetDefinition = itemField.properties[rule.targetKey];
+    const duplicate = targetDefinition.type === "integer" ? 7 : "prospective-duplicate";
+    item[rule.targetKey] = duplicate;
+    satisfyEarlierCollectionRules(ir, rule.id, rule.collection, item, request);
+    setPath(request as unknown as Record<string, unknown>, rule.value, duplicate);
+    mutableCollection(
+      getPath(request as unknown as Record<string, unknown>, rule.collection),
+      rule.collection,
+    ).add(item);
+    return request;
+  }
+  if (rule.kind === "collection.prospective-unique") {
+    const candidateField = fieldDefinition(ir, rule.candidates);
+    const existingField = fieldDefinition(ir, rule.existing);
+    const candidateItem = candidateField?.type === "array"
+      ? candidateField.items
+      : candidateField?.type === "map" ? candidateField.values : undefined;
+    const existingItem = existingField?.type === "array"
+      ? existingField.items
+      : existingField?.type === "map" ? existingField.values : undefined;
+    if (candidateItem?.type !== "object" || existingItem?.type !== "object") {
+      throw new Error(`Prospective unique collections must contain objects`);
+    }
+    const duplicate = candidateItem.properties[rule.candidateKey].type === "integer"
+      ? 7
+      : "prospective-duplicate";
+    const candidate = baselineFieldValue(candidateItem) as Record<string, unknown>;
+    const existing = baselineFieldValue(existingItem) as Record<string, unknown>;
+    candidate[rule.candidateKey] = duplicate;
+    existing[rule.existingKey] = duplicate;
+    satisfyEarlierCollectionRules(ir, rule.id, rule.existing, existing, request);
+    mutableCollection(
+      getPath(request as unknown as Record<string, unknown>, rule.candidates),
+      rule.candidates,
+    ).add(candidate);
+    mutableCollection(
+      getPath(request as unknown as Record<string, unknown>, rule.existing),
+      rule.existing,
+    ).add(existing);
+    return request;
+  }
   const collectionValue = getPath(request as unknown as Record<string, unknown>, rule.collection);
   const collection = mutableCollection(collectionValue, rule.collection);
   const field = fieldDefinition(ir, rule.collection);
@@ -818,6 +868,31 @@ function satisfyEarlierReferences(
     candidate[rule.targetKey] = value;
     if (rule.targetType) candidate[rule.targetType.field] = rule.targetType.equals;
     mutableCollection(target, rule.target).add(candidate);
+  }
+}
+
+function satisfyEarlierCollectionRules(
+  ir: CrddIr,
+  beforeId: string,
+  collectionPath: string,
+  item: Record<string, unknown>,
+  request: SimulationRequest,
+): void {
+  satisfyEarlierReferences(ir, beforeId, collectionPath, item, request);
+  for (const rule of ir.operation.portableRules ?? []) {
+    if (rule.id === beforeId) return;
+    if (rule.kind !== "collection.membership" || rule.collection !== collectionPath) continue;
+    const parents = getPath(request as unknown as Record<string, unknown>, rule.parents);
+    const parentField = fieldDefinition(ir, rule.parents);
+    const parentItem = parentField?.type === "array"
+      ? parentField.items
+      : parentField?.type === "map" ? parentField.values : undefined;
+    if (parentItem?.type !== "object") continue;
+    const parent = baselineFieldValue(parentItem) as Record<string, unknown>;
+    const value = `valid-${slug(rule.id)}`;
+    item[rule.parentReference] = value;
+    parent[rule.parentKey] = value;
+    mutableCollection(parents, rule.parents).add(parent);
   }
 }
 

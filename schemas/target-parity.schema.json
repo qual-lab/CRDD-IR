@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://crdd.dev/schema/target-parity/v0.1.json",
-  "title": "CRDD IR Target Parity Report v0.1",
+  "$id": "https://crdd.dev/schema/target-parity/v0.2.json",
+  "title": "CRDD IR Target Parity Report v0.2",
   "type": "object",
   "required": [
     "protocol",
@@ -16,7 +16,7 @@
     "equivalent"
   ],
   "properties": {
-    "protocol": { "const": "crdd-ir/target-parity-v0.1" },
+    "protocol": { "const": "crdd-ir/target-parity-v0.2" },
     "requirements": {
       "type": "array",
       "contains": { "const": "IR-PARITY-001" }

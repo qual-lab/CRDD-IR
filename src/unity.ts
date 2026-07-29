@@ -253,12 +253,53 @@ function csPortableRule(rule: PortableRule, operation: Operation): string {
     const proposed = csPortablePath(rule.proposed, operation);
     return `            // ${rule.id}: ${rule.kind}
             // CRDD-PORTABLE-SEMANTICS: ${marker}
-            if (${current} == null || ${proposed} == null ||
+            if (!OpaqueValid(${current}) || !OpaqueValid(${proposed}) ||
                 (!${current}.Active &&
                 (${current}.Base64 != ${proposed}.Base64 ||
                  ${current}.Sha256 != ${proposed}.Sha256 ||
                  ${current}.Active != ${proposed}.Active)))
                 ${failure}`;
+  }
+  if (rule.kind === "opaque.reject-edit-when-inactive") {
+    const current = csPortablePath(rule.current, operation);
+    const intent = csPortablePath(rule.intent, operation);
+    return `            // ${rule.id}: ${rule.kind}
+            // CRDD-PORTABLE-SEMANTICS: ${marker}
+            if (!OpaqueValid(${current}) || (!${current}.Active && ${intent}))
+                ${failure}`;
+  }
+  if (rule.kind === "collection.not-contains") {
+    const collection = csCollectionValues(rule.collection, operation);
+    const item = csCollectionItem(operation, rule.collection);
+    const targetKey = csField(rule.targetKey, item.properties[rule.targetKey]);
+    const value = csPortablePath(rule.value, operation);
+    return `            // ${rule.id}: ${rule.kind}
+            // CRDD-PORTABLE-SEMANTICS: ${marker}
+            foreach (var item in ${collection})
+                if (item.${targetKey} == ${value})
+                    ${failure}`;
+  }
+  if (rule.kind === "collection.prospective-unique") {
+    const candidates = csCollectionValues(rule.candidates, operation);
+    const existing = csCollectionValues(rule.existing, operation);
+    const candidateItem = csCollectionItem(operation, rule.candidates);
+    const existingItem = csCollectionItem(operation, rule.existing);
+    const candidateKey = csField(rule.candidateKey, candidateItem.properties[rule.candidateKey]);
+    const existingKey = csField(rule.existingKey, existingItem.properties[rule.existingKey]);
+    return `            // ${rule.id}: ${rule.kind}
+            // CRDD-PORTABLE-SEMANTICS: ${marker}
+            {
+                var proposed = new HashSet<string>();
+                foreach (var candidate in ${candidates})
+                {
+                    var key = Convert.ToString(candidate.${candidateKey})!;
+                    if (string.IsNullOrEmpty(key) || !proposed.Add(key))
+                        ${failure}
+                    foreach (var current in ${existing})
+                        if (current.${existingKey} == candidate.${candidateKey})
+                            ${failure}
+                }
+            }`;
   }
   const collection = csCollectionValues(rule.collection, operation);
   const item = csCollectionItem(operation, rule.collection);
@@ -814,6 +855,7 @@ function csType(field: FieldDefinition, operation: string, scope: string, name: 
   const projected = (field as FieldDefinition & { _crddCsharpType?: string })._crddCsharpType;
   if (projected) return projected;
   if (field.type === "number") return "double";
+  if (field.type === "integer") return "long";
   if (field.type === "string") return "string";
   if (field.type === "boolean") return "bool";
   if (field.type === "object") return `${operation}${scope}${identifier(name)}`;

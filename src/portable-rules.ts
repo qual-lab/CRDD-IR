@@ -25,8 +25,30 @@ export function portableRuleSatisfied(
   if (rule.kind === "opaque.immutable-when-inactive") {
     const current = getPath(context, rule.current);
     const proposed = getPath(context, rule.proposed);
-    return isOpaque(current) && isOpaque(proposed) &&
+    return validOpaque(current) && validOpaque(proposed) &&
       (current.active || opaqueEqual(current, proposed));
+  }
+  if (rule.kind === "opaque.reject-edit-when-inactive") {
+    const current = getPath(context, rule.current);
+    const intent = getPath(context, rule.intent);
+    return validOpaque(current) && typeof intent === "boolean" &&
+      (current.active || !intent);
+  }
+  if (rule.kind === "collection.not-contains") {
+    const collection = collectionValues(getPath(context, rule.collection));
+    const value = getPath(context, rule.value);
+    return !!collection && isPortableId(value) &&
+      collection.every((candidate) => !portableEqual(value, member(candidate, rule.targetKey)));
+  }
+  if (rule.kind === "collection.prospective-unique") {
+    const candidates = collectionValues(getPath(context, rule.candidates));
+    const existing = collectionValues(getPath(context, rule.existing));
+    if (!candidates || !existing) return false;
+    const candidateKeys = candidates.map((item) => member(item, rule.candidateKey));
+    const existingKeys = existing.map((item) => member(item, rule.existingKey));
+    return candidateKeys.every(isPortableId) &&
+      new Set(candidateKeys).size === candidateKeys.length &&
+      candidateKeys.every((key) => existingKeys.every((existingKey) => !portableEqual(key, existingKey)));
   }
 
   const collection = collectionValues(getPath(context, rule.collection));
@@ -39,7 +61,7 @@ export function portableRuleSatisfied(
     const target = collectionValues(getPath(context, rule.target));
     if (!target) return false;
     return collection.every((item) => target.some((candidate) =>
-      Object.is(member(item, rule.reference), member(candidate, rule.targetKey)) &&
+      portableEqual(member(item, rule.reference), member(candidate, rule.targetKey)) &&
       matchesType(candidate, rule.targetType)
     ));
   }
@@ -47,7 +69,7 @@ export function portableRuleSatisfied(
     const parents = collectionValues(getPath(context, rule.parents));
     if (!parents) return false;
     return collection.every((item) => parents.some((parent) =>
-      Object.is(member(item, rule.parentReference), member(parent, rule.parentKey))
+      portableEqual(member(item, rule.parentReference), member(parent, rule.parentKey))
     ));
   }
   const elements = collectionValues(getPath(context, rule.elements));
@@ -82,11 +104,11 @@ function endpointExists(
   key: string,
   type: { field: string; equals: string } | undefined,
 ): boolean {
-  return elements.some((element) => Object.is(member(element, key), id) && matchesType(element, type));
+  return elements.some((element) => portableEqual(member(element, key), id) && matchesType(element, type));
 }
 
 function matchesType(value: unknown, type?: { field: string; equals: string }): boolean {
-  return !type || Object.is(member(value, type.field), type.equals);
+  return !type || portableEqual(member(value, type.field), type.equals);
 }
 
 function member(value: unknown, path: string): unknown {
@@ -100,6 +122,14 @@ function member(value: unknown, path: string): unknown {
 function isPortableId(value: unknown): value is string | number {
   return (typeof value === "string" && value.length > 0) ||
     (typeof value === "number" && Number.isSafeInteger(value));
+}
+
+function portableEqual(left: unknown, right: unknown): boolean {
+  if (typeof left === "number" || typeof right === "number") {
+    return typeof left === "number" && typeof right === "number" &&
+      Number.isSafeInteger(left) && Number.isSafeInteger(right) && left === right;
+  }
+  return left === right;
 }
 
 function isOpaque(value: unknown): value is { base64: string; sha256: string; active: boolean } {

@@ -284,8 +284,13 @@ function validatePortableRules(value: unknown, add: AddDiagnostic): void {
       "kind", "id", "error", "collection", "from", "to", "elements", "elementKey",
       "fromType", "toType",
     ],
+    "collection.not-contains": ["kind", "id", "error", "value", "collection", "targetKey"],
+    "collection.prospective-unique": [
+      "kind", "id", "error", "candidates", "candidateKey", "existing", "existingKey",
+    ],
     "opaque.integrity": ["kind", "id", "error", "target"],
     "opaque.immutable-when-inactive": ["kind", "id", "error", "current", "proposed"],
+    "opaque.reject-edit-when-inactive": ["kind", "id", "error", "current", "intent"],
   };
   value.forEach((rule, index) => {
     const path = `$.operation.portable_rules[${index}]`;

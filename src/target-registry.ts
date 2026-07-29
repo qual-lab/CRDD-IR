@@ -142,7 +142,7 @@ function containsGeneralApplicationType(
   allowObjectMap: boolean,
 ):
   import("./model.ts").FieldDefinition | undefined {
-  if (["integer", "union"].includes(field.type) || field.nullable === true) return field;
+  if (field.type === "union" || field.nullable === true) return field;
   if (field.type === "map") {
     if (!allowObjectMap || field.values.type !== "object") return field;
     return containsGeneralApplicationType(field.values, allowObjectMap);

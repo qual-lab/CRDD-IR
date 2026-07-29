@@ -39,6 +39,10 @@ function validRequest(): SimulationRequest {
   return {
     input: {
       proposed_extension: structuredClone(preserved),
+      edit_unknown: false,
+      new_element_id: "new-c",
+      new_numeric_id: 1,
+      proposed_elements: {},
       frames: [{ id: "frame-1", kind: "coordinate-frame" }],
     },
     state: {
@@ -47,7 +51,13 @@ function validRequest(): SimulationRequest {
         { id: "a", kind: "source", frame_id: "frame-1", parent_id: "parent-1" },
         { id: "b", kind: "target", frame_id: "frame-1", parent_id: "parent-1" },
       ],
+      numeric_elements: [{ id: 0 }],
       relations: [{ from_id: "a", to_id: "b" }],
+      map_elements: {
+        source: { id: "ma", kind: "source", frame_id: "frame-1", parent_id: "parent-1" },
+        target: { id: "mb", kind: "target", frame_id: "frame-1", parent_id: "parent-1" },
+      },
+      map_relations: { primary: { from_id: "ma", to_id: "mb" } },
       unknown_extension: preserved,
     },
   };
@@ -87,6 +97,62 @@ test("IR-COLLECTION-001 validates typed references, membership, and relation end
     const result = simulate(ir, request);
     assert.equal(result.ok, false);
     if (!result.ok) assert.equal(result.failedRequirement, rule);
+  }
+});
+
+test("IR-COLLECTION-001 enforces every rule kind when the source collection is a map", async () => {
+  const { ir } = await compileMarkdown(source);
+  const cases: Array<[string, (request: SimulationRequest) => void]> = [
+    ["DM-MAP-ELEMENT-ID-UNIQUE", (request) => {
+      (request.state.map_elements as Record<string, Record<string, unknown>>).target.id = "ma";
+    }],
+    ["DM-MAP-FRAME-REFERENCE", (request) => {
+      (request.state.map_elements as Record<string, Record<string, unknown>>).source.frame_id = "missing";
+    }],
+    ["DM-MAP-PARENT-MEMBERSHIP", (request) => {
+      (request.state.map_elements as Record<string, Record<string, unknown>>).source.parent_id = "missing";
+    }],
+    ["DM-MAP-RELATION-ENDPOINTS", (request) => {
+      (request.state.map_relations as Record<string, Record<string, unknown>>).primary.to_id = "ma";
+    }],
+  ];
+  for (const [rule, mutate] of cases) {
+    const request = validRequest();
+    mutate(request);
+    const result = simulate(ir, request);
+    assert.equal(result.ok, false);
+    if (!result.ok) {
+      assert.equal(result.failedRequirement, rule);
+      assert.deepEqual(result.state, request.state);
+    }
+  }
+});
+
+test("IR-COLLECTION-001 owns scalar and collection prospective uniqueness", async () => {
+  const { ir } = await compileMarkdown(source);
+  const scalar = validRequest();
+  scalar.input.new_element_id = "a";
+  const scalarResult = simulate(ir, scalar);
+  assert.equal(scalarResult.ok, false);
+  if (!scalarResult.ok) assert.equal(scalarResult.failedRequirement, "DM-NEW-ELEMENT-ID-AVAILABLE");
+
+  const collection = validRequest();
+  collection.input.proposed_elements = { candidate: { id: "b" } };
+  const collectionResult = simulate(ir, collection);
+  assert.equal(collectionResult.ok, false);
+  if (!collectionResult.ok) assert.equal(collectionResult.failedRequirement, "DM-PROPOSED-ELEMENTS-UNIQUE");
+});
+
+test("IR-COLLECTION-001 normalizes integer negative zero to zero across targets", async () => {
+  const { ir } = await compileMarkdown(source);
+  const request = validRequest();
+  request.input.new_numeric_id = -0;
+  const result = simulate(ir, request);
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.equal(result.failedRequirement, "DM-NEW-NUMERIC-ID-AVAILABLE");
+    assert.equal(result.error, "NUMERIC_ID_ALREADY_EXISTS");
+    assert.deepEqual(result.state, request.state);
   }
 });
 
@@ -138,6 +204,35 @@ test("IR-IMMUTABLE-001 rejects inactive unknown edits without state changes", as
   const failClosed = simulate(immutableOnly, malformed);
   assert.equal(failClosed.ok, false);
   if (!failClosed.ok) assert.equal(failClosed.failedRequirement, "DM-UNKNOWN-PRESERVED");
+
+  for (const active of [false, true]) {
+    for (const corruption of ["base64", "sha256"] as const) {
+      const invalid = validRequest();
+      (invalid.state.unknown_extension as Record<string, unknown>).active = active;
+      (invalid.input.proposed_extension as Record<string, unknown>).active = active;
+      (invalid.input.proposed_extension as Record<string, unknown>)[corruption] =
+        corruption === "base64" ? "not canonical!" : "f".repeat(64);
+      const standalone = structuredClone(ir);
+      standalone.operation.portableRules = standalone.operation.portableRules?.filter(
+        (rule) => rule.kind === "opaque.immutable-when-inactive",
+      );
+      const result = simulate(standalone, invalid);
+      assert.equal(result.ok, false, `${active ? "active" : "inactive"} ${corruption}`);
+      if (!result.ok) assert.equal(result.failedRequirement, "DM-UNKNOWN-PRESERVED");
+    }
+  }
+});
+
+test("IR-IMMUTABLE-001 rejects edit intent even when inactive bytes are unchanged", async () => {
+  const { ir } = await compileMarkdown(source);
+  const request = validRequest();
+  request.input.edit_unknown = true;
+  const result = simulate(ir, request);
+  assert.equal(result.ok, false);
+  if (result.ok) return;
+  assert.equal(result.failedRequirement, "DM-UNKNOWN-EDIT-INTENT");
+  assert.equal(result.error, "UNKNOWN_EXTENSION_EDIT_REJECTED");
+  assert.deepEqual(result.state, request.state);
 });
 
 test("portable rules generate independently for Unreal and Unity with shared parity evidence", async () => {
@@ -190,8 +285,8 @@ test("portable conformance cases kill every typed rule mutation deterministicall
   const first = generateTestManifest(compilation.ir);
   const second = generateTestManifest(compilation.ir);
   assert.deepEqual(first, second);
-  assert.equal(first.cases.filter((item) => item.sourceRequirement?.startsWith("DM-")).length, 8);
+  assert.equal(first.cases.filter((item) => item.sourceRequirement?.startsWith("DM-")).length, 16);
   const report = analyzeMutationCoverage(compilation.ir, first);
   assert.equal(report.survived.length, 0);
-  assert.equal(report.killed, 8);
+  assert.equal(report.killed, 16);
 });

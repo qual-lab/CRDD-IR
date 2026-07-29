@@ -17,7 +17,7 @@ type NormalizedNumericProjection = {
 };
 
 export type TargetParityReport = {
-  protocol: "crdd-ir/target-parity-v0.1";
+  protocol: "crdd-ir/target-parity-v0.2";
   requirements: string[];
   operation: string;
   irSha256: string;
@@ -99,7 +99,7 @@ export function verifyTargetParity(
       targets[0].portableRulesSha256 === portableRulesSha256,
   };
   return {
-    protocol: "crdd-ir/target-parity-v0.1",
+    protocol: "crdd-ir/target-parity-v0.2",
     requirements: parityRequirements(compilation),
     operation: compilation.ir.operation.id,
     irSha256: compilation.digest,

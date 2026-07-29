@@ -168,8 +168,11 @@ function validatePortableRules(
     "collection.reference": ["collection", "reference", "target", "targetKey"],
     "collection.membership": ["collection", "parentReference", "parents", "parentKey"],
     "collection.relation": ["collection", "from", "to", "elements", "elementKey"],
+    "collection.not-contains": ["value", "collection", "targetKey"],
+    "collection.prospective-unique": ["candidates", "candidateKey", "existing", "existingKey"],
     "opaque.integrity": ["target"],
     "opaque.immutable-when-inactive": ["current", "proposed"],
+    "opaque.reject-edit-when-inactive": ["current", "intent"],
   };
   value.forEach((rule, index) => {
     const path = `$.operation.portableRules[${index}]`;
@@ -431,6 +434,52 @@ function validatePortableRuleReferences(
     if (proposed && proposed.type !== "opaque") diagnostics.push(error(`${path}.proposed`, "must reference an opaque field"));
     return;
   }
+  if (rule.kind === "opaque.reject-edit-when-inactive") {
+    const current = field("current");
+    const intent = field("intent");
+    if (current && current.type !== "opaque") diagnostics.push(error(`${path}.current`, "must reference an opaque field"));
+    if (intent && intent.type !== "boolean") diagnostics.push(error(`${path}.intent`, "must reference a boolean field"));
+    return;
+  }
+  if (rule.kind === "collection.not-contains") {
+    const value = field("value");
+    const collection = field("collection");
+    const item = collectionObjectItem(collection);
+    if (!item) {
+      diagnostics.push(error(`${path}.collection`, "must reference an array or map of objects"));
+      return;
+    }
+    requirePortableIdDefinition(value, `${path}.value`, diagnostics);
+    const targetKey = String(rule.targetKey ?? "");
+    const target = item.properties[targetKey];
+    if (!target) diagnostics.push(error(`${path}.targetKey`, `references undefined collection member "${targetKey}"`));
+    requirePortableIdDefinition(target, `${path}.targetKey`, diagnostics);
+    if (value && target && value.type !== target.type) {
+      diagnostics.push(error(`${path}.value`, "must have the same type as targetKey"));
+    }
+    return;
+  }
+  if (rule.kind === "collection.prospective-unique") {
+    const candidates = field("candidates");
+    const existing = field("existing");
+    const candidateItem = collectionObjectItem(candidates);
+    const existingItem = collectionObjectItem(existing);
+    if (!candidateItem) diagnostics.push(error(`${path}.candidates`, "must reference an array or map of objects"));
+    if (!existingItem) diagnostics.push(error(`${path}.existing`, "must reference an array or map of objects"));
+    if (!candidateItem || !existingItem) return;
+    const candidateKey = String(rule.candidateKey ?? "");
+    const existingKey = String(rule.existingKey ?? "");
+    const candidate = candidateItem.properties[candidateKey];
+    const current = existingItem.properties[existingKey];
+    if (!candidate) diagnostics.push(error(`${path}.candidateKey`, `references undefined collection member "${candidateKey}"`));
+    if (!current) diagnostics.push(error(`${path}.existingKey`, `references undefined collection member "${existingKey}"`));
+    requirePortableIdDefinition(candidate, `${path}.candidateKey`, diagnostics);
+    requirePortableIdDefinition(current, `${path}.existingKey`, diagnostics);
+    if (candidate && current && candidate.type !== current.type) {
+      diagnostics.push(error(`${path}.candidateKey`, "must have the same type as existingKey"));
+    }
+    return;
+  }
   const collection = field("collection");
   const collectionItem = collectionObjectItem(collection);
   if (!collectionItem) {
@@ -518,6 +567,16 @@ function validatePortableRuleReferences(
     if (leftField && rightField && leftField.type !== rightField.type) {
       diagnostics.push(error(`${path}.${leftKey}`, `must have the same type as ${rightKey}`));
     }
+  }
+}
+
+function requirePortableIdDefinition(
+  field: FieldDefinition | undefined,
+  path: string,
+  diagnostics: Diagnostic[],
+): void {
+  if (field && field.type !== "string" && field.type !== "integer") {
+    diagnostics.push(error(path, "must reference a string or integer field"));
   }
 }
 

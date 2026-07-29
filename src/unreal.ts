@@ -441,6 +441,57 @@ function cppPortableRule(rule: PortableRule, operation: Operation): string {
         ${failure}
     }`;
   }
+  if (rule.kind === "opaque.reject-edit-when-inactive") {
+    const current = cppPortablePath(rule.current, operation);
+    const intent = cppPortablePath(rule.intent, operation);
+    return `    // ${rule.id}: ${rule.kind}
+    // CRDD-PORTABLE-SEMANTICS: ${marker}
+    if (!CrddOpaqueValid(${current}) || (!${current}.bActive && ${intent}))
+    {
+        ${failure}
+    }`;
+  }
+  if (rule.kind === "collection.not-contains") {
+    const item = collectionItem(operation, rule.collection);
+    const key = cppField(rule.targetKey, item.properties[rule.targetKey]);
+    const value = cppPortablePath(rule.value, operation);
+    const loop = cppCollectionLoop(rule.collection, operation, "Item");
+    return `    // ${rule.id}: ${rule.kind}
+    // CRDD-PORTABLE-SEMANTICS: ${marker}
+${loop.open}
+        if (Item.${key} == ${value})
+        {
+            ${failure}
+        }
+${loop.close}`;
+  }
+  if (rule.kind === "collection.prospective-unique") {
+    const candidateItem = collectionItem(operation, rule.candidates);
+    const existingItem = collectionItem(operation, rule.existing);
+    const candidateKey = cppField(rule.candidateKey, candidateItem.properties[rule.candidateKey]);
+    const existingKey = cppField(rule.existingKey, existingItem.properties[rule.existingKey]);
+    const candidatesLoop = cppCollectionLoop(rule.candidates, operation, "Candidate");
+    const existingLoop = cppCollectionLoop(rule.existing, operation, "Current", 2);
+    return `    // ${rule.id}: ${rule.kind}
+    // CRDD-PORTABLE-SEMANTICS: ${marker}
+    {
+        TSet<FString> CrddProposed;
+${candidatesLoop.open}
+            const FString CrddKey = LexToString(Candidate.${candidateKey});
+            if (CrddKey.IsEmpty() || CrddProposed.Contains(CrddKey))
+            {
+                ${failure}
+            }
+            CrddProposed.Add(CrddKey);
+${existingLoop.open}
+                if (Current.${existingKey} == Candidate.${candidateKey})
+                {
+                    ${failure}
+                }
+${existingLoop.close}
+${candidatesLoop.close}
+    }`;
+  }
   const collection = cppPortablePath(rule.collection, operation);
   const item = collectionItem(operation, rule.collection);
   const loop = cppCollectionLoop(rule.collection, operation, "Item");
@@ -1097,6 +1148,7 @@ function cppType(field: FieldDefinition): string {
   const projected = (field as FieldDefinition & { _crddCppType?: string })._crddCppType;
   if (projected) return projected;
   if (field.type === "number") return "double";
+  if (field.type === "integer") return "int64";
   if (field.type === "boolean") return "bool";
   if (field.type === "string") return "FString";
   if (field.type === "opaque") return "FCrddOpaqueValue";
@@ -1112,6 +1164,7 @@ function cppDefault(field: FieldDefinition): string {
   const projected = (field as FieldDefinition & { _crddCppType?: string })._crddCppType;
   if (field.type === "number" && projected?.startsWith("int")) return "0";
   if (field.type === "number") return "0.0";
+  if (field.type === "integer") return "0";
   if (field.type === "boolean") return "false";
   if (field.type === "string") return 'TEXT("")';
   return "{}";

@@ -141,8 +141,12 @@ function validateFieldValue(
     }
     return structuredClone(value);
   }
-    if (definition.type === "number" && typeof value !== "number") {
+    if ((definition.type === "number" || definition.type === "integer") && typeof value !== "number") {
       throw new Error(`${label} must be a number`);
+    }
+    if (definition.type === "integer") {
+      if (!Number.isSafeInteger(value)) throw new Error(`${label} must be a safe integer`);
+      if (Object.is(value, -0)) value = 0;
     }
     if (definition.type === "string" && typeof value !== "string") {
       throw new Error(`${label} must be a string`);
