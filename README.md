@@ -41,7 +41,7 @@ npm.cmd ci --prefix tools/CRDD-IR
 `-Source`が1件なら`-AssetSource`は省略できます。Unrealを使わない場合は
 `-UnrealProject`と`-UnrealEngineRoot`を省略します。
 
-このInstallerはv0.2.1でもUnreal適用先のscaffoldを担当します。Unity適用先では
+このInstallerはv0.3.0でもUnreal適用先のscaffoldを担当します。Unity適用先では
 [Unity integration](docs/unity-integration.md)に従い、Target ProfileとRuntime/Test
 assemblyを配置してください。
 
@@ -159,7 +159,8 @@ CRDD Markdownが正本です。Internal IR instanceを専用フォルダへ恒�
 - [Verify lock events](docs/verify-events.md)
 - [v0.1.2 release notes](docs/releases/v0.1.2.md)
 - [v0.2.1 release notes](docs/releases/v0.2.1.md)
-- [v0.2.1 release checklist](docs/release-checklist.md)
+- [v0.3.0 release notes](docs/releases/v0.3.0.md)
+- [v0.3.0 release checklist](docs/release-checklist.md)
 - [Unreal fixture](examples/unreal/CrddCompilerFixture/README.md)
 - [Unity fixture](examples/unity/CrddCompilerFixture/README.md)
 

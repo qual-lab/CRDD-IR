@@ -185,7 +185,7 @@ npm.cmd ci --prefix tools/CRDD-IR
 CIでも必ずSubmoduleをcheckoutし、Node依存関係を`npm ci`で復元します。
 Unreal検証にはUE 5.8とVisual Studioを持つWindows runnerが必要です。
 Unity検証にはUnity 6、Windows Build Support (IL2CPP)、C++ Toolchainを持つ
-Windows runnerが必要です。v0.2.1のInstallerはUnreal scaffoldを対象とするため、
+Windows runnerが必要です。v0.3.0のInstallerはUnreal scaffoldを対象とするため、
 Unityのasmdefと生成物振り分けは[Unity integration](unity-integration.md)に従います。
 
 ## 8. Compilerを更新する
