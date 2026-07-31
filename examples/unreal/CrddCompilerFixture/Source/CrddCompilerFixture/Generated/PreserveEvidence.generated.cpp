@@ -100,9 +100,42 @@ FString CrddSha256(const TArray<uint8>& Input)
 
 FString CrddJsonString(const FString& Value)
 {
-    FString Escaped = Value.Replace(TEXT("\\"), TEXT("\\\\"));
-    Escaped = Escaped.Replace(TEXT("\""), TEXT("\\\""));
-    Escaped = Escaped.Replace(TEXT("\n"), TEXT("\\n")).Replace(TEXT("\r"), TEXT("\\r")).Replace(TEXT("\t"), TEXT("\\t"));
+    FString Escaped;
+    Escaped.Reserve(Value.Len() + 2);
+    for (int32 Index = 0; Index < Value.Len(); ++Index)
+    {
+        const TCHAR Character = Value[Index];
+        switch (Character)
+        {
+        case TEXT('"'): Escaped.AppendChar(TEXT('\\')); Escaped.AppendChar(TEXT('"')); break;
+        case TEXT('\\'): Escaped += TEXT("\\\\"); break;
+        case TEXT('\b'): Escaped += TEXT("\\b"); break;
+        case TEXT('\f'): Escaped += TEXT("\\f"); break;
+        case TEXT('\n'): Escaped += TEXT("\\n"); break;
+        case TEXT('\r'): Escaped += TEXT("\\r"); break;
+        case TEXT('\t'): Escaped += TEXT("\\t"); break;
+        default:
+            if (static_cast<uint32>(Character) <= 0x1f)
+            {
+                Escaped += FString::Printf(TEXT("\\u%04x"), static_cast<uint32>(Character));
+            }
+            else if (Character >= 0xd800 && Character <= 0xdbff &&
+                Index + 1 < Value.Len() && Value[Index + 1] >= 0xdc00 && Value[Index + 1] <= 0xdfff)
+            {
+                Escaped.AppendChar(Character);
+                Escaped.AppendChar(Value[++Index]);
+            }
+            else if (Character >= 0xd800 && Character <= 0xdfff)
+            {
+                Escaped += FString::Printf(TEXT("\\u%04x"), static_cast<uint32>(Character));
+            }
+            else
+            {
+                Escaped.AppendChar(Character);
+            }
+            break;
+        }
+    }
     return TEXT("\"") + Escaped + TEXT("\"");
 }
 
@@ -120,7 +153,7 @@ FString CrddJsonArray(const TArray<T>& Values, F Serialize)
 
 FString CrddCanonicalInputJson(const FCrddPreserveEvidenceInput& Input)
 {
-    return TEXT("{") + CrddJsonString(TEXT("absolute_error_upper_bound")) + TEXT(":") + FString::Printf(TEXT("%.17g"), static_cast<double>(Input.AbsoluteErrorUpperBound)) + TEXT(",") + CrddJsonString(TEXT("aggregation_scope_id")) + TEXT(":") + CrddJsonString(Input.AggregationScopeId) + TEXT(",") + CrddJsonString(TEXT("evidence_version")) + TEXT(":") + CrddJsonString(Input.EvidenceVersion) + TEXT(",") + CrddJsonString(TEXT("fragment_ids")) + TEXT(":") + CrddJsonArray(Input.FragmentIds, [](const auto& Item) { return CrddJsonString(Item); }) + TEXT(",") + CrddJsonString(TEXT("numeric_policy_id")) + TEXT(":") + CrddJsonString(Input.NumericPolicyId) + TEXT(",") + CrddJsonString(TEXT("quantity_kind")) + TEXT(":") + CrddJsonString(Input.QuantityKind) + TEXT(",") + CrddJsonString(TEXT("quantity_state")) + TEXT(":") + CrddJsonString(Input.QuantityState) + TEXT(",") + CrddJsonString(TEXT("scope_id")) + TEXT(":") + CrddJsonString(Input.ScopeId) + TEXT(",") + CrddJsonString(TEXT("slot_disposition")) + TEXT(":") + CrddJsonString(Input.SlotDisposition) + TEXT(",") + CrddJsonString(TEXT("subject_ref")) + TEXT(":") + (Input.SubjectRef.Variant == decltype(Input.SubjectRef.Variant)::Space ? TEXT("{") + CrddJsonString(TEXT("space_id")) + TEXT(":") + CrddJsonString(Input.SubjectRef.Space.SpaceId) + TEXT(",") + CrddJsonString(TEXT("variant")) + TEXT(":") + CrddJsonString(TEXT("space")) + TEXT("}") : Input.SubjectRef.Variant == decltype(Input.SubjectRef.Variant)::BoundaryFace ? TEXT("{") + CrddJsonString(TEXT("boundary_face_id")) + TEXT(":") + CrddJsonString(Input.SubjectRef.BoundaryFace.BoundaryFaceId) + TEXT(",") + CrddJsonString(TEXT("variant")) + TEXT(":") + CrddJsonString(TEXT("boundary-face")) + TEXT("}") : Input.SubjectRef.Variant == decltype(Input.SubjectRef.Variant)::Building ? TEXT("{") + CrddJsonString(TEXT("building_id")) + TEXT(":") + CrddJsonString(Input.SubjectRef.Building.BuildingId) + TEXT(",") + CrddJsonString(TEXT("variant")) + TEXT(":") + CrddJsonString(TEXT("building")) + TEXT("}") : TEXT("null")) + TEXT(",") + CrddJsonString(TEXT("value_interval")) + TEXT(":") + TEXT("{") + CrddJsonString(TEXT("maximum")) + TEXT(":") + FString::Printf(TEXT("%.17g"), static_cast<double>(Input.ValueInterval.Maximum)) + TEXT(",") + CrddJsonString(TEXT("minimum")) + TEXT(":") + FString::Printf(TEXT("%.17g"), static_cast<double>(Input.ValueInterval.Minimum)) + TEXT("}") + TEXT("}");
+    return TEXT("{") + CrddJsonString(TEXT("absolute_error_upper_bound")) + TEXT(":") + CrddJsonString(Input.AbsoluteErrorUpperBound) + TEXT(",") + CrddJsonString(TEXT("aggregation_scope_id")) + TEXT(":") + CrddJsonString(Input.AggregationScopeId) + TEXT(",") + CrddJsonString(TEXT("evidence_version")) + TEXT(":") + CrddJsonString(Input.EvidenceVersion) + TEXT(",") + CrddJsonString(TEXT("fragment_ids")) + TEXT(":") + CrddJsonArray(Input.FragmentIds, [](const auto& Item) { return CrddJsonString(Item); }) + TEXT(",") + CrddJsonString(TEXT("numeric_lexemes")) + TEXT(":") + TEXT("{") + CrddJsonString(TEXT("exponent")) + TEXT(":") + CrddJsonString(Input.NumericLexemes.Exponent) + TEXT(",") + CrddJsonString(TEXT("max_finite")) + TEXT(":") + CrddJsonString(Input.NumericLexemes.MaxFinite) + TEXT(",") + CrddJsonString(TEXT("min_subnormal")) + TEXT(":") + CrddJsonString(Input.NumericLexemes.MinSubnormal) + TEXT(",") + CrddJsonString(TEXT("negative_zero")) + TEXT(":") + CrddJsonString(Input.NumericLexemes.NegativeZero) + TEXT("}") + TEXT(",") + CrddJsonString(TEXT("numeric_policy_id")) + TEXT(":") + CrddJsonString(Input.NumericPolicyId) + TEXT(",") + CrddJsonString(TEXT("quantity_kind")) + TEXT(":") + CrddJsonString(Input.QuantityKind) + TEXT(",") + CrddJsonString(TEXT("quantity_state")) + TEXT(":") + CrddJsonString(Input.QuantityState) + TEXT(",") + CrddJsonString(TEXT("scope_id")) + TEXT(":") + CrddJsonString(Input.ScopeId) + TEXT(",") + CrddJsonString(TEXT("slot_disposition")) + TEXT(":") + CrddJsonString(Input.SlotDisposition) + TEXT(",") + CrddJsonString(TEXT("subject_ref")) + TEXT(":") + (Input.SubjectRef.Variant == decltype(Input.SubjectRef.Variant)::Space ? TEXT("{") + CrddJsonString(TEXT("space_id")) + TEXT(":") + CrddJsonString(Input.SubjectRef.Space.SpaceId) + TEXT(",") + CrddJsonString(TEXT("variant")) + TEXT(":") + CrddJsonString(TEXT("space")) + TEXT("}") : Input.SubjectRef.Variant == decltype(Input.SubjectRef.Variant)::BoundaryFace ? TEXT("{") + CrddJsonString(TEXT("boundary_face_id")) + TEXT(":") + CrddJsonString(Input.SubjectRef.BoundaryFace.BoundaryFaceId) + TEXT(",") + CrddJsonString(TEXT("variant")) + TEXT(":") + CrddJsonString(TEXT("boundary-face")) + TEXT("}") : Input.SubjectRef.Variant == decltype(Input.SubjectRef.Variant)::Building ? TEXT("{") + CrddJsonString(TEXT("building_id")) + TEXT(":") + CrddJsonString(Input.SubjectRef.Building.BuildingId) + TEXT(",") + CrddJsonString(TEXT("variant")) + TEXT(":") + CrddJsonString(TEXT("building")) + TEXT("}") : TEXT("null")) + TEXT(",") + CrddJsonString(TEXT("value_interval")) + TEXT(":") + TEXT("{") + CrddJsonString(TEXT("maximum")) + TEXT(":") + CrddJsonString(Input.ValueInterval.Maximum) + TEXT(",") + CrddJsonString(TEXT("minimum")) + TEXT(":") + CrddJsonString(Input.ValueInterval.Minimum) + TEXT("}") + TEXT("}");
 }
 
 FString CrddCanonicalInputSha256(const FCrddPreserveEvidenceInput& Input)
@@ -132,7 +165,7 @@ FString CrddCanonicalInputSha256(const FCrddPreserveEvidenceInput& Input)
 
 FString CrddCanonicalStateJson(const FCrddPreserveEvidenceState& State)
 {
-    return TEXT("{") + CrddJsonString(TEXT("absolute_error_upper_bound")) + TEXT(":") + FString::Printf(TEXT("%.17g"), static_cast<double>(State.AbsoluteErrorUpperBound)) + TEXT(",") + CrddJsonString(TEXT("aggregation_scope_id")) + TEXT(":") + CrddJsonString(State.AggregationScopeId) + TEXT(",") + CrddJsonString(TEXT("canonical_evidence_hash")) + TEXT(":") + CrddJsonString(State.CanonicalEvidenceHash) + TEXT(",") + CrddJsonString(TEXT("evidence_version")) + TEXT(":") + CrddJsonString(State.EvidenceVersion) + TEXT(",") + CrddJsonString(TEXT("fragment_ids")) + TEXT(":") + CrddJsonArray(State.FragmentIds, [](const auto& Item) { return CrddJsonString(Item); }) + TEXT(",") + CrddJsonString(TEXT("numeric_policy_id")) + TEXT(":") + CrddJsonString(State.NumericPolicyId) + TEXT(",") + CrddJsonString(TEXT("quantity_kind")) + TEXT(":") + CrddJsonString(State.QuantityKind) + TEXT(",") + CrddJsonString(TEXT("quantity_state")) + TEXT(":") + CrddJsonString(State.QuantityState) + TEXT(",") + CrddJsonString(TEXT("scope_id")) + TEXT(":") + CrddJsonString(State.ScopeId) + TEXT(",") + CrddJsonString(TEXT("slot_disposition")) + TEXT(":") + CrddJsonString(State.SlotDisposition) + TEXT(",") + CrddJsonString(TEXT("subject_ref")) + TEXT(":") + (State.SubjectRef.Variant == decltype(State.SubjectRef.Variant)::Space ? TEXT("{") + CrddJsonString(TEXT("space_id")) + TEXT(":") + CrddJsonString(State.SubjectRef.Space.SpaceId) + TEXT(",") + CrddJsonString(TEXT("variant")) + TEXT(":") + CrddJsonString(TEXT("space")) + TEXT("}") : State.SubjectRef.Variant == decltype(State.SubjectRef.Variant)::BoundaryFace ? TEXT("{") + CrddJsonString(TEXT("boundary_face_id")) + TEXT(":") + CrddJsonString(State.SubjectRef.BoundaryFace.BoundaryFaceId) + TEXT(",") + CrddJsonString(TEXT("variant")) + TEXT(":") + CrddJsonString(TEXT("boundary-face")) + TEXT("}") : State.SubjectRef.Variant == decltype(State.SubjectRef.Variant)::Building ? TEXT("{") + CrddJsonString(TEXT("building_id")) + TEXT(":") + CrddJsonString(State.SubjectRef.Building.BuildingId) + TEXT(",") + CrddJsonString(TEXT("variant")) + TEXT(":") + CrddJsonString(TEXT("building")) + TEXT("}") : TEXT("null")) + TEXT(",") + CrddJsonString(TEXT("value_interval")) + TEXT(":") + TEXT("{") + CrddJsonString(TEXT("maximum")) + TEXT(":") + FString::Printf(TEXT("%.17g"), static_cast<double>(State.ValueInterval.Maximum)) + TEXT(",") + CrddJsonString(TEXT("minimum")) + TEXT(":") + FString::Printf(TEXT("%.17g"), static_cast<double>(State.ValueInterval.Minimum)) + TEXT("}") + TEXT("}");
+    return TEXT("{") + CrddJsonString(TEXT("absolute_error_upper_bound")) + TEXT(":") + CrddJsonString(State.AbsoluteErrorUpperBound) + TEXT(",") + CrddJsonString(TEXT("aggregation_scope_id")) + TEXT(":") + CrddJsonString(State.AggregationScopeId) + TEXT(",") + CrddJsonString(TEXT("canonical_evidence_hash")) + TEXT(":") + CrddJsonString(State.CanonicalEvidenceHash) + TEXT(",") + CrddJsonString(TEXT("evidence_version")) + TEXT(":") + CrddJsonString(State.EvidenceVersion) + TEXT(",") + CrddJsonString(TEXT("fragment_ids")) + TEXT(":") + CrddJsonArray(State.FragmentIds, [](const auto& Item) { return CrddJsonString(Item); }) + TEXT(",") + CrddJsonString(TEXT("numeric_lexemes")) + TEXT(":") + TEXT("{") + CrddJsonString(TEXT("exponent")) + TEXT(":") + CrddJsonString(State.NumericLexemes.Exponent) + TEXT(",") + CrddJsonString(TEXT("max_finite")) + TEXT(":") + CrddJsonString(State.NumericLexemes.MaxFinite) + TEXT(",") + CrddJsonString(TEXT("min_subnormal")) + TEXT(":") + CrddJsonString(State.NumericLexemes.MinSubnormal) + TEXT(",") + CrddJsonString(TEXT("negative_zero")) + TEXT(":") + CrddJsonString(State.NumericLexemes.NegativeZero) + TEXT("}") + TEXT(",") + CrddJsonString(TEXT("numeric_policy_id")) + TEXT(":") + CrddJsonString(State.NumericPolicyId) + TEXT(",") + CrddJsonString(TEXT("quantity_kind")) + TEXT(":") + CrddJsonString(State.QuantityKind) + TEXT(",") + CrddJsonString(TEXT("quantity_state")) + TEXT(":") + CrddJsonString(State.QuantityState) + TEXT(",") + CrddJsonString(TEXT("scope_id")) + TEXT(":") + CrddJsonString(State.ScopeId) + TEXT(",") + CrddJsonString(TEXT("slot_disposition")) + TEXT(":") + CrddJsonString(State.SlotDisposition) + TEXT(",") + CrddJsonString(TEXT("subject_ref")) + TEXT(":") + (State.SubjectRef.Variant == decltype(State.SubjectRef.Variant)::Space ? TEXT("{") + CrddJsonString(TEXT("space_id")) + TEXT(":") + CrddJsonString(State.SubjectRef.Space.SpaceId) + TEXT(",") + CrddJsonString(TEXT("variant")) + TEXT(":") + CrddJsonString(TEXT("space")) + TEXT("}") : State.SubjectRef.Variant == decltype(State.SubjectRef.Variant)::BoundaryFace ? TEXT("{") + CrddJsonString(TEXT("boundary_face_id")) + TEXT(":") + CrddJsonString(State.SubjectRef.BoundaryFace.BoundaryFaceId) + TEXT(",") + CrddJsonString(TEXT("variant")) + TEXT(":") + CrddJsonString(TEXT("boundary-face")) + TEXT("}") : State.SubjectRef.Variant == decltype(State.SubjectRef.Variant)::Building ? TEXT("{") + CrddJsonString(TEXT("building_id")) + TEXT(":") + CrddJsonString(State.SubjectRef.Building.BuildingId) + TEXT(",") + CrddJsonString(TEXT("variant")) + TEXT(":") + CrddJsonString(TEXT("building")) + TEXT("}") : TEXT("null")) + TEXT(",") + CrddJsonString(TEXT("value_interval")) + TEXT(":") + TEXT("{") + CrddJsonString(TEXT("maximum")) + TEXT(":") + CrddJsonString(State.ValueInterval.Maximum) + TEXT(",") + CrddJsonString(TEXT("minimum")) + TEXT(":") + CrddJsonString(State.ValueInterval.Minimum) + TEXT("}") + TEXT("}");
 }
 
 FString CrddCanonicalStateSha256(const FCrddPreserveEvidenceState& State)
@@ -165,17 +198,6 @@ FCrddPreserveEvidenceResult FCrddPreserveEvidenceOperation::Execute(
     const FCrddPreserveEvidenceState& InitialState
 )
 {
-    // EV-INTERVAL-ORDERED: input.value_interval.minimum <= input.value_interval.maximum
-    if (!((Input.ValueInterval.Minimum <= Input.ValueInterval.Maximum)))
-    {
-        return Failure(
-            ECrddPreserveEvidenceError::InvalidValueInterval,
-            TEXT("EV-INTERVAL-ORDERED"),
-            InitialState,
-            {TEXT("IR-EVIDENCE-ROUNDTRIP-001")}
-        );
-    }
-
     // EV-CANONICAL-HASH: evidence.canonical-hash
     // CRDD-PORTABLE-SEMANTICS: eyJlcnJvciI6IkVWSURFTkNFX0hBU0hfTUlTTUFUQ0giLCJoYXNoIjoiaW5wdXQuY2Fub25pY2FsX2V2aWRlbmNlX2hhc2giLCJpZCI6IkVWLUNBTk9OSUNBTC1IQVNIIiwia2luZCI6ImV2aWRlbmNlLmNhbm9uaWNhbC1oYXNoIiwic291cmNlIjoiaW5wdXQifQ==
     if (CrddCanonicalInputSha256(Input) != Input.CanonicalEvidenceHash)
@@ -239,6 +261,10 @@ FCrddPreserveEvidenceResult FCrddPreserveEvidenceOperation::Execute(
     Result.State.ValueInterval.Minimum = Input.ValueInterval.Minimum;
     Result.State.ValueInterval.Maximum = Input.ValueInterval.Maximum;
     Result.State.AbsoluteErrorUpperBound = Input.AbsoluteErrorUpperBound;
+    Result.State.NumericLexemes.NegativeZero = Input.NumericLexemes.NegativeZero;
+    Result.State.NumericLexemes.Exponent = Input.NumericLexemes.Exponent;
+    Result.State.NumericLexemes.MinSubnormal = Input.NumericLexemes.MinSubnormal;
+    Result.State.NumericLexemes.MaxFinite = Input.NumericLexemes.MaxFinite;
     Result.State.FragmentIds = Input.FragmentIds;
     Result.State.CanonicalEvidenceHash = Input.CanonicalEvidenceHash;
     Result.Traces = {TEXT("IR-EVIDENCE-ROUNDTRIP-001")};
@@ -253,8 +279,6 @@ FString FCrddPreserveEvidenceOperation::ErrorCode(ECrddPreserveEvidenceError Err
         return TEXT("");
     case ECrddPreserveEvidenceError::EvidenceHashMismatch:
         return TEXT("EVIDENCE_HASH_MISMATCH");
-    case ECrddPreserveEvidenceError::InvalidValueInterval:
-        return TEXT("INVALID_VALUE_INTERVAL");
     case ECrddPreserveEvidenceError::DuplicateFragmentId:
         return TEXT("DUPLICATE_FRAGMENT_ID");
     default:

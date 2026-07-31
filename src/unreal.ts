@@ -678,9 +678,42 @@ FString CrddCanonical${source === "input" ? "Input" : "State"}Sha256(const ${typ
   }).join("\n\n");
   return `FString CrddJsonString(const FString& Value)
 {
-    FString Escaped = Value.Replace(TEXT("\\\\"), TEXT("\\\\\\\\"));
-    Escaped = Escaped.Replace(TEXT("\\\""), TEXT("\\\\\\\""));
-    Escaped = Escaped.Replace(TEXT("\\n"), TEXT("\\\\n")).Replace(TEXT("\\r"), TEXT("\\\\r")).Replace(TEXT("\\t"), TEXT("\\\\t"));
+    FString Escaped;
+    Escaped.Reserve(Value.Len() + 2);
+    for (int32 Index = 0; Index < Value.Len(); ++Index)
+    {
+        const TCHAR Character = Value[Index];
+        switch (Character)
+        {
+        case TEXT('"'): Escaped.AppendChar(TEXT('\\\\')); Escaped.AppendChar(TEXT('"')); break;
+        case TEXT('\\\\'): Escaped += TEXT("\\\\\\\\"); break;
+        case TEXT('\\b'): Escaped += TEXT("\\\\b"); break;
+        case TEXT('\\f'): Escaped += TEXT("\\\\f"); break;
+        case TEXT('\\n'): Escaped += TEXT("\\\\n"); break;
+        case TEXT('\\r'): Escaped += TEXT("\\\\r"); break;
+        case TEXT('\\t'): Escaped += TEXT("\\\\t"); break;
+        default:
+            if (static_cast<uint32>(Character) <= 0x1f)
+            {
+                Escaped += FString::Printf(TEXT("\\\\u%04x"), static_cast<uint32>(Character));
+            }
+            else if (Character >= 0xd800 && Character <= 0xdbff &&
+                Index + 1 < Value.Len() && Value[Index + 1] >= 0xdc00 && Value[Index + 1] <= 0xdfff)
+            {
+                Escaped.AppendChar(Character);
+                Escaped.AppendChar(Value[++Index]);
+            }
+            else if (Character >= 0xd800 && Character <= 0xdfff)
+            {
+                Escaped += FString::Printf(TEXT("\\\\u%04x"), static_cast<uint32>(Character));
+            }
+            else
+            {
+                Escaped.AppendChar(Character);
+            }
+            break;
+        }
+    }
     return TEXT("\\\"") + Escaped + TEXT("\\\"");
 }
 
@@ -704,7 +737,9 @@ function cppCanonicalValue(field: FieldDefinition, access: string, context: stri
   if (field.type === "string") return `CrddJsonString(${access})`;
   if (field.type === "boolean") return `(${access} ? TEXT("true") : TEXT("false"))`;
   if (field.type === "integer") return `LexToString(${access})`;
-  if (field.type === "number") return `FString::Printf(TEXT("%.17g"), static_cast<double>(${access}))`;
+  if (field.type === "number") {
+    throw new Error("Canonical Evidence cannot contain binary floating-point fields; use a decimal string");
+  }
   if (field.type === "array") {
     return `CrddJsonArray(${access}, [](const auto& Item) { return ${cppCanonicalValue(field.items, "Item", `${context}Item`)}; })`;
   }
@@ -1102,7 +1137,20 @@ function fixtureIdentifier(value: string): string {
 }
 
 function escapeCpp(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  let escaped = "";
+  for (const character of value) {
+    const code = character.charCodeAt(0);
+    if (character === "\\") escaped += "\\\\";
+    else if (character === '"') escaped += '\\"';
+    else if (character === "\b") escaped += "\\b";
+    else if (character === "\f") escaped += "\\f";
+    else if (character === "\n") escaped += "\\n";
+    else if (character === "\r") escaped += "\\r";
+    else if (character === "\t") escaped += "\\t";
+    else if (code <= 0x1f) escaped += `\\${code.toString(8).padStart(3, "0")}`;
+    else escaped += character;
+  }
+  return escaped;
 }
 
 function firstCheckedAddition(

@@ -29,6 +29,19 @@ They preserve order and support empty arrays and `minItems`/`maxItems`.
 keys are sorted, arrays retain source order, and the configured hash field is
 excluded from the digest payload.
 
+Strings follow JSON escaping identically on Node, Unreal, and Unity: quotation
+mark and reverse solidus are escaped; backspace, form feed, newline, carriage
+return, and tab use their short escapes; every other U+0000-U+001F code unit
+uses lowercase `\u00xx`. Valid Unicode scalar values are emitted as UTF-8.
+Unpaired UTF-16 surrogates use lowercase `\uxxxx`, matching `JSON.stringify`.
+
+Binary floating-point `number` fields are deliberately unsupported anywhere
+inside the selected hash scope. Their shortest decimal spelling differs across
+JavaScript, C++, and .NET for values such as `-0`, subnormals, and exponent
+boundaries. The compiler rejects such a contract. Evidence must represent an
+exact numeric value as a schema-constrained canonical decimal `string`.
+`integer` remains supported.
+
 ```yaml
 - kind: evidence.canonical-hash
   id: EV-CANONICAL-HASH

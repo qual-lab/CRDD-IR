@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { compileMarkdown } from "../src/compiler.ts";
+import { validateIr } from "../src/ir.ts";
 import { simulate } from "../src/simulator.ts";
 import { generateTestManifest } from "../src/test-manifest.ts";
 import { generateUnity } from "../src/unity.ts";
@@ -22,7 +23,7 @@ function request(variant = "space") {
     input: {
       evidence_version: "v1",
       quantity_kind: "length",
-      scope_id: "scope-a",
+      scope_id: "scope-\b\f\u0001-雪-😀",
       subject_ref: variant === "space"
         ? { variant, space_id: "space-a" }
         : { variant, building_id: "building-a" },
@@ -30,22 +31,34 @@ function request(variant = "space") {
       numeric_policy_id: "numeric-v1",
       quantity_state: "approximated",
       slot_disposition: "accepted",
-      value_interval: { minimum: 1, maximum: 2 },
-      absolute_error_upper_bound: 0.01,
+      value_interval: { minimum: "1", maximum: "2" },
+      absolute_error_upper_bound: "0.01",
+      numeric_lexemes: {
+        negative_zero: "-0",
+        exponent: "1e+21",
+        min_subnormal: "5e-324",
+        max_finite: "1.7976931348623157e+308",
+      },
       fragment_ids: ["fragment-a", "fragment-b"],
       canonical_evidence_hash: "",
     },
     state: {
       evidence_version: "v1",
       quantity_kind: "",
-      scope_id: "",
+      scope_id: "scope-\b\f\u0001-雪-😀",
       subject_ref: { variant: "space", space_id: "" },
       aggregation_scope_id: "",
       numeric_policy_id: "",
       quantity_state: "",
       slot_disposition: "",
-      value_interval: { minimum: 0, maximum: 0 },
-      absolute_error_upper_bound: 0,
+      value_interval: { minimum: "1", maximum: "2" },
+      absolute_error_upper_bound: "0.01",
+      numeric_lexemes: {
+        negative_zero: "-0",
+        exponent: "1e+21",
+        min_subnormal: "5e-324",
+        max_finite: "1.7976931348623157e+308",
+      },
       fragment_ids: [],
       canonical_evidence_hash: "0".repeat(64),
     },
@@ -99,6 +112,22 @@ test("IR-EVIDENCE-ROUNDTRIP-001 rejects changed evidence and owns its conformanc
   ));
 });
 
+test("canonical Evidence covers JSON controls and Unicode and rejects binary floats", async () => {
+  const value = { text: "\u0000\u0001\b\f\n\r\t\"\\雪😀\ud800" };
+  assert.equal(
+    canonicalJson(value),
+    '{"text":"\\u0000\\u0001\\b\\f\\n\\r\\t\\"\\\\雪😀\\ud800"}',
+  );
+
+  const { ir } = await compileMarkdown(source);
+  const unsupported = structuredClone(ir);
+  unsupported.operation.input.absolute_error_upper_bound = { type: "number" };
+  assert.ok(validateIr(unsupported).some((diagnostic) =>
+    diagnostic.path.endsWith(".source") &&
+    diagnostic.message.includes("canonical decimal string")
+  ));
+});
+
 test("compound evidence generates type-safe Unreal and Unity targets deterministically", async () => {
   const compilation = await compileMarkdown(source);
   const unityProfile = validateUnityTargetProfile(JSON.parse(
@@ -116,7 +145,11 @@ test("compound evidence generates type-safe Unreal and Unity targets determinist
   assert.match(cs, /Variant\.Unknown|Variant;/);
   assert.match(cs, /List<string> FragmentIds/);
   assert.match(cppSource, /CrddCanonicalInputSha256/);
+  assert.match(cppSource, /case TEXT\('\\\\b'\)|case TEXT\('\\b'\)/);
+  assert.match(cppSource, /0x1f/);
   assert.match(cs, /CanonicalInputSha256/);
+  assert.match(cs, /case '\\\\f'|case '\\f'/);
+  assert.match(cs, /character <= 0x1f/);
   assert.ok(generateTestManifest(compilation.ir).cases.some((item) =>
     item.sourceRequirement === "EV-FRAGMENTS-UNIQUE"
   ));

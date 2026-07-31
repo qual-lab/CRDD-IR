@@ -79,7 +79,10 @@
           "kind": { "const": "evidence.canonical-hash" },
           "id": { "type": "string", "minLength": 1 },
           "error": { "type": "string", "minLength": 1 },
-          "source": { "enum": ["input", "state"] },
+          "source": {
+            "enum": ["input", "state"],
+            "description": "Selected scope must not contain binary floating-point number fields; use canonical decimal strings."
+          },
           "hash": { "type": "string", "minLength": 1 }
         }
       },

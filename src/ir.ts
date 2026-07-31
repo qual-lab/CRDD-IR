@@ -500,6 +500,13 @@ function validatePortableRuleReferences(
     if (!rule.hash.startsWith(`${rule.source}.`)) {
       diagnostics.push(error(`${path}.hash`, "must belong to the declared source scope"));
     }
+    const sourceFields = rule.source === "input" ? input : state;
+    if (Object.values(sourceFields).some(containsBinaryFloat)) {
+      diagnostics.push(error(
+        `${path}.source`,
+        "cannot contain number fields; use a canonical decimal string for portable Evidence hashing",
+      ));
+    }
     return;
   }
   const collectionItem = collectionObjectItem(collection);
@@ -598,6 +605,17 @@ function validatePortableRuleReferences(
       diagnostics.push(error(`${path}.${leftKey}`, `must have the same type as ${rightKey}`));
     }
   }
+}
+
+function containsBinaryFloat(field: FieldDefinition): boolean {
+  if (field.type === "number") return true;
+  if (field.type === "object") return Object.values(field.properties).some(containsBinaryFloat);
+  if (field.type === "array") return containsBinaryFloat(field.items);
+  if (field.type === "map") return containsBinaryFloat(field.values);
+  if (field.type === "union") {
+    return field.variants.some((variant) => Object.values(variant.properties).some(containsBinaryFloat));
+  }
+  return false;
 }
 
 function requirePortableIdDefinition(

@@ -16,29 +16,37 @@ bool FCrddPreserveEvidencePortableConformanceTest::RunTest(const FString&)
         FCrddPreserveEvidenceState State;
         Input.EvidenceVersion = TEXT("v1");
         Input.QuantityKind = TEXT("sample");
-        Input.ScopeId = TEXT("sample");
+        Input.ScopeId = TEXT("scope-\b\f\001-雪-😀");
         Input.SubjectRef.Variant = decltype(Input.SubjectRef.Variant)::Space;
         Input.SubjectRef.Space.SpaceId = TEXT("sample");
         Input.AggregationScopeId = TEXT("sample");
         Input.NumericPolicyId = TEXT("sample");
         Input.QuantityState = TEXT("sample");
         Input.SlotDisposition = TEXT("sample");
-        Input.ValueInterval.Minimum = 1;
-        Input.ValueInterval.Maximum = 1;
-        Input.AbsoluteErrorUpperBound = 1;
-        Input.CanonicalEvidenceHash = TEXT("0b49a2270f4ba1a0da5158fa7864eff1f6e74b4e56e42bfec4e1cb38a696d888");
+        Input.ValueInterval.Minimum = TEXT("1");
+        Input.ValueInterval.Maximum = TEXT("2");
+        Input.AbsoluteErrorUpperBound = TEXT("0.01");
+        Input.NumericLexemes.NegativeZero = TEXT("-0");
+        Input.NumericLexemes.Exponent = TEXT("1e+21");
+        Input.NumericLexemes.MinSubnormal = TEXT("5e-324");
+        Input.NumericLexemes.MaxFinite = TEXT("1.7976931348623157e+308");
+        Input.CanonicalEvidenceHash = TEXT("00a9ef29559a74142f957983d08ba6cf4abe688f94a6c1b8169d7e1c050f7a8b");
         State.EvidenceVersion = TEXT("v1");
         State.QuantityKind = TEXT("sample");
-        State.ScopeId = TEXT("sample");
+        State.ScopeId = TEXT("scope-\b\f\001-雪-😀");
         State.SubjectRef.Variant = decltype(State.SubjectRef.Variant)::Space;
         State.SubjectRef.Space.SpaceId = TEXT("sample");
         State.AggregationScopeId = TEXT("sample");
         State.NumericPolicyId = TEXT("sample");
         State.QuantityState = TEXT("sample");
         State.SlotDisposition = TEXT("sample");
-        State.ValueInterval.Minimum = 1;
-        State.ValueInterval.Maximum = 1;
-        State.AbsoluteErrorUpperBound = 1000000;
+        State.ValueInterval.Minimum = TEXT("1");
+        State.ValueInterval.Maximum = TEXT("2");
+        State.AbsoluteErrorUpperBound = TEXT("0.01");
+        State.NumericLexemes.NegativeZero = TEXT("-0");
+        State.NumericLexemes.Exponent = TEXT("1e+21");
+        State.NumericLexemes.MinSubnormal = TEXT("5e-324");
+        State.NumericLexemes.MaxFinite = TEXT("1.7976931348623157e+308");
         State.CanonicalEvidenceHash = TEXT("0000000000000000000000000000000000000000000000000000000000000000");
         const FCrddPreserveEvidenceResult Result = FCrddPreserveEvidenceOperation::Execute(Input, State);
         TestTrue(TEXT("case 1: preserve-evidence-success success"), Result.bSucceeded);
@@ -58,29 +66,37 @@ bool FCrddPreserveEvidencePortableConformanceTest::RunTest(const FString&)
         FCrddPreserveEvidenceState State;
         Input.EvidenceVersion = TEXT("v1");
         Input.QuantityKind = TEXT("sample");
-        Input.ScopeId = TEXT("sample");
+        Input.ScopeId = TEXT("scope-\b\f\001-雪-😀");
         Input.SubjectRef.Variant = decltype(Input.SubjectRef.Variant)::BoundaryFace;
         Input.SubjectRef.BoundaryFace.BoundaryFaceId = TEXT("sample");
         Input.AggregationScopeId = TEXT("sample");
         Input.NumericPolicyId = TEXT("sample");
         Input.QuantityState = TEXT("sample");
         Input.SlotDisposition = TEXT("sample");
-        Input.ValueInterval.Minimum = 1;
-        Input.ValueInterval.Maximum = 1;
-        Input.AbsoluteErrorUpperBound = 1;
-        Input.CanonicalEvidenceHash = TEXT("71645e5a5efdb985f98177a106ceafa5e4520571a5ceacde0125aef6183d1d59");
+        Input.ValueInterval.Minimum = TEXT("1");
+        Input.ValueInterval.Maximum = TEXT("2");
+        Input.AbsoluteErrorUpperBound = TEXT("0.01");
+        Input.NumericLexemes.NegativeZero = TEXT("-0");
+        Input.NumericLexemes.Exponent = TEXT("1e+21");
+        Input.NumericLexemes.MinSubnormal = TEXT("5e-324");
+        Input.NumericLexemes.MaxFinite = TEXT("1.7976931348623157e+308");
+        Input.CanonicalEvidenceHash = TEXT("3626a419a6b0ffed978630aa5cd1f2f3f949756f53244e6d6b820250d1dfcd9f");
         State.EvidenceVersion = TEXT("v1");
         State.QuantityKind = TEXT("sample");
-        State.ScopeId = TEXT("sample");
+        State.ScopeId = TEXT("scope-\b\f\001-雪-😀");
         State.SubjectRef.Variant = decltype(State.SubjectRef.Variant)::Space;
         State.SubjectRef.Space.SpaceId = TEXT("sample");
         State.AggregationScopeId = TEXT("sample");
         State.NumericPolicyId = TEXT("sample");
         State.QuantityState = TEXT("sample");
         State.SlotDisposition = TEXT("sample");
-        State.ValueInterval.Minimum = 1;
-        State.ValueInterval.Maximum = 1;
-        State.AbsoluteErrorUpperBound = 1000000;
+        State.ValueInterval.Minimum = TEXT("1");
+        State.ValueInterval.Maximum = TEXT("2");
+        State.AbsoluteErrorUpperBound = TEXT("0.01");
+        State.NumericLexemes.NegativeZero = TEXT("-0");
+        State.NumericLexemes.Exponent = TEXT("1e+21");
+        State.NumericLexemes.MinSubnormal = TEXT("5e-324");
+        State.NumericLexemes.MaxFinite = TEXT("1.7976931348623157e+308");
         State.CanonicalEvidenceHash = TEXT("0000000000000000000000000000000000000000000000000000000000000000");
         const FCrddPreserveEvidenceResult Result = FCrddPreserveEvidenceOperation::Execute(Input, State);
         TestTrue(TEXT("case 2: preserve-evidence-subject-ref-boundary-face success"), Result.bSucceeded);
@@ -100,29 +116,37 @@ bool FCrddPreserveEvidencePortableConformanceTest::RunTest(const FString&)
         FCrddPreserveEvidenceState State;
         Input.EvidenceVersion = TEXT("v1");
         Input.QuantityKind = TEXT("sample");
-        Input.ScopeId = TEXT("sample");
+        Input.ScopeId = TEXT("scope-\b\f\001-雪-😀");
         Input.SubjectRef.Variant = decltype(Input.SubjectRef.Variant)::Building;
         Input.SubjectRef.Building.BuildingId = TEXT("sample");
         Input.AggregationScopeId = TEXT("sample");
         Input.NumericPolicyId = TEXT("sample");
         Input.QuantityState = TEXT("sample");
         Input.SlotDisposition = TEXT("sample");
-        Input.ValueInterval.Minimum = 1;
-        Input.ValueInterval.Maximum = 1;
-        Input.AbsoluteErrorUpperBound = 1;
-        Input.CanonicalEvidenceHash = TEXT("d341cce6b30476b54cd3cf06f19ade7d4b7611962ca16a3595f4e3cacd81d373");
+        Input.ValueInterval.Minimum = TEXT("1");
+        Input.ValueInterval.Maximum = TEXT("2");
+        Input.AbsoluteErrorUpperBound = TEXT("0.01");
+        Input.NumericLexemes.NegativeZero = TEXT("-0");
+        Input.NumericLexemes.Exponent = TEXT("1e+21");
+        Input.NumericLexemes.MinSubnormal = TEXT("5e-324");
+        Input.NumericLexemes.MaxFinite = TEXT("1.7976931348623157e+308");
+        Input.CanonicalEvidenceHash = TEXT("93d876636e77af85dfd18ee1621a0986d4245764f05ac6d4ef6415b4138f2100");
         State.EvidenceVersion = TEXT("v1");
         State.QuantityKind = TEXT("sample");
-        State.ScopeId = TEXT("sample");
+        State.ScopeId = TEXT("scope-\b\f\001-雪-😀");
         State.SubjectRef.Variant = decltype(State.SubjectRef.Variant)::Space;
         State.SubjectRef.Space.SpaceId = TEXT("sample");
         State.AggregationScopeId = TEXT("sample");
         State.NumericPolicyId = TEXT("sample");
         State.QuantityState = TEXT("sample");
         State.SlotDisposition = TEXT("sample");
-        State.ValueInterval.Minimum = 1;
-        State.ValueInterval.Maximum = 1;
-        State.AbsoluteErrorUpperBound = 1000000;
+        State.ValueInterval.Minimum = TEXT("1");
+        State.ValueInterval.Maximum = TEXT("2");
+        State.AbsoluteErrorUpperBound = TEXT("0.01");
+        State.NumericLexemes.NegativeZero = TEXT("-0");
+        State.NumericLexemes.Exponent = TEXT("1e+21");
+        State.NumericLexemes.MinSubnormal = TEXT("5e-324");
+        State.NumericLexemes.MaxFinite = TEXT("1.7976931348623157e+308");
         State.CanonicalEvidenceHash = TEXT("0000000000000000000000000000000000000000000000000000000000000000");
         const FCrddPreserveEvidenceResult Result = FCrddPreserveEvidenceOperation::Execute(Input, State);
         TestTrue(TEXT("case 3: preserve-evidence-subject-ref-building success"), Result.bSucceeded);
@@ -142,82 +166,48 @@ bool FCrddPreserveEvidencePortableConformanceTest::RunTest(const FString&)
         FCrddPreserveEvidenceState State;
         Input.EvidenceVersion = TEXT("v1");
         Input.QuantityKind = TEXT("sample");
-        Input.ScopeId = TEXT("sample");
+        Input.ScopeId = TEXT("scope-\b\f\001-雪-😀");
         Input.SubjectRef.Variant = decltype(Input.SubjectRef.Variant)::Space;
         Input.SubjectRef.Space.SpaceId = TEXT("sample");
         Input.AggregationScopeId = TEXT("sample");
         Input.NumericPolicyId = TEXT("sample");
         Input.QuantityState = TEXT("sample");
         Input.SlotDisposition = TEXT("sample");
-        Input.ValueInterval.Minimum = 2;
-        Input.ValueInterval.Maximum = 1;
-        Input.AbsoluteErrorUpperBound = 1;
-        Input.CanonicalEvidenceHash = TEXT("6cae7b74e402f7b8bd4a22738c3d7332d4dc2602a1315ee5aab5349584ef012a");
-        State.EvidenceVersion = TEXT("v1");
-        State.QuantityKind = TEXT("sample");
-        State.ScopeId = TEXT("sample");
-        State.SubjectRef.Variant = decltype(State.SubjectRef.Variant)::Space;
-        State.SubjectRef.Space.SpaceId = TEXT("sample");
-        State.AggregationScopeId = TEXT("sample");
-        State.NumericPolicyId = TEXT("sample");
-        State.QuantityState = TEXT("sample");
-        State.SlotDisposition = TEXT("sample");
-        State.ValueInterval.Minimum = 1;
-        State.ValueInterval.Maximum = 1;
-        State.AbsoluteErrorUpperBound = 1000000;
-        State.CanonicalEvidenceHash = TEXT("0000000000000000000000000000000000000000000000000000000000000000");
-        const FCrddPreserveEvidenceResult Result = FCrddPreserveEvidenceOperation::Execute(Input, State);
-        TestFalse(TEXT("case 4: ev-interval-ordered-falsified success"), Result.bSucceeded);
-        TestEqual(
-            TEXT("case 4: ev-interval-ordered-falsified error"),
-            FCrddPreserveEvidenceOperation::ErrorCode(Result.Error),
-            TEXT("INVALID_VALUE_INTERVAL")
-        );
-        if (!Result.bSucceeded)
-        {
-            TestEqual(TEXT("case 4: rollback"), Result.FailedRequirement, TEXT("EV-INTERVAL-ORDERED"));
-        }
-    }
-
-    {
-        FCrddPreserveEvidenceInput Input;
-        FCrddPreserveEvidenceState State;
-        Input.EvidenceVersion = TEXT("v1");
-        Input.QuantityKind = TEXT("sample");
-        Input.ScopeId = TEXT("sample");
-        Input.SubjectRef.Variant = decltype(Input.SubjectRef.Variant)::Space;
-        Input.SubjectRef.Space.SpaceId = TEXT("sample");
-        Input.AggregationScopeId = TEXT("sample");
-        Input.NumericPolicyId = TEXT("sample");
-        Input.QuantityState = TEXT("sample");
-        Input.SlotDisposition = TEXT("sample");
-        Input.ValueInterval.Minimum = 1;
-        Input.ValueInterval.Maximum = 1;
-        Input.AbsoluteErrorUpperBound = 1;
+        Input.ValueInterval.Minimum = TEXT("1");
+        Input.ValueInterval.Maximum = TEXT("2");
+        Input.AbsoluteErrorUpperBound = TEXT("0.01");
+        Input.NumericLexemes.NegativeZero = TEXT("-0");
+        Input.NumericLexemes.Exponent = TEXT("1e+21");
+        Input.NumericLexemes.MinSubnormal = TEXT("5e-324");
+        Input.NumericLexemes.MaxFinite = TEXT("1.7976931348623157e+308");
         Input.CanonicalEvidenceHash = TEXT("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         State.EvidenceVersion = TEXT("v1");
         State.QuantityKind = TEXT("sample");
-        State.ScopeId = TEXT("sample");
+        State.ScopeId = TEXT("scope-\b\f\001-雪-😀");
         State.SubjectRef.Variant = decltype(State.SubjectRef.Variant)::Space;
         State.SubjectRef.Space.SpaceId = TEXT("sample");
         State.AggregationScopeId = TEXT("sample");
         State.NumericPolicyId = TEXT("sample");
         State.QuantityState = TEXT("sample");
         State.SlotDisposition = TEXT("sample");
-        State.ValueInterval.Minimum = 1;
-        State.ValueInterval.Maximum = 1;
-        State.AbsoluteErrorUpperBound = 1000000;
+        State.ValueInterval.Minimum = TEXT("1");
+        State.ValueInterval.Maximum = TEXT("2");
+        State.AbsoluteErrorUpperBound = TEXT("0.01");
+        State.NumericLexemes.NegativeZero = TEXT("-0");
+        State.NumericLexemes.Exponent = TEXT("1e+21");
+        State.NumericLexemes.MinSubnormal = TEXT("5e-324");
+        State.NumericLexemes.MaxFinite = TEXT("1.7976931348623157e+308");
         State.CanonicalEvidenceHash = TEXT("0000000000000000000000000000000000000000000000000000000000000000");
         const FCrddPreserveEvidenceResult Result = FCrddPreserveEvidenceOperation::Execute(Input, State);
-        TestFalse(TEXT("case 5: ev-canonical-hash-rejected success"), Result.bSucceeded);
+        TestFalse(TEXT("case 4: ev-canonical-hash-rejected success"), Result.bSucceeded);
         TestEqual(
-            TEXT("case 5: ev-canonical-hash-rejected error"),
+            TEXT("case 4: ev-canonical-hash-rejected error"),
             FCrddPreserveEvidenceOperation::ErrorCode(Result.Error),
             TEXT("EVIDENCE_HASH_MISMATCH")
         );
         if (!Result.bSucceeded)
         {
-            TestEqual(TEXT("case 5: rollback"), Result.FailedRequirement, TEXT("EV-CANONICAL-HASH"));
+            TestEqual(TEXT("case 4: rollback"), Result.FailedRequirement, TEXT("EV-CANONICAL-HASH"));
         }
     }
 
@@ -226,42 +216,50 @@ bool FCrddPreserveEvidencePortableConformanceTest::RunTest(const FString&)
         FCrddPreserveEvidenceState State;
         Input.EvidenceVersion = TEXT("v1");
         Input.QuantityKind = TEXT("sample");
-        Input.ScopeId = TEXT("sample");
+        Input.ScopeId = TEXT("scope-\b\f\001-雪-😀");
         Input.SubjectRef.Variant = decltype(Input.SubjectRef.Variant)::Space;
         Input.SubjectRef.Space.SpaceId = TEXT("sample");
         Input.AggregationScopeId = TEXT("sample");
         Input.NumericPolicyId = TEXT("sample");
         Input.QuantityState = TEXT("sample");
         Input.SlotDisposition = TEXT("sample");
-        Input.ValueInterval.Minimum = 1;
-        Input.ValueInterval.Maximum = 1;
-        Input.AbsoluteErrorUpperBound = 1;
+        Input.ValueInterval.Minimum = TEXT("1");
+        Input.ValueInterval.Maximum = TEXT("2");
+        Input.AbsoluteErrorUpperBound = TEXT("0.01");
+        Input.NumericLexemes.NegativeZero = TEXT("-0");
+        Input.NumericLexemes.Exponent = TEXT("1e+21");
+        Input.NumericLexemes.MinSubnormal = TEXT("5e-324");
+        Input.NumericLexemes.MaxFinite = TEXT("1.7976931348623157e+308");
         Input.FragmentIds.Add(TEXT("duplicate"));
         Input.FragmentIds.Add(TEXT("duplicate"));
-        Input.CanonicalEvidenceHash = TEXT("df4de4614ab0df6bb18db806665bb96c4716c1282ed4780192dc53e9f4113a02");
+        Input.CanonicalEvidenceHash = TEXT("9c6193b867905056a065b7ecd288e2f79c86fbbf0966f05f131f77f1c0cca3ae");
         State.EvidenceVersion = TEXT("v1");
         State.QuantityKind = TEXT("sample");
-        State.ScopeId = TEXT("sample");
+        State.ScopeId = TEXT("scope-\b\f\001-雪-😀");
         State.SubjectRef.Variant = decltype(State.SubjectRef.Variant)::Space;
         State.SubjectRef.Space.SpaceId = TEXT("sample");
         State.AggregationScopeId = TEXT("sample");
         State.NumericPolicyId = TEXT("sample");
         State.QuantityState = TEXT("sample");
         State.SlotDisposition = TEXT("sample");
-        State.ValueInterval.Minimum = 1;
-        State.ValueInterval.Maximum = 1;
-        State.AbsoluteErrorUpperBound = 1000000;
+        State.ValueInterval.Minimum = TEXT("1");
+        State.ValueInterval.Maximum = TEXT("2");
+        State.AbsoluteErrorUpperBound = TEXT("0.01");
+        State.NumericLexemes.NegativeZero = TEXT("-0");
+        State.NumericLexemes.Exponent = TEXT("1e+21");
+        State.NumericLexemes.MinSubnormal = TEXT("5e-324");
+        State.NumericLexemes.MaxFinite = TEXT("1.7976931348623157e+308");
         State.CanonicalEvidenceHash = TEXT("0000000000000000000000000000000000000000000000000000000000000000");
         const FCrddPreserveEvidenceResult Result = FCrddPreserveEvidenceOperation::Execute(Input, State);
-        TestFalse(TEXT("case 6: ev-fragments-unique-rejected success"), Result.bSucceeded);
+        TestFalse(TEXT("case 5: ev-fragments-unique-rejected success"), Result.bSucceeded);
         TestEqual(
-            TEXT("case 6: ev-fragments-unique-rejected error"),
+            TEXT("case 5: ev-fragments-unique-rejected error"),
             FCrddPreserveEvidenceOperation::ErrorCode(Result.Error),
             TEXT("DUPLICATE_FRAGMENT_ID")
         );
         if (!Result.bSucceeded)
         {
-            TestEqual(TEXT("case 6: rollback"), Result.FailedRequirement, TEXT("EV-FRAGMENTS-UNIQUE"));
+            TestEqual(TEXT("case 5: rollback"), Result.FailedRequirement, TEXT("EV-FRAGMENTS-UNIQUE"));
         }
     }
     return true;

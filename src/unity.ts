@@ -509,9 +509,37 @@ function csEvidenceHelpers(operation: Operation): string {
         }`;
   }).join("\n\n");
   return `
-        private static string JsonString(string value) => "\\\"" + value
-            .Replace("\\\\", "\\\\\\\\").Replace("\\\"", "\\\\\\\"")
-            .Replace("\\n", "\\\\n").Replace("\\r", "\\\\r").Replace("\\t", "\\\\t") + "\\\"";
+        private static string JsonString(string value)
+        {
+            var escaped = new StringBuilder(value.Length + 2);
+            escaped.Append('"');
+            for (var index = 0; index < value.Length; index++)
+            {
+                var character = value[index];
+                switch (character)
+                {
+                    case '"': escaped.Append('\\\\').Append('"'); break;
+                    case '\\\\': escaped.Append("\\\\\\\\"); break;
+                    case '\\b': escaped.Append("\\\\b"); break;
+                    case '\\f': escaped.Append("\\\\f"); break;
+                    case '\\n': escaped.Append("\\\\n"); break;
+                    case '\\r': escaped.Append("\\\\r"); break;
+                    case '\\t': escaped.Append("\\\\t"); break;
+                    default:
+                        if (character <= 0x1f) escaped.Append("\\\\u").Append(((int)character).ToString("x4"));
+                        else if (char.IsHighSurrogate(character) && index + 1 < value.Length &&
+                            char.IsLowSurrogate(value[index + 1]))
+                        {
+                            escaped.Append(character).Append(value[++index]);
+                        }
+                        else if (char.IsSurrogate(character))
+                            escaped.Append("\\\\u").Append(((int)character).ToString("x4"));
+                        else escaped.Append(character);
+                        break;
+                }
+            }
+            return escaped.Append('"').ToString();
+        }
 
         private static string CanonicalArray<T>(IEnumerable<T> values, Func<T, string> serialize) =>
             "[" + string.Join(",", values.Select(serialize)) + "]";
@@ -530,7 +558,9 @@ function csCanonicalValue(
   if (field.type === "string") return `JsonString(${access})`;
   if (field.type === "boolean") return `(${access} ? "true" : "false")`;
   if (field.type === "integer") return `${access}.ToString(CultureInfo.InvariantCulture)`;
-  if (field.type === "number") return `${access}.ToString("R", CultureInfo.InvariantCulture)`;
+  if (field.type === "number") {
+    throw new Error("Canonical Evidence cannot contain binary floating-point fields; use a decimal string");
+  }
   if (field.type === "array") {
     return `CanonicalArray(${access}, item => ${csCanonicalValue(field.items, "item", operation, scope, `${fieldName}Item`)})`;
   }
@@ -1205,5 +1235,18 @@ function indent(value: string, spaces: number): string {
 }
 
 function escape(value: string): string {
-  return value.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+  let escaped = "";
+  for (const character of value) {
+    const code = character.charCodeAt(0);
+    if (character === "\\") escaped += "\\\\";
+    else if (character === '"') escaped += '\\"';
+    else if (character === "\b") escaped += "\\b";
+    else if (character === "\f") escaped += "\\f";
+    else if (character === "\n") escaped += "\\n";
+    else if (character === "\r") escaped += "\\r";
+    else if (character === "\t") escaped += "\\t";
+    else if (code <= 0x1f) escaped += `\\u${code.toString(16).padStart(4, "0")}`;
+    else escaped += character;
+  }
+  return escaped;
 }

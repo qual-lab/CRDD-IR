@@ -1,0 +1,315 @@
+{
+  "version": "0.1",
+  "operation": "preserve-evidence",
+  "traces": [
+    "IR-EVIDENCE-ROUNDTRIP-001"
+  ],
+  "cases": [
+    {
+      "id": "preserve-evidence-success",
+      "description": "preserve-evidence succeeds when every precondition is satisfied",
+      "arrange": {
+        "input": {
+          "evidence_version": "v1",
+          "quantity_kind": "sample",
+          "scope_id": "sample",
+          "subject_ref": {
+            "variant": "space",
+            "space_id": "sample"
+          },
+          "aggregation_scope_id": "sample",
+          "numeric_policy_id": "sample",
+          "quantity_state": "sample",
+          "slot_disposition": "sample",
+          "value_interval": {
+            "minimum": 1,
+            "maximum": 1
+          },
+          "absolute_error_upper_bound": 1,
+          "fragment_ids": [],
+          "canonical_evidence_hash": "0b49a2270f4ba1a0da5158fa7864eff1f6e74b4e56e42bfec4e1cb38a696d888"
+        },
+        "state": {
+          "evidence_version": "v1",
+          "quantity_kind": "sample",
+          "scope_id": "sample",
+          "subject_ref": {
+            "variant": "space",
+            "space_id": "sample"
+          },
+          "aggregation_scope_id": "sample",
+          "numeric_policy_id": "sample",
+          "quantity_state": "sample",
+          "slot_disposition": "sample",
+          "value_interval": {
+            "minimum": 1,
+            "maximum": 1
+          },
+          "absolute_error_upper_bound": 1000000,
+          "fragment_ids": [],
+          "canonical_evidence_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "preserve-evidence-subject-ref-boundary-face",
+      "description": "subject_ref variant boundary-face round-trips without flattening",
+      "arrange": {
+        "input": {
+          "evidence_version": "v1",
+          "quantity_kind": "sample",
+          "scope_id": "sample",
+          "subject_ref": {
+            "variant": "boundary-face",
+            "boundary_face_id": "sample"
+          },
+          "aggregation_scope_id": "sample",
+          "numeric_policy_id": "sample",
+          "quantity_state": "sample",
+          "slot_disposition": "sample",
+          "value_interval": {
+            "minimum": 1,
+            "maximum": 1
+          },
+          "absolute_error_upper_bound": 1,
+          "fragment_ids": [],
+          "canonical_evidence_hash": "71645e5a5efdb985f98177a106ceafa5e4520571a5ceacde0125aef6183d1d59"
+        },
+        "state": {
+          "evidence_version": "v1",
+          "quantity_kind": "sample",
+          "scope_id": "sample",
+          "subject_ref": {
+            "variant": "space",
+            "space_id": "sample"
+          },
+          "aggregation_scope_id": "sample",
+          "numeric_policy_id": "sample",
+          "quantity_state": "sample",
+          "slot_disposition": "sample",
+          "value_interval": {
+            "minimum": 1,
+            "maximum": 1
+          },
+          "absolute_error_upper_bound": 1000000,
+          "fragment_ids": [],
+          "canonical_evidence_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "preserve-evidence-subject-ref-building",
+      "description": "subject_ref variant building round-trips without flattening",
+      "arrange": {
+        "input": {
+          "evidence_version": "v1",
+          "quantity_kind": "sample",
+          "scope_id": "sample",
+          "subject_ref": {
+            "variant": "building",
+            "building_id": "sample"
+          },
+          "aggregation_scope_id": "sample",
+          "numeric_policy_id": "sample",
+          "quantity_state": "sample",
+          "slot_disposition": "sample",
+          "value_interval": {
+            "minimum": 1,
+            "maximum": 1
+          },
+          "absolute_error_upper_bound": 1,
+          "fragment_ids": [],
+          "canonical_evidence_hash": "d341cce6b30476b54cd3cf06f19ade7d4b7611962ca16a3595f4e3cacd81d373"
+        },
+        "state": {
+          "evidence_version": "v1",
+          "quantity_kind": "sample",
+          "scope_id": "sample",
+          "subject_ref": {
+            "variant": "space",
+            "space_id": "sample"
+          },
+          "aggregation_scope_id": "sample",
+          "numeric_policy_id": "sample",
+          "quantity_state": "sample",
+          "slot_disposition": "sample",
+          "value_interval": {
+            "minimum": 1,
+            "maximum": 1
+          },
+          "absolute_error_upper_bound": 1000000,
+          "fragment_ids": [],
+          "canonical_evidence_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "id": "ev-interval-ordered-falsified",
+      "sourceRequirement": "EV-INTERVAL-ORDERED",
+      "description": "EV-INTERVAL-ORDERED is rejected by a deterministic counterexample",
+      "arrange": {
+        "input": {
+          "evidence_version": "v1",
+          "quantity_kind": "sample",
+          "scope_id": "sample",
+          "subject_ref": {
+            "variant": "space",
+            "space_id": "sample"
+          },
+          "aggregation_scope_id": "sample",
+          "numeric_policy_id": "sample",
+          "quantity_state": "sample",
+          "slot_disposition": "sample",
+          "value_interval": {
+            "minimum": 2,
+            "maximum": 1
+          },
+          "absolute_error_upper_bound": 1,
+          "fragment_ids": [],
+          "canonical_evidence_hash": "6cae7b74e402f7b8bd4a22738c3d7332d4dc2602a1315ee5aab5349584ef012a"
+        },
+        "state": {
+          "evidence_version": "v1",
+          "quantity_kind": "sample",
+          "scope_id": "sample",
+          "subject_ref": {
+            "variant": "space",
+            "space_id": "sample"
+          },
+          "aggregation_scope_id": "sample",
+          "numeric_policy_id": "sample",
+          "quantity_state": "sample",
+          "slot_disposition": "sample",
+          "value_interval": {
+            "minimum": 1,
+            "maximum": 1
+          },
+          "absolute_error_upper_bound": 1000000,
+          "fragment_ids": [],
+          "canonical_evidence_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "INVALID_VALUE_INTERVAL",
+        "stateUnchanged": true
+      }
+    },
+    {
+      "id": "ev-canonical-hash-rejected",
+      "sourceRequirement": "EV-CANONICAL-HASH",
+      "description": "evidence.canonical-hash is rejected deterministically without state changes",
+      "arrange": {
+        "input": {
+          "evidence_version": "v1",
+          "quantity_kind": "sample",
+          "scope_id": "sample",
+          "subject_ref": {
+            "variant": "space",
+            "space_id": "sample"
+          },
+          "aggregation_scope_id": "sample",
+          "numeric_policy_id": "sample",
+          "quantity_state": "sample",
+          "slot_disposition": "sample",
+          "value_interval": {
+            "minimum": 1,
+            "maximum": 1
+          },
+          "absolute_error_upper_bound": 1,
+          "fragment_ids": [],
+          "canonical_evidence_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        },
+        "state": {
+          "evidence_version": "v1",
+          "quantity_kind": "sample",
+          "scope_id": "sample",
+          "subject_ref": {
+            "variant": "space",
+            "space_id": "sample"
+          },
+          "aggregation_scope_id": "sample",
+          "numeric_policy_id": "sample",
+          "quantity_state": "sample",
+          "slot_disposition": "sample",
+          "value_interval": {
+            "minimum": 1,
+            "maximum": 1
+          },
+          "absolute_error_upper_bound": 1000000,
+          "fragment_ids": [],
+          "canonical_evidence_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "EVIDENCE_HASH_MISMATCH",
+        "stateUnchanged": true
+      }
+    },
+    {
+      "id": "ev-fragments-unique-rejected",
+      "sourceRequirement": "EV-FRAGMENTS-UNIQUE",
+      "description": "collection.unique is rejected deterministically without state changes",
+      "arrange": {
+        "input": {
+          "evidence_version": "v1",
+          "quantity_kind": "sample",
+          "scope_id": "sample",
+          "subject_ref": {
+            "variant": "space",
+            "space_id": "sample"
+          },
+          "aggregation_scope_id": "sample",
+          "numeric_policy_id": "sample",
+          "quantity_state": "sample",
+          "slot_disposition": "sample",
+          "value_interval": {
+            "minimum": 1,
+            "maximum": 1
+          },
+          "absolute_error_upper_bound": 1,
+          "fragment_ids": [
+            "duplicate",
+            "duplicate"
+          ],
+          "canonical_evidence_hash": "df4de4614ab0df6bb18db806665bb96c4716c1282ed4780192dc53e9f4113a02"
+        },
+        "state": {
+          "evidence_version": "v1",
+          "quantity_kind": "sample",
+          "scope_id": "sample",
+          "subject_ref": {
+            "variant": "space",
+            "space_id": "sample"
+          },
+          "aggregation_scope_id": "sample",
+          "numeric_policy_id": "sample",
+          "quantity_state": "sample",
+          "slot_disposition": "sample",
+          "value_interval": {
+            "minimum": 1,
+            "maximum": 1
+          },
+          "absolute_error_upper_bound": 1000000,
+          "fragment_ids": [],
+          "canonical_evidence_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      },
+      "expect": {
+        "ok": false,
+        "error": "DUPLICATE_FRAGMENT_ID",
+        "stateUnchanged": true
+      }
+    }
+  ]
+}
