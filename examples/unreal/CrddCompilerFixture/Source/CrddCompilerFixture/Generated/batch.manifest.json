@@ -91,7 +91,7 @@
         },
         {
           "path": "PreserveEvidenceConformance.spec.cpp",
-          "sha256": "64ca684c62ae25b42e4088f8c71c6c9ae85654fe3f9399e7454e6cf1ee385808"
+          "sha256": "9e2b1abbfd5974eab29a9e8e595ed59519d1885e46c9d2f7451a9453c45bc951"
         }
       ]
     },
@@ -151,7 +151,7 @@
         },
         {
           "path": "SynchronizeModelConformance.spec.cpp",
-          "sha256": "e7675ad775117a1868ea17d41488422b1d23f9f50fbae1bb7941afcb5a5674ed"
+          "sha256": "5272c287cb375772e4bb756e33e667c3fd3046eb3207ac4bedeb556aaf651724"
         }
       ]
     }

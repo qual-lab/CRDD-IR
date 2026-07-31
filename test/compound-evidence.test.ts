@@ -49,7 +49,7 @@ function request(variant = "space") {
       canonical_evidence_hash: "",
     },
     state: {
-      persisted_segments: [],
+      persisted_segments: [{ id: "previous", labels: ["previous"] }],
       evidence_version: "v1",
       quantity_kind: "",
       scope_id: "scope-\b\f\u0001-雪-😀",
@@ -60,7 +60,7 @@ function request(variant = "space") {
       slot_disposition: "",
       value_interval: { minimum: "1", maximum: "2" },
       absolute_error_upper_bound: "0.01",
-      segments: [],
+      segments: [{ id: "initial", labels: ["initial"] }],
       numeric_lexemes: {
         negative_zero: "-0",
         exponent: "1e+21",
@@ -159,6 +159,10 @@ test("compound evidence generates type-safe Unreal and Unity targets determinist
   assert.match(cs, /List<string> Labels/);
   assert.equal((cs.match(/class PreserveEvidenceSegmentsItem/g) ?? []).length, 1);
   assert.match(cs, /List<PreserveEvidenceSegmentsItem> PersistedSegments/);
+  assert.doesNotMatch(cs, /Labels = item\.Labels[, }]/);
+  assert.doesNotMatch(cs, /PersistedSegments = input\.Segments;/);
+  assert.match(cs, /Labels = .*Labels\.ConvertAll\(item => item\)/);
+  assert.match(cs, /PersistedSegments = input\.Segments\.ConvertAll/);
   assert.match(cppSource, /CrddCanonicalInputSha256/);
   assert.match(cppSource, /case TEXT\('\\\\b'\)|case TEXT\('\\b'\)/);
   assert.match(cppSource, /0x1f/);
@@ -182,6 +186,9 @@ test("nested collections and structural type reuse are attributed in parity evid
   const second = verifyTargetParity(compilation, unrealProfile, unityProfile);
   assert.deepEqual(first, second);
   assert.equal(first.equivalent, true);
+  assert.equal(first.checks.sharedSnapshotOwnership, true);
+  assert.equal(first.targets[0].snapshotOwnershipSha256, first.targets[1].snapshotOwnershipSha256);
+  assert.equal(first.snapshotOwnershipSha256, first.targets[0].snapshotOwnershipSha256);
   assert.ok(first.requirements.includes("IR-STRUCTURAL-TYPE-001"));
   assert.ok(first.requirements.includes("IR-NESTED-COLLECTION-001"));
 });

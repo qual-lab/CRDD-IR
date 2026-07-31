@@ -7,6 +7,7 @@ import { getTargetAdapter } from "./target-registry.ts";
 import { generateTestManifest } from "./test-manifest.ts";
 import type { UnityNumericProjection, UnityTargetProfile } from "./unity-target.ts";
 import type { UnrealNumericProjection, UnrealTargetProfile } from "./unreal-target.ts";
+import { snapshotOwnershipDigestFromGenerated } from "./snapshot-ownership.ts";
 
 type NormalizedNumericProjection = {
   kind: "signed-integer" | "binary-float";
@@ -17,18 +18,20 @@ type NormalizedNumericProjection = {
 };
 
 export type TargetParityReport = {
-  protocol: "crdd-ir/target-parity-v0.2";
+  protocol: "crdd-ir/target-parity-v0.3";
   requirements: string[];
   operation: string;
   irSha256: string;
   conformanceSha256: string;
   portableRulesSha256: string;
+  snapshotOwnershipSha256: string;
   targets: Array<{
     id: "unreal" | "unity";
     profileSha256: string;
     irSha256: string;
     conformanceSha256: string;
     portableRulesSha256: string;
+    snapshotOwnershipSha256: string;
     generatedFiles: Array<{ path: string; sha256: string }>;
   }>;
   numericProjections: Array<{
@@ -43,6 +46,7 @@ export type TargetParityReport = {
     sharedConformanceSemantics: boolean;
     equivalentNumericProjections: boolean;
     sharedPortableRuleSemantics: boolean;
+    sharedSnapshotOwnership: boolean;
   };
   equivalent: boolean;
 };
@@ -97,14 +101,17 @@ export function verifyTargetParity(
     sharedPortableRuleSemantics:
       new Set(targets.map((target) => target.portableRulesSha256)).size === 1 &&
       targets[0].portableRulesSha256 === portableRulesSha256,
+    sharedSnapshotOwnership:
+      new Set(targets.map((target) => target.snapshotOwnershipSha256)).size === 1,
   };
   return {
-    protocol: "crdd-ir/target-parity-v0.2",
+    protocol: "crdd-ir/target-parity-v0.3",
     requirements: parityRequirements(compilation),
     operation: compilation.ir.operation.id,
     irSha256: compilation.digest,
     conformanceSha256,
     portableRulesSha256,
+    snapshotOwnershipSha256: targets[0].snapshotOwnershipSha256,
     targets,
     numericProjections,
     checks,
@@ -169,6 +176,7 @@ function targetEvidence(
     irSha256,
     conformanceSha256,
     portableRulesSha256,
+    snapshotOwnershipSha256: snapshotOwnershipDigestFromGenerated(files),
     generatedFiles: files
       .map((file) => ({ path: file.name, sha256: generatedTextSha256(file.content) }))
       .sort((left, right) => left.path.localeCompare(right.path)),

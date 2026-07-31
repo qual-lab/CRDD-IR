@@ -47,6 +47,13 @@ Input-to-State assignment type-compatible. When different shapes would produce
 the same preferred target name, the generator adds a deterministic scope and
 numeric suffix instead of emitting a duplicate declaration.
 
+Generated Unity operations recursively clone nested collections when cloning
+Initial State, producing rollback State, or assigning Input collections into
+Result State. Generated conformance tests mutate Input, Initial State, and
+Result State in both directions to prove that no nested `List<T>` reference is
+shared. Unreal conformance performs the equivalent ownership checks for nested
+`TArray<T>` value copies.
+
 ## Canonical Evidence
 
 `evidence.canonical-hash` verifies the SHA-256 of canonical UTF-8 JSON. Object
@@ -80,6 +87,8 @@ Generated conformance owns both a valid round-trip case and an isolated hash
 mutation case. Target parity Evidence reports `IR-UNION-001`,
 `IR-PRIMITIVE-COLLECTION-001`, `IR-EVIDENCE-ROUNDTRIP-001`,
 `IR-STRUCTURAL-TYPE-001`, and `IR-NESTED-COLLECTION-001` when used.
+Target Parity v0.3 also records a shared `snapshotOwnershipSha256` and requires
+`checks.sharedSnapshotOwnership` to pass.
 
 The reference contract is
 `test/fixtures/contracts/compound-evidence-contract.md`. It exercises all

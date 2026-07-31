@@ -101,10 +101,12 @@ is additive at the Source Contract level:
 3. add `portable_rules` only where Core must own the invariant;
 4. regenerate both targets, conformance, parity evidence, and batch manifests.
 
-Target parity Evidence uses protocol `crdd-ir/target-parity-v0.2`. Existing
-v0.1 Evidence remains historical evidence but is not accepted as current v0.4.0
-parity evidence. Regenerate it, update consumers to require v0.2, and roll back
-by restoring the prior generated bundle and pinned compiler if adoption fails.
+Target parity Evidence through v0.5.0 uses protocol
+`crdd-ir/target-parity-v0.2`. v0.6.0 uses v0.3 and adds snapshot-ownership
+Evidence. Older Evidence remains historical evidence but is not accepted as
+current parity Evidence. Regenerate it, update consumers to require the release
+protocol, and roll back by restoring the prior generated bundle and pinned
+compiler if adoption fails.
 
 Known v0.4.0 constraint: collection paths must name top-level `input` or
 `state` arrays/maps whose values are objects. Nested collection traversal is

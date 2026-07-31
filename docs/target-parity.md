@@ -21,6 +21,7 @@ digests, and every generated target file digest. It verifies that:
 - Unity outputs are C# and contain no Unreal dependency;
 - both adapters receive the same versioned IR;
 - both adapters are measured against the same generated conformance semantics;
+- both adapters emit the same snapshot-ownership contract digest;
 - every numeric unit has equivalent width, number kind, JSON representation, rounding,
   and overflow behavior.
 
@@ -32,7 +33,14 @@ This is the deterministic static parity gate. Runtime evidence remains target-sp
 run `verify:unreal` and `verify:unity` to prove the generated implementation in each
 engine/toolchain.
 
-v0.4.0 emits `crdd-ir/target-parity-v0.2`. The v0.2 protocol makes the current
+v0.4.0 through v0.5.0 emit `crdd-ir/target-parity-v0.2`. The v0.2 protocol makes the current
 required fields explicit and intentionally does not reinterpret old v0.1
 Evidence. Consumers should regenerate Evidence and switch schema validation to
 v0.2 in the same change.
+
+v0.6.0 emits `crdd-ir/target-parity-v0.3`. It adds
+`snapshotOwnershipSha256` to the report and each target, plus
+`checks.sharedSnapshotOwnership`. The digest is derived from the ownership
+contract embedded in generated Unreal and Unity conformance tests. Consumers
+must regenerate Evidence and move schema validation from v0.2 to v0.3; older
+Evidence remains historical and is not rewritten.

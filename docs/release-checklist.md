@@ -29,7 +29,7 @@ npm.cmd run pack:check
 - [ ] verification-lock tests pass
 - [ ] Unreal Editor Build and Automation pass
 - [ ] Unreal Shipping Cook, Stage, Pak, IoStore, Package, and Archive pass
-- [ ] Unity EditMode tests pass (reference result: 40/40)
+- [ ] Unity EditMode tests pass (reference result: 42/42)
 - [ ] Unity Windows x64 IL2CPP Player Build passes
 - [ ] npm package contains `src`, `schemas`, `scripts`, `docs`, and templates
 
@@ -56,6 +56,10 @@ npm.cmd run pack:check
 - [ ] `IR-NESTED-COLLECTION-001` supports primitive arrays in object elements
 - [ ] empty nested arrays and nested array order survive conformance and Evidence
 - [ ] parity Evidence attributes both v0.6.0 requirement IDs
+- [ ] Unity State clone, rollback, and collection assign recursively deep-clone nested lists
+- [ ] generated Unreal and Unity ownership tests mutate both sides without propagation
+- [ ] Target Parity v0.3 reports matching `snapshotOwnershipSha256`
+- [ ] `checks.sharedSnapshotOwnership` passes
 - [ ] existing v0.5.0 contracts compile without migration
 
 ## Documentation and adopter gate
