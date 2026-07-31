@@ -23,6 +23,37 @@ They preserve order and support empty arrays and `minItems`/`maxItems`.
   collection: input.fragment_ids
 ```
 
+## Nested primitive collections
+
+Object collection elements may contain primitive arrays such as `string[]`,
+`integer[]`, `number[]`, and `boolean[]`. Unreal generates nested `TArray<T>`
+members and Unity generates nested `List<T>` members. Empty arrays and source
+order are preserved by generated fixtures, canonical Evidence serialization,
+and Input-to-State effects.
+
+Nested object collections, nested maps, and nested unions are not part of the
+v0.6.0 target-generation surface.
+
+## Structural collection element types
+
+Top-level arrays or maps whose object elements have the same generated shape
+share one deterministic target type across Input and State, even when their
+field names differ. Shape identity includes property names, nested collection
+shape, units, and projected target scalar types. Source constraints remain on
+their owning fields and are not merged.
+
+This prevents duplicate C++ struct declarations and makes whole-collection
+Input-to-State assignment type-compatible. When different shapes would produce
+the same preferred target name, the generator adds a deterministic scope and
+numeric suffix instead of emitting a duplicate declaration.
+
+Generated Unity operations recursively clone nested collections when cloning
+Initial State, producing rollback State, or assigning Input collections into
+Result State. Generated conformance tests mutate Input, Initial State, and
+Result State in both directions to prove that no nested `List<T>` reference is
+shared. Unreal conformance performs the equivalent ownership checks for nested
+`TArray<T>` value copies.
+
 ## Canonical Evidence
 
 `evidence.canonical-hash` verifies the SHA-256 of canonical UTF-8 JSON. Object
@@ -54,9 +85,13 @@ The simulator and generated Unreal/Unity implementations reject a missing or
 modified payload with the same Rule ID and Error Code before applying effects.
 Generated conformance owns both a valid round-trip case and an isolated hash
 mutation case. Target parity Evidence reports `IR-UNION-001`,
-`IR-PRIMITIVE-COLLECTION-001`, and `IR-EVIDENCE-ROUNDTRIP-001` when used.
+`IR-PRIMITIVE-COLLECTION-001`, `IR-EVIDENCE-ROUNDTRIP-001`,
+`IR-STRUCTURAL-TYPE-001`, and `IR-NESTED-COLLECTION-001` when used.
+Target Parity v0.3 also records a shared `snapshotOwnershipSha256` and requires
+`checks.sharedSnapshotOwnership` to pass.
 
 The reference contract is
 `test/fixtures/contracts/compound-evidence-contract.md`. It exercises all
 required fields, three union variants, primitive-array ordering and uniqueness,
-canonical hashing, atomic commit, and rollback.
+shared object element types, nested primitive arrays, canonical hashing, atomic
+commit, and rollback.

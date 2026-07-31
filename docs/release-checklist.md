@@ -1,16 +1,16 @@
-# v0.5.0 release checklist
+# v0.6.0 release checklist
 
-This checklist prepares CRDD IR v0.5.0 for publication. Do not tag, publish,
+This checklist prepares CRDD IR v0.6.0 for publication. Do not tag, publish,
 or merge to `main` until the release Go is recorded.
 
 ## Source
 
-- [ ] `feature/compound-evidence-roundtrip` is reviewed and merged into `develop`
+- [ ] `feature/nested-portable-collections-v0.6.0` is reviewed and merged into `develop`
 - [ ] `develop` is merged into `main` through a release PR
 - [ ] the release commit has a clean working tree
-- [ ] `package.json` and `package-lock.json` use `0.5.0`
-- [ ] tracked generated target files identify generator `0.5.0`
-- [ ] Source Contract and Internal IR schemas accept the v0.5.0 portable rules
+- [ ] `package.json` and `package-lock.json` use `0.6.0`
+- [ ] tracked generated target files identify generator `0.6.0`
+- [ ] Source Contract and Internal IR remain schema-valid without migration
 
 ## Automated verification
 
@@ -24,16 +24,16 @@ npm.cmd run verify:unity
 npm.cmd run pack:check
 ```
 
-- [ ] Node tests pass (reference result: 145/145)
+- [ ] Node tests pass (reference result: 146/146)
 - [ ] Installer regression tests pass
 - [ ] verification-lock tests pass
 - [ ] Unreal Editor Build and Automation pass
 - [ ] Unreal Shipping Cook, Stage, Pak, IoStore, Package, and Archive pass
-- [ ] Unity EditMode tests pass (reference result: 39/39)
+- [ ] Unity EditMode tests pass (reference result: 42/42)
 - [ ] Unity Windows x64 IL2CPP Player Build passes
 - [ ] npm package contains `src`, `schemas`, `scripts`, `docs`, and templates
 
-## v0.5.0 semantic gates
+## v0.6.0 semantic gates
 
 - [ ] `IR-TARGET-001` and `IR-PARITY-001` pass
 - [ ] TypeScript query and asynchronous targets preserve Core semantics
@@ -50,11 +50,21 @@ npm.cmd run pack:check
 - [ ] missing or modified Evidence is rejected before commit
 - [ ] rejection preserves the original snapshot and produces no side effect
 - [ ] generated Target Parity Evidence attributes all three requirement IDs
-- [ ] existing v0.4.0 contracts compile without migration
+- [ ] `IR-STRUCTURAL-TYPE-001` emits one type per generated object shape
+- [ ] matching Input and State object collections are assignment-compatible
+- [ ] different shapes with the same preferred name remain collision-free
+- [ ] `IR-NESTED-COLLECTION-001` supports primitive arrays in object elements
+- [ ] empty nested arrays and nested array order survive conformance and Evidence
+- [ ] parity Evidence attributes both v0.6.0 requirement IDs
+- [ ] Unity State clone, rollback, and collection assign recursively deep-clone nested lists
+- [ ] generated Unreal and Unity ownership tests mutate both sides without propagation
+- [ ] Target Parity v0.3 reports matching `snapshotOwnershipSha256`
+- [ ] `checks.sharedSnapshotOwnership` passes
+- [ ] existing v0.5.0 contracts compile without migration
 
 ## Documentation and adopter gate
 
-- [ ] v0.5.0 release notes match the reviewed implementation
+- [ ] v0.6.0 release notes match the reviewed implementation
 - [ ] compound-value and canonical-Evidence syntax is documented
 - [ ] known top-level/nesting limits are documented
 - [ ] adopter verifies a pinned release candidate in its Unreal and Unity products
@@ -64,18 +74,18 @@ npm.cmd run pack:check
 
 ```powershell
 git switch develop
-git merge --no-ff feature/compound-evidence-roundtrip
+git merge --no-ff feature/nested-portable-collections-v0.6.0
 git push origin develop
 # Create and merge the reviewed develop -> main release PR.
 git switch main
 git pull --ff-only
-git tag -a v0.5.0 -m "CRDD IR v0.5.0"
+git tag -a v0.6.0 -m "CRDD IR v0.6.0"
 git push origin main
-git push origin v0.5.0
+git push origin v0.6.0
 ```
 
 - [ ] tag points to the reviewed `main` release commit
-- [ ] GitHub Release title is `CRDD IR v0.5.0`
-- [ ] release body uses `docs/releases/v0.5.0.md`
+- [ ] GitHub Release title is `CRDD IR v0.6.0`
+- [ ] release body uses `docs/releases/v0.6.0.md`
 - [ ] source archive works from a clean checkout
-- [ ] adopting repositories can pin their Submodule to `v0.5.0`
+- [ ] adopting repositories can pin their Submodule to `v0.6.0`

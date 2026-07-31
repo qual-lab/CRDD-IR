@@ -38,6 +38,7 @@ test("IR-PARITY-001 proves shared semantics and compatible numeric projections",
   assert.equal(first.checks.sharedSourceIr, true);
   assert.equal(first.checks.sharedConformanceSemantics, true);
   assert.equal(first.checks.equivalentNumericProjections, true);
+  assert.equal(first.checks.sharedSnapshotOwnership, true);
   assert.equal(first.equivalent, true);
   assert.deepEqual(first.numericProjections.map((item) => item.unit), ["mm"]);
 });
