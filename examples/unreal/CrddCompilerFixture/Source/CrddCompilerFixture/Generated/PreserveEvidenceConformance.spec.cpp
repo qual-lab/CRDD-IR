@@ -30,7 +30,7 @@ bool FCrddPreserveEvidencePortableConformanceTest::RunTest(const FString&)
         Input.NumericLexemes.Exponent = TEXT("1e+21");
         Input.NumericLexemes.MinSubnormal = TEXT("5e-324");
         Input.NumericLexemes.MaxFinite = TEXT("1.7976931348623157e+308");
-        Input.CanonicalEvidenceHash = TEXT("00a9ef29559a74142f957983d08ba6cf4abe688f94a6c1b8169d7e1c050f7a8b");
+        Input.CanonicalEvidenceHash = TEXT("b81b2c125db88599a89c08d8e144cc2fd1c5b81b5c7f8d62f69bc6d2d82ff5ef");
         State.EvidenceVersion = TEXT("v1");
         State.QuantityKind = TEXT("sample");
         State.ScopeId = TEXT("scope-\b\f\001-雪-😀");
@@ -80,7 +80,7 @@ bool FCrddPreserveEvidencePortableConformanceTest::RunTest(const FString&)
         Input.NumericLexemes.Exponent = TEXT("1e+21");
         Input.NumericLexemes.MinSubnormal = TEXT("5e-324");
         Input.NumericLexemes.MaxFinite = TEXT("1.7976931348623157e+308");
-        Input.CanonicalEvidenceHash = TEXT("3626a419a6b0ffed978630aa5cd1f2f3f949756f53244e6d6b820250d1dfcd9f");
+        Input.CanonicalEvidenceHash = TEXT("59ff36727d5b47a8c51ccd44d7753366c3fa5d8813cfee0b2c70dfbf9056513f");
         State.EvidenceVersion = TEXT("v1");
         State.QuantityKind = TEXT("sample");
         State.ScopeId = TEXT("scope-\b\f\001-雪-😀");
@@ -130,7 +130,7 @@ bool FCrddPreserveEvidencePortableConformanceTest::RunTest(const FString&)
         Input.NumericLexemes.Exponent = TEXT("1e+21");
         Input.NumericLexemes.MinSubnormal = TEXT("5e-324");
         Input.NumericLexemes.MaxFinite = TEXT("1.7976931348623157e+308");
-        Input.CanonicalEvidenceHash = TEXT("93d876636e77af85dfd18ee1621a0986d4245764f05ac6d4ef6415b4138f2100");
+        Input.CanonicalEvidenceHash = TEXT("e7904fe0340c234178d52988325af1f473f66abcd3bd1cbcc1f33b6ea1c8fc4f");
         State.EvidenceVersion = TEXT("v1");
         State.QuantityKind = TEXT("sample");
         State.ScopeId = TEXT("scope-\b\f\001-雪-😀");
@@ -232,7 +232,7 @@ bool FCrddPreserveEvidencePortableConformanceTest::RunTest(const FString&)
         Input.NumericLexemes.MaxFinite = TEXT("1.7976931348623157e+308");
         Input.FragmentIds.Add(TEXT("duplicate"));
         Input.FragmentIds.Add(TEXT("duplicate"));
-        Input.CanonicalEvidenceHash = TEXT("9c6193b867905056a065b7ecd288e2f79c86fbbf0966f05f131f77f1c0cca3ae");
+        Input.CanonicalEvidenceHash = TEXT("e31536f10dcee1b60fa3e5c0456d9ae76f16c1430dde8aac14cf5b4094e3f5a4");
         State.EvidenceVersion = TEXT("v1");
         State.QuantityKind = TEXT("sample");
         State.ScopeId = TEXT("scope-\b\f\001-雪-😀");
@@ -260,6 +260,60 @@ bool FCrddPreserveEvidencePortableConformanceTest::RunTest(const FString&)
         if (!Result.bSucceeded)
         {
             TestEqual(TEXT("case 5: rollback"), Result.FailedRequirement, TEXT("EV-FRAGMENTS-UNIQUE"));
+        }
+    }
+
+    {
+        FCrddPreserveEvidenceInput Input;
+        FCrddPreserveEvidenceState State;
+        Input.EvidenceVersion = TEXT("v1");
+        Input.QuantityKind = TEXT("sample");
+        Input.ScopeId = TEXT("scope-\b\f\001-雪-😀");
+        Input.SubjectRef.Variant = decltype(Input.SubjectRef.Variant)::Space;
+        Input.SubjectRef.Space.SpaceId = TEXT("sample");
+        Input.AggregationScopeId = TEXT("sample");
+        Input.NumericPolicyId = TEXT("sample");
+        Input.QuantityState = TEXT("sample");
+        Input.SlotDisposition = TEXT("sample");
+        Input.ValueInterval.Minimum = TEXT("1");
+        Input.ValueInterval.Maximum = TEXT("2");
+        Input.AbsoluteErrorUpperBound = TEXT("0.01");
+        auto& CrddItemInputSegments0 = Input.Segments.AddDefaulted_GetRef();
+        CrddItemInputSegments0.Id = TEXT("duplicate");
+        auto& CrddItemInputSegments1 = Input.Segments.AddDefaulted_GetRef();
+        CrddItemInputSegments1.Id = TEXT("duplicate");
+        Input.NumericLexemes.NegativeZero = TEXT("-0");
+        Input.NumericLexemes.Exponent = TEXT("1e+21");
+        Input.NumericLexemes.MinSubnormal = TEXT("5e-324");
+        Input.NumericLexemes.MaxFinite = TEXT("1.7976931348623157e+308");
+        Input.CanonicalEvidenceHash = TEXT("4381aef5650cafe61943a3d9fae6e4b2a735c6022c597a832b9cd6c4d507541e");
+        State.EvidenceVersion = TEXT("v1");
+        State.QuantityKind = TEXT("sample");
+        State.ScopeId = TEXT("scope-\b\f\001-雪-😀");
+        State.SubjectRef.Variant = decltype(State.SubjectRef.Variant)::Space;
+        State.SubjectRef.Space.SpaceId = TEXT("sample");
+        State.AggregationScopeId = TEXT("sample");
+        State.NumericPolicyId = TEXT("sample");
+        State.QuantityState = TEXT("sample");
+        State.SlotDisposition = TEXT("sample");
+        State.ValueInterval.Minimum = TEXT("1");
+        State.ValueInterval.Maximum = TEXT("2");
+        State.AbsoluteErrorUpperBound = TEXT("0.01");
+        State.NumericLexemes.NegativeZero = TEXT("-0");
+        State.NumericLexemes.Exponent = TEXT("1e+21");
+        State.NumericLexemes.MinSubnormal = TEXT("5e-324");
+        State.NumericLexemes.MaxFinite = TEXT("1.7976931348623157e+308");
+        State.CanonicalEvidenceHash = TEXT("0000000000000000000000000000000000000000000000000000000000000000");
+        const FCrddPreserveEvidenceResult Result = FCrddPreserveEvidenceOperation::Execute(Input, State);
+        TestFalse(TEXT("case 6: ev-segments-unique-rejected success"), Result.bSucceeded);
+        TestEqual(
+            TEXT("case 6: ev-segments-unique-rejected error"),
+            FCrddPreserveEvidenceOperation::ErrorCode(Result.Error),
+            TEXT("DUPLICATE_SEGMENT_ID")
+        );
+        if (!Result.bSucceeded)
+        {
+            TestEqual(TEXT("case 6: rollback"), Result.FailedRequirement, TEXT("EV-SEGMENTS-UNIQUE"));
         }
     }
     return true;

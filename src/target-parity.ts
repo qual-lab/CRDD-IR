@@ -121,6 +121,14 @@ function parityRequirements(compilation: CompilationResult): string[] {
   if (fields.some((field) => field.type === "array" && field.items.type !== "object")) {
     requirements.push("IR-PRIMITIVE-COLLECTION-001");
   }
+  if (fields.some(hasNestedPrimitiveCollection)) requirements.push("IR-NESTED-COLLECTION-001");
+  const objectCollectionShapes = fields.flatMap((field) => {
+    const item = field.type === "array" ? field.items : field.type === "map" ? field.values : undefined;
+    return item?.type === "object" ? [canonicalJson(item)] : [];
+  });
+  if (new Set(objectCollectionShapes).size < objectCollectionShapes.length) {
+    requirements.push("IR-STRUCTURAL-TYPE-001");
+  }
   if (kinds.has("evidence.canonical-hash")) requirements.push("IR-EVIDENCE-ROUNDTRIP-001");
   if (kinds.has("opaque.integrity")) requirements.push("IR-OPAQUE-001");
   if (
@@ -128,6 +136,23 @@ function parityRequirements(compilation: CompilationResult): string[] {
     kinds.has("opaque.reject-edit-when-inactive")
   ) requirements.push("IR-IMMUTABLE-001");
   return requirements;
+}
+
+function hasNestedPrimitiveCollection(field: FieldDefinition, nested = false): boolean {
+  if (field.type === "array") {
+    if (nested && field.items.type !== "object" && field.items.type !== "array" && field.items.type !== "map") {
+      return true;
+    }
+    return hasNestedPrimitiveCollection(field.items, true);
+  }
+  if (field.type === "object") return Object.values(field.properties).some((child) =>
+    hasNestedPrimitiveCollection(child, true)
+  );
+  if (field.type === "map") return hasNestedPrimitiveCollection(field.values, true);
+  if (field.type === "union") return field.variants.some((variant) =>
+    hasNestedPrimitiveCollection(variant, true)
+  );
+  return false;
 }
 
 function targetEvidence(

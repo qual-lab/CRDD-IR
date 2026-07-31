@@ -55,16 +55,13 @@ function generateHeader(
   },
 ): string {
   const operationName = pascalIdentifier(operation.id);
+  const collectionTypes = collectionObjectTypeRegistry(operation);
   const traceComment = traces(operation);
   const errorValues = operation.errors
     .map((error) => `    ${pascalCase(error.code)},`)
     .join("\n");
-  const arrayStructs = [...Object.entries(operation.input), ...Object.entries(operation.state)]
-    .filter(([, field]) =>
-      (field.type === "array" && field.items.type === "object") ||
-      (field.type === "map" && field.values.type === "object")
-    )
-    .map(([name, field]) => generateCollectionElementStruct(operation, name, field))
+  const arrayStructs = collectionTypes.definitions
+    .map(({ typeName, field }) => generateCollectionElementStruct(typeName, field))
     .join("\n");
   const unionStructs = [
     ...Object.entries(operation.input)
@@ -93,10 +90,10 @@ function generateHeader(
     .map(([name, field]) => {
       const type = field.type === "array"
         ? `TArray<${field.items.type === "object"
-          ? `FCrdd${operationName}${pascalIdentifier(name)}Item`
+          ? collectionObjectTypeName(collectionTypes, "Input", name)
           : cppType(field.items)}>`
         : field.type === "map"
-          ? `TMap<FString, FCrdd${operationName}${pascalIdentifier(name)}Item>`
+          ? `TMap<FString, ${collectionObjectTypeName(collectionTypes, "Input", name)}>`
           : field.type === "object"
             ? objectStructName(operation, "Input", name)
             : field.type === "union"
@@ -110,10 +107,10 @@ function generateHeader(
       const type =
         field.type === "array"
           ? `TArray<${field.items.type === "object"
-            ? `FCrdd${operationName}${pascalIdentifier(name)}Item`
+            ? collectionObjectTypeName(collectionTypes, "State", name)
             : cppType(field.items)}>`
           : field.type === "map"
-            ? `TMap<FString, FCrdd${operationName}${pascalIdentifier(name)}Item>`
+            ? `TMap<FString, ${collectionObjectTypeName(collectionTypes, "State", name)}>`
           : field.type === "object"
             ? objectStructName(operation, "State", name)
             : field.type === "union"
@@ -1284,7 +1281,11 @@ function cppEffect(effect: Effect, operation: Operation): string {
   const arrayField = operation.state[stateName];
   if (arrayField.type !== "array") throw new Error(`Unreal ${effect.action} target is not an array`);
   const collection = `Result.State.${cppField(stateName, arrayField)}`;
-  const itemType = `FCrdd${pascalIdentifier(operation.id)}${pascalIdentifier(stateName)}Item`;
+  const itemType = collectionObjectTypeName(
+    collectionObjectTypeRegistry(operation),
+    "State",
+    stateName,
+  );
   if (effect.action === "remove" || effect.action === "update") {
     const condition = cppItemMatch(effect.where, arrayField.items.properties, operation);
     if (effect.action === "remove") {
@@ -1368,26 +1369,91 @@ function cppItemMatch(
 }
 
 function generateCollectionElementStruct(
-  operation: Operation,
-  stateName: string,
+  typeName: string,
   collectionField: FieldDefinition,
 ): string {
-  const operationName = pascalIdentifier(operation.id);
   const item = collectionField.type === "array"
     ? collectionField.items
     : collectionField.type === "map"
       ? collectionField.values
       : undefined;
-  if (item?.type !== "object") throw new Error(`Unreal collection "${stateName}" must contain objects`);
+  if (item?.type !== "object") throw new Error(`Unreal collection element type must be object`);
   const fields = Object.entries(item.properties)
     .map(([name, field]) => {
       return `    ${cppType(field)} ${cppField(name, field)} = ${cppDefault(field)};`;
     })
     .join("\n");
-  return `struct FCrdd${operationName}${pascalIdentifier(stateName)}Item
+  return `struct ${typeName}
 {
 ${fields}
 };`;
+}
+
+type CollectionObjectTypeRegistry = {
+  byPath: Map<string, string>;
+  definitions: Array<{ typeName: string; field: FieldDefinition }>;
+};
+
+function collectionObjectTypeRegistry(operation: Operation): CollectionObjectTypeRegistry {
+  const entries = ([
+    ...Object.entries(operation.input).map(([name, field]) => ({ scope: "Input" as const, name, field })),
+    ...Object.entries(operation.state).map(([name, field]) => ({ scope: "State" as const, name, field })),
+  ]).filter(({ field }) =>
+    (field.type === "array" && field.items.type === "object") ||
+    (field.type === "map" && field.values.type === "object")
+  ).sort((left, right) =>
+    `${left.scope}:${left.name}`.localeCompare(`${right.scope}:${right.name}`)
+  );
+  const operationName = pascalIdentifier(operation.id);
+  const byPath = new Map<string, string>();
+  const byShape = new Map<string, string>();
+  const definitions: Array<{ typeName: string; field: FieldDefinition }> = [];
+  const usedNames = new Set<string>();
+  for (const entry of entries) {
+    const item = entry.field.type === "array" ? entry.field.items : entry.field.values;
+    const shape = generatedFieldShape(item);
+    let typeName = byShape.get(shape);
+    if (!typeName) {
+      const base = `FCrdd${operationName}${pascalIdentifier(entry.name)}Item`;
+      typeName = base;
+      if (usedNames.has(typeName)) {
+        typeName = `FCrdd${operationName}${entry.scope}${pascalIdentifier(entry.name)}Item`;
+      }
+      let suffix = 2;
+      const unsuffixed = typeName;
+      while (usedNames.has(typeName)) typeName = `${unsuffixed}${suffix++}`;
+      usedNames.add(typeName);
+      byShape.set(shape, typeName);
+      definitions.push({ typeName, field: entry.field });
+    }
+    byPath.set(`${entry.scope}.${entry.name}`, typeName);
+  }
+  return { byPath, definitions };
+}
+
+function collectionObjectTypeName(
+  registry: CollectionObjectTypeRegistry,
+  scope: "Input" | "State",
+  name: string,
+): string {
+  const typeName = registry.byPath.get(`${scope}.${name}`);
+  if (!typeName) throw new Error(`Unreal collection "${scope}.${name}" must contain objects`);
+  return typeName;
+}
+
+function generatedFieldShape(field: FieldDefinition): string {
+  const projected = (field as FieldDefinition & { _crddCppType?: string })._crddCppType;
+  if (projected) return `projected:${projected}`;
+  if (field.type === "object") {
+    return `object:{${Object.entries(field.properties).sort(([a], [b]) => a.localeCompare(b))
+      .map(([name, child]) => `${name}:${generatedFieldShape(child)}`).join(",")}}`;
+  }
+  if (field.type === "array") return `array:<${generatedFieldShape(field.items)}>`;
+  if (field.type === "map") return `map:<${generatedFieldShape(field.values)}>`;
+  if (field.type === "union") {
+    return `union:${field.discriminator}:[${field.variants.map(generatedFieldShape).join("|")}]`;
+  }
+  return `${field.type}:${field.unit ?? ""}`;
 }
 
 function cppExpression(expression: string, operation: Operation, stateRoot: string): string {
@@ -1459,6 +1525,7 @@ function cppType(field: FieldDefinition): string {
   if (field.type === "boolean") return "bool";
   if (field.type === "string") return "FString";
   if (field.type === "opaque") return "FCrddOpaqueValue";
+  if (field.type === "array") return `TArray<${cppType(field.items)}>`;
   throw new Error(`Unsupported generated field type "${field.type}"`);
 }
 

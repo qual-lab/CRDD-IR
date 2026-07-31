@@ -83,6 +83,11 @@ function contract(
   metadata: { irSha256?: string; generatorVersion?: string },
 ): string {
   const name = identifier(operation.id);
+  const collectionClasses = new Map<string, Extract<FieldDefinition, { type: "object" }>>();
+  for (const [fieldName, field] of [...Object.entries(operation.input), ...Object.entries(operation.state)]) {
+    const item = field.type === "array" ? field.items : field.type === "map" ? field.values : undefined;
+    if (item?.type === "object") collectionClasses.set(csCollectionItemType(field, name, fieldName), item);
+  }
   const nested = [
     ...(hasOpaque(operation) ? [`public sealed class CrddOpaqueValue
 {
@@ -102,10 +107,7 @@ function contract(
     ...Object.entries(operation.state).flatMap(([fieldName, field]) =>
       field.type === "union" ? [unionClasses(name, "State", fieldName, field)] : []
     ),
-    ...[...Object.entries(operation.input), ...Object.entries(operation.state)].flatMap(([fieldName, field]) => {
-      const item = field.type === "array" ? field.items : field.type === "map" ? field.values : undefined;
-      return item?.type === "object" ? [objectClass(name, "", `${fieldName}Item`, item)] : [];
-    }),
+    ...[...collectionClasses.entries()].map(([typeName, item]) => objectClassNamed(typeName, item, name)),
   ].join("\n\n");
   const inputFields = Object.entries(operation.input)
     .map(([fieldName, field]) =>
@@ -761,6 +763,15 @@ function objectClass(
   field: Extract<FieldDefinition, { type: "object" }>,
 ): string {
   const className = `${operationName}${scope}${identifier(fieldName)}`;
+  return objectClassNamed(className, field, operationName, scope);
+}
+
+function objectClassNamed(
+  className: string,
+  field: Extract<FieldDefinition, { type: "object" }>,
+  operationName: string,
+  scope = "",
+): string {
   return `public sealed class ${className}
 {
 ${Object.entries(field.properties).map(([name, child]) =>
@@ -884,7 +895,7 @@ function stateCloneAssignments(operation: Operation): string {
       if (field.items.type !== "object") {
         return `            ${destination} = new ${csType(field, identifier(operation.id), "State", name)}(source.${destination}),`;
       }
-      const itemName = `${identifier(operation.id)}${identifier(name)}Item`;
+      const itemName = csCollectionItemType(field, identifier(operation.id), name);
       const assigns = Object.entries(field.items.properties)
         .map(([childName, child]) => `${csField(childName, child)} = item.${csField(childName, child)}`)
         .join(", ");
@@ -901,7 +912,7 @@ function stateCloneAssignments(operation: Operation): string {
       if (field.values.type !== "object") {
         throw new Error(`Unity map state "${name}" must contain objects`);
       }
-      const itemName = `${identifier(operation.id)}${identifier(name)}Item`;
+      const itemName = csCollectionItemType(field, identifier(operation.id), name);
       const assigns = Object.entries(field.values.properties)
         .map(([childName, child]) => `${csField(childName, child)} = pair.Value.${csField(childName, child)}`)
         .join(", ");
@@ -987,7 +998,7 @@ function typedLiteral(
         typedLiteral(item, field.items, operationName, `${scope}${identifier(name)}Item`, "Value")
       ).join(", ")} }`;
     }
-    const itemType = `${operationName}${identifier(name)}Item`;
+    const itemType = csCollectionItemType(field, operationName, name);
     return `new List<${itemType}> { ${items.map((item) =>
       objectLiteral(
         item as Record<string, unknown>,
@@ -1012,7 +1023,7 @@ function typedLiteral(
     const entries = value && typeof value === "object" && !Array.isArray(value)
       ? Object.entries(value as Record<string, unknown>).sort(([left], [right]) => left.localeCompare(right))
       : [];
-    const itemType = `${operationName}${identifier(name)}Item`;
+    const itemType = csCollectionItemType(field, operationName, name);
     return `new Dictionary<string, ${itemType}> { ${entries.map(([key, item]) =>
       `["${escape(key)}"] = ${objectLiteral(item as Record<string, unknown>, field.values.properties, itemType, operationName, "")}`
     ).join(", ")} }`;
@@ -1180,13 +1191,19 @@ function csType(field: FieldDefinition, operation: string, scope: string, name: 
   if (field.type === "object") return `${operation}${scope}${identifier(name)}`;
   if (field.type === "array") {
     return field.items.type === "object"
-      ? `List<${operation}${identifier(name)}Item>`
+      ? `List<${csCollectionItemType(field, operation, name)}>`
       : `List<${csType(field.items, operation, `${scope}${identifier(name)}Item`, "Value")}>`;
   }
-  if (field.type === "map") return `Dictionary<string, ${operation}${identifier(name)}Item>`;
+  if (field.type === "map") return `Dictionary<string, ${csCollectionItemType(field, operation, name)}>`;
   if (field.type === "union") return `${operation}${scope}${identifier(name)}Union`;
   if (field.type === "opaque") return "CrddOpaqueValue";
   throw new Error(`Unsupported Unity field type`);
+}
+
+function csCollectionItemType(field: FieldDefinition, operation: string, name: string): string {
+  const generated = (field as FieldDefinition & { _crddCsharpCollectionItemType?: string })
+    ._crddCsharpCollectionItemType;
+  return generated ?? `${operation}${identifier(name)}Item`;
 }
 
 function csDefault(field: FieldDefinition): string {
@@ -1221,7 +1238,49 @@ function projectNumericTypes(operation: Operation, profile: UnityTargetProfile):
   };
   Object.values(result.input).forEach(visit);
   Object.values(result.state).forEach(visit);
+  const collections = ([
+    ...Object.entries(result.input).map(([name, field]) => ({ scope: "Input", name, field })),
+    ...Object.entries(result.state).map(([name, field]) => ({ scope: "State", name, field })),
+  ]).filter(({ field }) =>
+    (field.type === "array" && field.items.type === "object") ||
+    (field.type === "map" && field.values.type === "object")
+  ).sort((left, right) => `${left.scope}:${left.name}`.localeCompare(`${right.scope}:${right.name}`));
+  const byShape = new Map<string, string>();
+  const usedNames = new Set<string>();
+  const operationName = identifier(result.id);
+  for (const collection of collections) {
+    const item = collection.field.type === "array" ? collection.field.items : collection.field.values;
+    const shape = csharpGeneratedFieldShape(item);
+    let typeName = byShape.get(shape);
+    if (!typeName) {
+      const base = `${operationName}${identifier(collection.name)}Item`;
+      typeName = base;
+      if (usedNames.has(typeName)) typeName = `${operationName}${collection.scope}${identifier(collection.name)}Item`;
+      let suffix = 2;
+      const unsuffixed = typeName;
+      while (usedNames.has(typeName)) typeName = `${unsuffixed}${suffix++}`;
+      usedNames.add(typeName);
+      byShape.set(shape, typeName);
+    }
+    (collection.field as FieldDefinition & { _crddCsharpCollectionItemType?: string })
+      ._crddCsharpCollectionItemType = typeName;
+  }
   return result;
+}
+
+function csharpGeneratedFieldShape(field: FieldDefinition): string {
+  const projected = (field as FieldDefinition & { _crddCsharpType?: string })._crddCsharpType;
+  if (projected) return `projected:${projected}`;
+  if (field.type === "object") {
+    return `object:{${Object.entries(field.properties).sort(([a], [b]) => a.localeCompare(b))
+      .map(([name, child]) => `${name}:${csharpGeneratedFieldShape(child)}`).join(",")}}`;
+  }
+  if (field.type === "array") return `array:<${csharpGeneratedFieldShape(field.items)}>`;
+  if (field.type === "map") return `map:<${csharpGeneratedFieldShape(field.values)}>`;
+  if (field.type === "union") {
+    return `union:${field.discriminator}:[${field.variants.map(csharpGeneratedFieldShape).join("|")}]`;
+  }
+  return `${field.type}:${field.unit ?? ""}`;
 }
 
 function identifier(value: string): string {
