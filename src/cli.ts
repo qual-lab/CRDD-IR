@@ -4,6 +4,7 @@ import { dirname, extname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { DiagnosticError, diagnosticEnvelope, unexpectedDiagnostic } from "./diagnostics.ts";
 import { runDoctor } from "./doctor.ts";
+import { adoptProjectConfig } from "./adopt-config.ts";
 import { loadAdapter } from "./adapter.ts";
 import { generateBatch, type BatchTarget } from "./batch.ts";
 import { compileMarkdown } from "./compiler.ts";
@@ -170,6 +171,22 @@ async function main(argv: string[]): Promise<void> {
       console.log(report.ok ? "Project is ready." : "Project is not ready.");
     }
     if (!report.ok) process.exitCode = 1;
+    return;
+  }
+
+  if (command === "project" && subcommand === "adopt-config") {
+    const configPath = required(argv[2], "project config file");
+    const result = await adoptProjectConfig(configPath, { dryRun: argv.includes("--dry-run") });
+    if (option(argv, "--format") === "json") {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      console.log(`Config: ${result.config}`);
+      console.log(`Old SHA-256: ${result.oldSha256}`);
+      console.log(`New SHA-256: ${result.newSha256}`);
+      console.log(result.adopted
+        ? `Adopted config hash in ${result.manifest}`
+        : result.changed ? "Dry run; installation manifest was not changed." : "Config is already adopted.");
+    }
     return;
   }
 
@@ -576,6 +593,7 @@ Commands:
   check <spec.md> [--format json]
   project check <crdd-ir.config.json>
   project doctor <crdd-ir.config.json> [--format json]
+  project adopt-config <crdd-ir.config.json> [--dry-run] [--format json]
   unreal plan <spec.md> --profile <profile.json> [--out <plan.json>]
   unreal migration --from <dialect> --to <dialect>
   unreal diff <before-plan.json> <after-plan.json>

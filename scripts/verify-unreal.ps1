@@ -34,6 +34,7 @@ $revisionSpec = "examples/revise-record/contract.md"
 $numericProjectionSpec = "test/fixtures/contracts/numeric-boundary.md"
 $portableSpec = "test/fixtures/contracts/portable-contract.md"
 $compoundEvidenceSpec = "test/fixtures/contracts/compound-evidence-contract.md"
+$conditionalEffectsSpec = "test/fixtures/contracts/conditional-effects.md"
 $fixtureGenerated = "examples/unreal/CrddCompilerFixture/Source/CrddCompilerFixture/Generated"
 $evidenceDir = "examples/apply-record/evidence"
 $editorProfile = "examples/unreal/profiles/ue-5.8-editor.json"
@@ -83,7 +84,7 @@ Assert-LastExitCode "Product regression manifest generation"
 Write-Host "[4/10] Generate Unreal C++ and 3D assets"
 & node src/cli.ts generate unreal $spec --profile $editorProfile --out-dir generated/unreal --force
 Assert-LastExitCode "Unreal reference generation"
-& node src/cli.ts batch unreal $spec $revisionSpec $numericProjectionSpec $portableSpec $compoundEvidenceSpec --out-dir $fixtureGenerated --flat --profile $editorProfile --force
+& node src/cli.ts batch unreal $spec $revisionSpec $numericProjectionSpec $portableSpec $compoundEvidenceSpec $conditionalEffectsSpec --out-dir $fixtureGenerated --flat --profile $editorProfile --force
 Assert-LastExitCode "Multi-operation Unreal fixture generation"
 & node src/cli.ts generate assets $spec --out-dir generated/assets --force
 Assert-LastExitCode "3D asset generation"

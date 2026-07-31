@@ -1,6 +1,6 @@
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("doctor", "check", "generate", "verify")]
+    [ValidateSet("doctor", "check", "generate", "verify", "adopt-config")]
     [string]$Command = "check"
 )
 
@@ -58,5 +58,8 @@ switch ($Command) {
         Invoke-CrddIr @("project", "doctor", $configPath)
         Invoke-Generate
         foreach ($source in $sources) { Invoke-CrddIr @("test", "run", $source) }
+    }
+    "adopt-config" {
+        Invoke-CrddIr @("project", "adopt-config", $configPath)
     }
 }

@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { extractReferences } from "./expression.ts";
+import { parseSourceExpression, type ExpressionNode } from "./source-expression.ts";
 import { DiagnosticError, formatDiagnosticText } from "./diagnostics.ts";
 import type { CrddIr, Diagnostic, FieldDefinition } from "./model.ts";
 
@@ -71,6 +72,7 @@ export function validateIr(value: unknown): Diagnostic[] {
       requireString(requirement, "id", path, diagnostics);
       requireString(requirement, "expression", path, diagnostics);
       requireString(requirement, "error", path, diagnostics);
+      if (requirement.when !== undefined) requireString(requirement, "when", path, diagnostics);
     });
   }
 
@@ -87,6 +89,13 @@ export function validateIr(value: unknown): Diagnostic[] {
         return;
       }
       requireString(effect, "target", path, diagnostics);
+      if (effect.when !== undefined) requireString(effect, "when", path, diagnostics);
+      if (effect.traces !== undefined) {
+        const branchTraces = requireStringArray(effect, "traces", path, diagnostics);
+        if (branchTraces && branchTraces.length === 0) {
+          diagnostics.push(error(`${path}.traces`, "must contain at least one CRDD ID"));
+        }
+      }
       if (typeof effect.action !== "string" || !allowedEffectActions.has(effect.action)) {
         diagnostics.push(error(
           `${path}.action`,
@@ -291,9 +300,14 @@ function validateSemantics(operation: Record<string, unknown>, diagnostics: Diag
       if (!isRecord(requirement)) return;
       if (typeof requirement.id === "string") requirementIds.push(requirement.id);
       if (typeof requirement.expression !== "string") return;
-      const path = `$.operation.requires[${index}].expression`;
+      const base = `$.operation.requires[${index}]`;
+      const path = `${base}.expression`;
       validateExpressionReferences(requirement.expression, path, input, state, diagnostics);
       validateComparisonUnits(requirement.expression, path, input, state, diagnostics);
+      if (typeof requirement.when === "string") {
+        validateExpressionReferences(requirement.when, `${base}.when`, input, state, diagnostics);
+        validateBooleanExpression(requirement.when, `${base}.when`, input, state, diagnostics);
+      }
     });
     reportDuplicateIds(requirementIds, "$.operation.requires", "requirement ID", diagnostics);
   }
@@ -346,6 +360,10 @@ function validateSemantics(operation: Record<string, unknown>, diagnostics: Diag
           typeof effect.expression === "string") {
         validateExpressionReferences(effect.expression, `${path}.expression`, input, state, diagnostics);
         validateAssignmentUnits(effect.expression, targetField, `${path}.expression`, input, state, diagnostics);
+      }
+      if (typeof effect.when === "string") {
+        validateExpressionReferences(effect.when, `${path}.when`, input, state, diagnostics);
+        validateBooleanExpression(effect.when, `${path}.when`, input, state, diagnostics);
       }
       if (effect.action === "append") {
         validateValueReferences(effect.value, `${path}.value`, input, state, diagnostics);
@@ -701,6 +719,31 @@ function validateExpressionReferences(
     if (!fieldForReference(reference, input, state)) {
       diagnostics.push(error(path, `references undefined field "${reference}"`));
     }
+  }
+}
+
+function validateBooleanExpression(
+  expression: string,
+  path: string,
+  input: Record<string, FieldDefinition>,
+  state: Record<string, FieldDefinition>,
+  diagnostics: Diagnostic[],
+): void {
+  try {
+    const typeOf = (node: ExpressionNode): FieldDefinition["type"] | "unknown" => {
+      if (node.kind === "literal") return typeof node.value as "number" | "string" | "boolean";
+      if (node.kind === "reference") return fieldForReference(node.path, input, state)?.type ?? "unknown";
+      if (node.kind === "unary") return node.operator === "!" ? "boolean" : typeOf(node.operand);
+      if (["==", "!=", ">", ">=", "<", "<=", "&&", "||"].includes(node.operator)) {
+        return "boolean";
+      }
+      return typeOf(node.left);
+    };
+    if (typeOf(parseSourceExpression(expression)) !== "boolean") {
+      diagnostics.push(error(path, "must evaluate to a boolean"));
+    }
+  } catch (problem) {
+    diagnostics.push(error(path, (problem as Error).message));
   }
 }
 

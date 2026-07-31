@@ -79,9 +79,9 @@ FCrddApplyRecordResult FCrddApplyRecordOperation::Execute(
     FCrddApplyRecordResult Result;
     Result.bSucceeded = true;
     Result.State = InitialState;
+    Result.Traces = {TEXT("REQ-RECORD-001"), TEXT("DEC-CAPACITY-001")};
     Result.State.Records.Add({Input.LengthUnit, Input.AmountCredit});
     Result.State.CapacityRemainingCredit = Result.State.CapacityRemainingCredit - Input.AmountCredit;
-    Result.Traces = {TEXT("REQ-RECORD-001"), TEXT("DEC-CAPACITY-001")};
     return Result;
 }
 

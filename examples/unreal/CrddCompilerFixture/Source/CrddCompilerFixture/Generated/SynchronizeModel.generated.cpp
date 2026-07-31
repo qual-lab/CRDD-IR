@@ -419,8 +419,8 @@ FCrddSynchronizeModelResult FCrddSynchronizeModelOperation::Execute(
     FCrddSynchronizeModelResult Result;
     Result.bSucceeded = true;
     Result.State = InitialState;
-    Result.State.UnknownExtension = Input.ProposedExtension;
     Result.Traces = {TEXT("REQ-PORTABLE-001")};
+    Result.State.UnknownExtension = Input.ProposedExtension;
     return Result;
 }
 

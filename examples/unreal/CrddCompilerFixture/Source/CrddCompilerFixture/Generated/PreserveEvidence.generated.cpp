@@ -255,6 +255,7 @@ FCrddPreserveEvidenceResult FCrddPreserveEvidenceOperation::Execute(
     FCrddPreserveEvidenceResult Result;
     Result.bSucceeded = true;
     Result.State = InitialState;
+    Result.Traces = {TEXT("IR-EVIDENCE-ROUNDTRIP-001"), TEXT("IR-STRUCTURAL-TYPE-001"), TEXT("IR-NESTED-COLLECTION-001")};
     Result.State.EvidenceVersion = Input.EvidenceVersion;
     Result.State.QuantityKind = Input.QuantityKind;
     Result.State.ScopeId = Input.ScopeId;
@@ -290,7 +291,6 @@ FCrddPreserveEvidenceResult FCrddPreserveEvidenceOperation::Execute(
     Result.State.NumericLexemes.MaxFinite = Input.NumericLexemes.MaxFinite;
     Result.State.FragmentIds = Input.FragmentIds;
     Result.State.CanonicalEvidenceHash = Input.CanonicalEvidenceHash;
-    Result.Traces = {TEXT("IR-EVIDENCE-ROUNDTRIP-001"), TEXT("IR-STRUCTURAL-TYPE-001"), TEXT("IR-NESTED-COLLECTION-001")};
     return Result;
 }
 

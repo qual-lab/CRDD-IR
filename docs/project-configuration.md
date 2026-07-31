@@ -44,3 +44,19 @@ Generation iterates the configured target registry:
 .\tools\crdd-ir.ps1 generate
 .\tools\crdd-ir.ps1 verify
 ```
+
+## Adopting a reviewed config change
+
+The installer owns `crdd-ir.config.json` by SHA-256. Doctor therefore rejects
+unreviewed edits with `CRDD_MANAGED_FILE_MODIFIED`. Preview and explicitly adopt
+an intentional change with:
+
+```powershell
+node tools/CRDD-IR/src/cli.ts project adopt-config crdd-ir.config.json --dry-run
+node tools/CRDD-IR/src/cli.ts project adopt-config crdd-ir.config.json
+```
+
+The command validates the config schema, sources, target/output isolation, and
+the remaining Doctor safety gates. It reports the old and new hash and updates
+only the config entry in `.crdd-ir.install.json`; wrappers and all other managed
+files are untouched. CI must not call `adopt-config`.

@@ -37,11 +37,48 @@ export function generateTestManifest(ir: CrddIr): TestManifest {
     }
   }
 
+  const ownedBranches = new Set<string>();
+  for (const [index, effect] of ir.operation.effects.entries()) {
+    if (!effect.when || ownedBranches.has(effect.when)) continue;
+    ownedBranches.add(effect.when);
+    const selection = effect.when.match(/^input\.([A-Za-z_]\w*)\s*==\s*("(?:[^"\\]|\\.)*")$/);
+    if (!selection) {
+      throw new Error(
+        `Cannot derive deterministic branch coverage for effect[${index}] condition "${effect.when}"; ` +
+        "supported branch fixtures require input.<enum> == <string literal>",
+      );
+    }
+    const [, fieldName, literal] = selection;
+    const field = ir.operation.input[fieldName];
+    const value = JSON.parse(literal) as string;
+    if (field?.type !== "string" || !field.enum?.includes(value)) {
+      throw new Error(`Effect branch "${effect.when}" must select a declared input enum value`);
+    }
+    const arrange = structuredClone(baseline);
+    arrange.input[fieldName] = value;
+    const conflicting = ir.operation.requires.filter((requirement) =>
+      !requirementSatisfied(requirement, arrange)
+    );
+    if (conflicting.length > 0) {
+      throw new Error(
+        `Cannot cover effect branch "${effect.when}" because Requires conflict: ` +
+        conflicting.map((item) => item.id).join(", "),
+      );
+    }
+    cases.push({
+      id: `${slug(ir.operation.id)}-branch-${slug(fieldName)}-${slug(value)}`,
+      description: `effect branch ${effect.when} is selected atomically`,
+      arrange,
+      expect: { ok: true },
+    });
+  }
+
   for (const requirement of ir.operation.requires) {
+    const requirementBaseline = selectRequirementBranch(ir, requirement, baseline);
     const arithmeticBoundary = deriveArithmeticBoundaryCases(
       ir,
       requirement.id,
-      baseline,
+      requirementBaseline,
     );
     if (arithmeticBoundary) {
       cases.push(...arithmeticBoundary);
@@ -54,7 +91,7 @@ export function generateTestManifest(ir: CrddIr): TestManifest {
       const boundary = Number(rawBoundary);
       const epsilon = decimalEpsilon(rawBoundary);
 
-      const atBoundary = structuredClone(baseline);
+      const atBoundary = structuredClone(requirementBaseline);
       atBoundary.input[field] = boundary;
       cases.push({
         id: `${slug(requirement.id)}-at-boundary`,
@@ -64,7 +101,7 @@ export function generateTestManifest(ir: CrddIr): TestManifest {
         expect: { ok: true },
       });
 
-      const belowBoundary = structuredClone(baseline);
+      const belowBoundary = structuredClone(requirementBaseline);
       const precision = Math.max(3, decimalPlaces(rawBoundary) + 1);
       belowBoundary.input[field] = Number((boundary - epsilon).toFixed(precision));
       cases.push({
@@ -84,7 +121,7 @@ export function generateTestManifest(ir: CrddIr): TestManifest {
       const [, statePath, inputField] = stateVsInput;
       const required = Number(baseline.input[inputField]);
 
-      const exact = structuredClone(baseline);
+      const exact = structuredClone(requirementBaseline);
       setPath(exact.state, statePath, required);
       cases.push({
         id: `${slug(requirement.id)}-exact`,
@@ -94,7 +131,7 @@ export function generateTestManifest(ir: CrddIr): TestManifest {
         expect: { ok: true },
       });
 
-      const insufficient = structuredClone(baseline);
+      const insufficient = structuredClone(requirementBaseline);
       setPath(insufficient.state, statePath, required - 1);
       cases.push({
         id: `${slug(requirement.id)}-insufficient`,
@@ -110,7 +147,11 @@ export function generateTestManifest(ir: CrddIr): TestManifest {
     if (cases.some((testCase) =>
       testCase.sourceRequirement === requirement.id && testCase.expect.ok === false
     )) continue;
-    const falsified = falsifyRequirement(ir, requirement.id, baseline);
+    const falsified = falsifyRequirement(
+      ir,
+      requirement.id,
+      selectRequirementBranch(ir, requirement, baseline),
+    );
     if (!falsified) {
       throw new Error(
         `Cannot derive a failing conformance case for requirement "${requirement.id}"`,
@@ -593,17 +634,21 @@ function falsifyRequirement(
   for (const reference of extractReferences(requirement.expression)) {
     const request = structuredClone(baseline);
     const current = getPath(request, reference);
-    for (const candidate of mutationCandidates(current, numericSeeds)) {
+    const definition = fieldDefinition(ir, reference);
+    const candidates = [
+      ...mutationCandidates(current, numericSeeds),
+      ...(definition?.type === "string" ? definition.enum ?? [] : []),
+    ];
+    for (const candidate of [...new Set(candidates)]) {
       const mutated = structuredClone(request);
       setPath(mutated as unknown as Record<string, unknown>, reference, candidate);
       try {
         if (fieldAllows(ir, reference, candidate) &&
+            requirementSelected(requirement, mutated) &&
             evaluateExpression(requirement.expression, mutated as unknown as Record<string, unknown>) === false &&
             ir.operation.requires
               .filter((item) => item.id !== requirementId)
-              .every((item) =>
-                evaluateExpression(item.expression, mutated as unknown as Record<string, unknown>) === true
-              )) {
+              .every((item) => requirementSatisfied(item, mutated))) {
           return mutated;
         }
       } catch {
@@ -630,7 +675,7 @@ function satisfyRequirements(ir: CrddIr, initial: SimulationRequest): Simulation
   let request = structuredClone(initial);
   const requirements = ir.operation.requires;
   const satisfied = (candidate: SimulationRequest) => requirements.filter((requirement) =>
-    evaluateExpression(requirement.expression, candidate as unknown as Record<string, unknown>) === true
+    requirementSatisfied(requirement, candidate)
   ).length;
   if (satisfied(request) === requirements.length) return request;
 
@@ -669,11 +714,51 @@ function satisfyRequirements(ir: CrddIr, initial: SimulationRequest): Simulation
     request = frontier[0].request;
   }
   const failed = requirements.filter((requirement) =>
-    evaluateExpression(requirement.expression, request as unknown as Record<string, unknown>) !== true
+    !requirementSatisfied(requirement, request)
   ).map((requirement) => requirement.id);
   throw new Error(
     `Cannot derive a satisfying conformance baseline; unsatisfied requirement(s): ${failed.join(", ")}`,
   );
+}
+
+function requirementSelected(
+  requirement: CrddIr["operation"]["requires"][number],
+  request: SimulationRequest,
+): boolean {
+  return requirement.when === undefined ||
+    evaluateExpression(requirement.when, request as unknown as Record<string, unknown>) === true;
+}
+
+function requirementSatisfied(
+  requirement: CrddIr["operation"]["requires"][number],
+  request: SimulationRequest,
+): boolean {
+  return !requirementSelected(requirement, request) ||
+    evaluateExpression(requirement.expression, request as unknown as Record<string, unknown>) === true;
+}
+
+function selectRequirementBranch(
+  ir: CrddIr,
+  requirement: CrddIr["operation"]["requires"][number],
+  baseline: SimulationRequest,
+): SimulationRequest {
+  if (!requirement.when) return baseline;
+  const selection = requirement.when.match(/^input\.([A-Za-z_]\w*)\s*==\s*("(?:[^"\\]|\\.)*")$/);
+  if (!selection) {
+    throw new Error(
+      `Cannot derive deterministic failure coverage for conditional Requires "${requirement.id}"; ` +
+      `unsupported selector "${requirement.when}"`,
+    );
+  }
+  const [, fieldName, literal] = selection;
+  const value = JSON.parse(literal) as string;
+  const field = ir.operation.input[fieldName];
+  if (field?.type !== "string" || !field.enum?.includes(value)) {
+    throw new Error(`Conditional Requires "${requirement.id}" must select a declared input enum value`);
+  }
+  const selected = structuredClone(baseline);
+  selected.input[fieldName] = value;
+  return selected;
 }
 
 function canonicalRequest(request: SimulationRequest): string {
