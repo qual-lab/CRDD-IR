@@ -27,7 +27,7 @@
         },
         {
           "path": "AppendRecord.generated.h",
-          "sha256": "ffbc85ec6b9935e4599930e56b8a9390840efab99c8f099f4cbcb4074c7b0e62"
+          "sha256": "ec958d8bcc5101072f041c7a5471acb59440b7bfc4b509b5dc07774a6dccae1d"
         },
         {
           "path": "AppendRecord.numeric.generated.spec.cpp",
@@ -59,7 +59,39 @@
         },
         {
           "path": "ApplyRecord.generated.h",
-          "sha256": "d5239f41e487c0fb521de0b0e630f72947bd893565f79ab7f0ed790d71f7cd9d"
+          "sha256": "dc5e14cdf3e2e143d21f48e63fe9bde386973f05dd9888eb3acee5f49e072390"
+        }
+      ]
+    },
+    {
+      "id": "preserve-evidence",
+      "source": "test/fixtures/contracts/compound-evidence-contract.md",
+      "digest": "ec4d6012a1b117725958975943276be116301ccc51909f5b5b99a65818bdc8f7",
+      "outputDirectory": ".",
+      "files": [
+        {
+          "path": "PreserveEvidence.bridge.generated.cpp",
+          "sha256": "5e39e2d12b697bfaf98df4263ca3cf9cd48ab9d2d29170357a762a7dd4aebe4a"
+        },
+        {
+          "path": "PreserveEvidence.bridge.generated.h",
+          "sha256": "f4d902360cf1c60f491124bc93774df32c6bfc930df24b5c18a25be9e1d2caff"
+        },
+        {
+          "path": "PreserveEvidence.bridge.generated.spec.cpp",
+          "sha256": "138f390d8cd8e33932d72c09b4fdb08ae763c43c40154286eda7876b13292ec0"
+        },
+        {
+          "path": "PreserveEvidence.generated.cpp",
+          "sha256": "cdcd0a54dcdffbdb7aa684fc284cce9ff851a7cf59addcc3bcef4940417f25a7"
+        },
+        {
+          "path": "PreserveEvidence.generated.h",
+          "sha256": "0f7b62eef21e59dcbfad4611788b6eb648f2d08afb4569c4fb479ae9730966b2"
+        },
+        {
+          "path": "PreserveEvidenceConformance.spec.cpp",
+          "sha256": "d62b2f9245e26ba3845a05cd1218bd43be19c8cbd563aa129831bb2e7480ad17"
         }
       ]
     },
@@ -87,7 +119,7 @@
         },
         {
           "path": "ReviseRecord.generated.h",
-          "sha256": "a0278f5df97cd3b94449586ba3e69cbc10a1adfdac48c8bda38ff859bbc794cc"
+          "sha256": "836975f9e395aff18dce2b3e2dcecdd44d91f72c0d4a1fdd61b5528731afd98b"
         }
       ]
     },
@@ -115,7 +147,7 @@
         },
         {
           "path": "SynchronizeModel.generated.h",
-          "sha256": "796a91b0d5b7eb87877483c5dd8d248f8ac98e869686d3597c81e60fba7b2507"
+          "sha256": "0ca55d74a8834f4f22d7f38ac5e46710c1a2fcf2f0a980f24747b1a6e6c4e213"
         },
         {
           "path": "SynchronizeModelConformance.spec.cpp",

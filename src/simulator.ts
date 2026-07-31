@@ -120,6 +120,12 @@ function validateFieldValue(
   }
   if (definition.type === "array") {
     if (!Array.isArray(value)) throw new Error(`${label} must be an array`);
+    if (definition.minItems !== undefined && value.length < definition.minItems) {
+      throw new Error(`${label} must contain at least ${definition.minItems} item(s)`);
+    }
+    if (definition.maxItems !== undefined && value.length > definition.maxItems) {
+      throw new Error(`${label} must contain at most ${definition.maxItems} item(s)`);
+    }
     return value.map((item, index) => validateFieldValue(item, definition.items, `${label}[${index}]`));
   }
   if (definition.type === "map") {
@@ -141,6 +147,22 @@ function validateFieldValue(
     }
     return structuredClone(value);
   }
+  if (definition.type === "union") {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+      throw new Error(`${label} must be a discriminated union object`);
+    }
+    const record = value as Record<string, unknown>;
+    const discriminator = record[definition.discriminator];
+    if (typeof discriminator !== "string") {
+      throw new Error(`${label}.${definition.discriminator} must identify a union variant`);
+    }
+    const variant = definition.variants.find((candidate) => {
+      const field = candidate.properties[definition.discriminator];
+      return field.type === "string" && field.enum?.[0] === discriminator;
+    });
+    if (!variant) throw new Error(`${label} has unknown variant "${discriminator}"`);
+    return validateFieldValue(record, variant, label);
+  }
     if ((definition.type === "number" || definition.type === "integer") && typeof value !== "number") {
       throw new Error(`${label} must be a number`);
     }
@@ -156,6 +178,18 @@ function validateFieldValue(
     }
     if (definition.type === "string" && definition.enum && !definition.enum.includes(value as string)) {
       throw new Error(`${label} must be one of: ${definition.enum.join(", ")}`);
+    }
+    if (definition.type === "string" && definition.minLength !== undefined &&
+        (value as string).length < definition.minLength) {
+      throw new Error(`${label} must contain at least ${definition.minLength} character(s)`);
+    }
+    if (definition.type === "string" && definition.maxLength !== undefined &&
+        (value as string).length > definition.maxLength) {
+      throw new Error(`${label} must contain at most ${definition.maxLength} character(s)`);
+    }
+    if (definition.type === "string" && definition.pattern !== undefined &&
+        !new RegExp(definition.pattern, "u").test(value as string)) {
+      throw new Error(`${label} does not match its pattern`);
     }
     if (definition.minimum !== undefined && typeof value === "number" && value < definition.minimum) {
       throw new Error(`${label} must be >= ${definition.minimum}`);

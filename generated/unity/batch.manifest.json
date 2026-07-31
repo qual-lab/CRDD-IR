@@ -23,7 +23,7 @@
         },
         {
           "path": "ApplyRecord.Generated.cs",
-          "sha256": "d0b34097c6cfc6272ce61e86b89eea268f1977dcb5444c890dd6f6839ae91888"
+          "sha256": "5f23f5a4d1de4562ca9e62b830f8c8a9a6602cf6c97802dda04ead00e704a30a"
         }
       ]
     },
@@ -47,7 +47,7 @@
         },
         {
           "path": "ReviseRecord.Generated.cs",
-          "sha256": "fa948b38551a9f4da8d155530a86b916296a0007e43aa0583900142aa34be961"
+          "sha256": "ae21475660bcf21c84e9ca5dafb1e5e486db2bb9392ea55b50c7c0b2d4f42e93"
         }
       ]
     }

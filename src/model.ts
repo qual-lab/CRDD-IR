@@ -86,7 +86,7 @@ export type PortableRule =
       id: string;
       error: string;
       collection: string;
-      key: string;
+      key?: string;
     }
   | {
       kind: "collection.reference";
@@ -155,6 +155,13 @@ export type PortableRule =
       error: string;
       current: string;
       intent: string;
+    }
+  | {
+      kind: "evidence.canonical-hash";
+      id: string;
+      error: string;
+      source: "input" | "state";
+      hash: string;
     };
 
 export type Effect =
