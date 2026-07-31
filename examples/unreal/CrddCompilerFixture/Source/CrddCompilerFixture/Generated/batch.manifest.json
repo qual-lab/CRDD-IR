@@ -64,6 +64,38 @@
       ]
     },
     {
+      "id": "preserve-evidence",
+      "source": "test/fixtures/contracts/compound-evidence-contract.md",
+      "digest": "5a426935fd82f0d10547afa27d34a668fbb5c5bb4c339341f08bb2346044044e",
+      "outputDirectory": ".",
+      "files": [
+        {
+          "path": "PreserveEvidence.bridge.generated.cpp",
+          "sha256": "5e39e2d12b697bfaf98df4263ca3cf9cd48ab9d2d29170357a762a7dd4aebe4a"
+        },
+        {
+          "path": "PreserveEvidence.bridge.generated.h",
+          "sha256": "f4d902360cf1c60f491124bc93774df32c6bfc930df24b5c18a25be9e1d2caff"
+        },
+        {
+          "path": "PreserveEvidence.bridge.generated.spec.cpp",
+          "sha256": "138f390d8cd8e33932d72c09b4fdb08ae763c43c40154286eda7876b13292ec0"
+        },
+        {
+          "path": "PreserveEvidence.generated.cpp",
+          "sha256": "f2ba35f941561b182ae36749016e485575c9826491372f56e924d2886d7ea927"
+        },
+        {
+          "path": "PreserveEvidence.generated.h",
+          "sha256": "0c58a2466a5add018506bc7a72f373f1443af9cf35b726fda52e607738cc081a"
+        },
+        {
+          "path": "PreserveEvidenceConformance.spec.cpp",
+          "sha256": "842abff7e7b7e59cf064d16b9f932b57018ff5973301b7c9b354986f80f5965c"
+        }
+      ]
+    },
+    {
       "id": "ReviseRecord",
       "source": "examples/revise-record/contract.md",
       "digest": "5a1f6ae8c91b8a9fa8d45d3e0ccf168a7d1eb698c25f4694e7d491065d0c222d",

@@ -34,6 +34,17 @@ export function portableRuleSatisfied(
     return validOpaque(current) && typeof intent === "boolean" &&
       (current.active || !intent);
   }
+  if (rule.kind === "evidence.canonical-hash") {
+    const source = getPath(context, rule.source);
+    const expected = getPath(context, rule.hash);
+    if (!source || typeof source !== "object" || Array.isArray(source) || typeof expected !== "string") {
+      return false;
+    }
+    const hashField = rule.hash.slice(`${rule.source}.`.length);
+    const projected = structuredClone(source) as Record<string, unknown>;
+    delete projected[hashField];
+    return createHash("sha256").update(canonicalJson(projected)).digest("hex") === expected;
+  }
   if (rule.kind === "collection.not-contains") {
     const collection = collectionValues(getPath(context, rule.collection));
     const value = getPath(context, rule.value);
@@ -54,7 +65,7 @@ export function portableRuleSatisfied(
   const collection = collectionValues(getPath(context, rule.collection));
   if (!collection) return false;
   if (rule.kind === "collection.unique") {
-    const keys = collection.map((item) => member(item, rule.key));
+    const keys = collection.map((item) => rule.key ? member(item, rule.key) : item);
     return keys.every(isPortableId) && new Set(keys).size === keys.length;
   }
   if (rule.kind === "collection.reference") {
@@ -78,6 +89,16 @@ export function portableRuleSatisfied(
     endpointExists(elements, member(relation, rule.from), rule.elementKey, rule.fromType) &&
     endpointExists(elements, member(relation, rule.to), rule.elementKey, rule.toType)
   );
+}
+
+export function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value as Record<string, unknown>).sort()
+      .map((key) => `${JSON.stringify(key)}:${canonicalJson((value as Record<string, unknown>)[key])}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
 }
 
 export function canonicalOpaque(value: unknown): {

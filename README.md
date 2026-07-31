@@ -158,6 +158,7 @@ CRDD Markdownが正本です。Internal IR instanceを専用フォルダへ恒�
 - [Core IR extensions](docs/core-extensions.md)
 - [Composite arithmetic boundary generation](docs/composite-arithmetic-boundaries.md)
 - [Portable collection and opaque-data contracts](docs/portable-data-contracts.md)
+- [Compound values and reversible Evidence](docs/compound-evidence.md)
 - [Verify lock events](docs/verify-events.md)
 - [v0.1.2 release notes](docs/releases/v0.1.2.md)
 - [v0.2.1 release notes](docs/releases/v0.2.1.md)

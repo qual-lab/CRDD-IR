@@ -116,6 +116,12 @@ function parityRequirements(compilation: CompilationResult): string[] {
   const requirements = ["IR-TARGET-001", "IR-PARITY-001"];
   const kinds = new Set((compilation.ir.operation.portableRules ?? []).map((rule) => rule.kind));
   if ([...kinds].some((kind) => kind.startsWith("collection."))) requirements.push("IR-COLLECTION-001");
+  const fields = [...Object.values(compilation.ir.operation.input), ...Object.values(compilation.ir.operation.state)];
+  if (fields.some((field) => field.type === "union")) requirements.push("IR-UNION-001");
+  if (fields.some((field) => field.type === "array" && field.items.type !== "object")) {
+    requirements.push("IR-PRIMITIVE-COLLECTION-001");
+  }
+  if (kinds.has("evidence.canonical-hash")) requirements.push("IR-EVIDENCE-ROUNDTRIP-001");
   if (kinds.has("opaque.integrity")) requirements.push("IR-OPAQUE-001");
   if (
     kinds.has("opaque.immutable-when-inactive") ||

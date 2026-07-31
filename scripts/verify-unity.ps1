@@ -27,7 +27,8 @@ $staging = Join-Path $repository ".crdd-ir\unity-verification\generated"
 $results = Join-Path $repository ".crdd-ir\unity-verification"
 $build = Join-Path $results "Player\CrddCompilerFixture.exe"
 $portableSource = Join-Path $repository "test\fixtures\contracts\portable-contract.md"
-$sources = @($Source, $portableSource) |
+$compoundEvidenceSource = Join-Path $repository "test\fixtures\contracts\compound-evidence-contract.md"
+$sources = @($Source, $portableSource, $compoundEvidenceSource) |
     ForEach-Object { [System.IO.Path]::GetFullPath($_) } |
     Select-Object -Unique
 

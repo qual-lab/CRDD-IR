@@ -87,9 +87,21 @@
     },
     "portableRule": {
       "oneOf": [
-        {
-          "type": "object",
-          "required": ["kind", "id", "error", "collection", "key"],
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "id", "error", "source", "hash"],
+        "properties": {
+          "kind": { "const": "evidence.canonical-hash" },
+          "id": { "type": "string", "minLength": 1 },
+          "error": { "type": "string", "minLength": 1 },
+          "source": { "enum": ["input", "state"] },
+          "hash": { "type": "string", "minLength": 1 }
+        }
+      },
+      {
+        "type": "object",
+          "required": ["kind", "id", "error", "collection"],
           "properties": {
             "kind": { "const": "collection.unique" },
             "id": { "type": "string", "minLength": 1 },

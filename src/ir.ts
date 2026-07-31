@@ -164,7 +164,7 @@ function validatePortableRules(
   }
   const ids: string[] = [];
   const requiredByKind: Record<string, string[]> = {
-    "collection.unique": ["collection", "key"],
+    "collection.unique": ["collection"],
     "collection.reference": ["collection", "reference", "target", "targetKey"],
     "collection.membership": ["collection", "parentReference", "parents", "parentKey"],
     "collection.relation": ["collection", "from", "to", "elements", "elementKey"],
@@ -173,6 +173,7 @@ function validatePortableRules(
     "opaque.integrity": ["target"],
     "opaque.immutable-when-inactive": ["current", "proposed"],
     "opaque.reject-edit-when-inactive": ["current", "intent"],
+    "evidence.canonical-hash": ["source", "hash"],
   };
   value.forEach((rule, index) => {
     const path = `$.operation.portableRules[${index}]`;
@@ -481,9 +482,34 @@ function validatePortableRuleReferences(
     return;
   }
   const collection = field("collection");
+  if (rule.kind === "collection.unique" && collection?.type === "array" &&
+      ["string", "integer"].includes(collection.items.type)) {
+    if (rule.key !== undefined) {
+      diagnostics.push(error(`${path}.key`, "must be omitted for a primitive array"));
+    }
+    return;
+  }
+  if (rule.kind === "evidence.canonical-hash") {
+    if (rule.source !== "input" && rule.source !== "state") {
+      diagnostics.push(error(`${path}.source`, 'must equal "input" or "state"'));
+    }
+    const hash = field("hash");
+    if (hash && hash.type !== "string") {
+      diagnostics.push(error(`${path}.hash`, "must reference a string field"));
+    }
+    if (!rule.hash.startsWith(`${rule.source}.`)) {
+      diagnostics.push(error(`${path}.hash`, "must belong to the declared source scope"));
+    }
+    return;
+  }
   const collectionItem = collectionObjectItem(collection);
   if (!collectionItem) {
-    diagnostics.push(error(`${path}.collection`, "must reference an array or map of objects"));
+    diagnostics.push(error(
+      `${path}.collection`,
+      rule.kind === "collection.unique"
+        ? "must reference a primitive array or an array/map of objects"
+        : "must reference an array or map of objects",
+    ));
     return;
   }
   const requireMember = (
@@ -505,6 +531,10 @@ function validatePortableRuleReferences(
     }
   };
   if (rule.kind === "collection.unique") {
+    if (typeof rule.key !== "string" || rule.key.length === 0) {
+      diagnostics.push(error(`${path}.key`, "is required for an object collection"));
+      return;
+    }
     requirePortableIdMember(collectionItem, "key");
     return;
   }

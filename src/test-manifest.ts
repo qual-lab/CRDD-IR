@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { CrddIr, SimulationRequest, TestCase, TestManifest } from "./model.ts";
 import { evaluateExpression, extractReferences, getPath } from "./expression.ts";
 import {
@@ -5,12 +6,13 @@ import {
   type ExpressionNode,
 } from "./source-expression.ts";
 import { defaultUnitRegistry } from "./unit-registry.ts";
+import { canonicalJson } from "./portable-rules.ts";
 
 export function generateTestManifest(ir: CrddIr): TestManifest {
-  const baseline = canonicalizeBaselineUnits(
+  const baseline = refreshEvidenceHashes(ir, canonicalizeBaselineUnits(
     ir,
     satisfyRequirements(ir, createBaseline(ir)),
-  );
+  ));
   const cases: TestCase[] = [
     {
       id: `${slug(ir.operation.id)}-success`,
@@ -19,6 +21,21 @@ export function generateTestManifest(ir: CrddIr): TestManifest {
       expect: { ok: true },
     },
   ];
+  for (const [fieldName, field] of Object.entries(ir.operation.input)) {
+    if (field.type !== "union") continue;
+    for (const variant of field.variants.slice(1)) {
+      const variantValue = baselineFieldValue(variant);
+      const discriminator = String((variantValue as Record<string, unknown>)[field.discriminator]);
+      const arrange = structuredClone(baseline);
+      arrange.input[fieldName] = variantValue;
+      cases.push({
+        id: `${slug(ir.operation.id)}-${slug(fieldName)}-${slug(discriminator)}`,
+        description: `${fieldName} variant ${discriminator} round-trips without flattening`,
+        arrange,
+        expect: { ok: true },
+      });
+    }
+  }
 
   for (const requirement of ir.operation.requires) {
     const arithmeticBoundary = deriveArithmeticBoundaryCases(
@@ -138,12 +155,37 @@ export function generateTestManifest(ir: CrddIr): TestManifest {
     });
   }
 
+  const evidenceRuleIds = new Set((ir.operation.portableRules ?? [])
+    .filter((rule) => rule.kind === "evidence.canonical-hash")
+    .map((rule) => rule.id));
+  for (const testCase of cases) {
+    if (!testCase.sourceRequirement || !evidenceRuleIds.has(testCase.sourceRequirement)) {
+      refreshEvidenceHashes(ir, testCase.arrange);
+    }
+  }
   return {
     version: "0.1",
     operation: ir.operation.id,
     traces: ir.operation.traces,
     cases,
   };
+}
+
+function refreshEvidenceHashes(ir: CrddIr, request: SimulationRequest): SimulationRequest {
+  for (const rule of ir.operation.portableRules ?? []) {
+    if (rule.kind !== "evidence.canonical-hash") continue;
+    const source = request[rule.source] as Record<string, unknown>;
+    const hashField = rule.hash.split(".").slice(1);
+    const payload = structuredClone(source);
+    let owner = payload;
+    for (const segment of hashField.slice(0, -1)) {
+      owner = owner[segment] as Record<string, unknown>;
+    }
+    delete owner[hashField.at(-1)!];
+    setPath(request as unknown as Record<string, unknown>, rule.hash,
+      createHash("sha256").update(canonicalJson(payload)).digest("hex"));
+  }
+  return request;
 }
 
 type AffineExpression = {
@@ -711,6 +753,10 @@ function baselineFieldValue(field: import("./model.ts").FieldDefinition): unknow
   }
   if (field.type === "array") return [];
   if (field.type === "map") return {};
+  if (field.type === "union") {
+    const variant = field.variants[0];
+    return baselineFieldValue(variant);
+  }
   if (field.type === "opaque") {
     return {
       base64: "",
@@ -726,7 +772,12 @@ function baselineFieldValue(field: import("./model.ts").FieldDefinition): unknow
       Math.max(field.minimum ?? 0, 1),
     );
   }
-  if (field.type === "string") return field.enum?.[0] ?? "sample";
+  if (field.type === "string") {
+    if (field.enum?.[0]) return field.enum[0];
+    const fixedHex = field.pattern?.match(/^\^\[0-9a-f\]\{(\d+)\}\$$/);
+    if (fixedHex) return "0".repeat(Number(fixedHex[1]));
+    return "sample";
+  }
   return true;
 }
 
@@ -800,16 +851,27 @@ function falsifyPortableRule(ir: CrddIr, id: string, baseline: SimulationRequest
     ).add(existing);
     return request;
   }
+  if (rule.kind === "evidence.canonical-hash") {
+    setPath(request as unknown as Record<string, unknown>, rule.hash, "f".repeat(64));
+    return request;
+  }
   const collectionValue = getPath(request as unknown as Record<string, unknown>, rule.collection);
   const collection = mutableCollection(collectionValue, rule.collection);
   const field = fieldDefinition(ir, rule.collection);
   const itemField = field?.type === "array" ? field.items : field?.type === "map" ? field.values : undefined;
+  if (rule.kind === "collection.unique" && itemField &&
+      (itemField.type === "string" || itemField.type === "integer")) {
+    const duplicate = itemField.type === "integer" ? 7 : "duplicate";
+    collection.add(duplicate);
+    collection.add(duplicate);
+    return request;
+  }
   if (itemField?.type !== "object") {
     throw new Error(`Portable collection "${rule.collection}" must contain objects`);
   }
   const item = baselineFieldValue(itemField) as Record<string, unknown>;
   if (rule.kind === "collection.unique") {
-    item[rule.key] = "duplicate";
+    item[rule.key!] = "duplicate";
     collection.add(structuredClone(item));
     collection.add(structuredClone(item));
     return request;

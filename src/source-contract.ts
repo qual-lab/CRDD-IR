@@ -291,6 +291,7 @@ function validatePortableRules(value: unknown, add: AddDiagnostic): void {
     "opaque.integrity": ["kind", "id", "error", "target"],
     "opaque.immutable-when-inactive": ["kind", "id", "error", "current", "proposed"],
     "opaque.reject-edit-when-inactive": ["kind", "id", "error", "current", "intent"],
+    "evidence.canonical-hash": ["kind", "id", "error", "source", "hash"],
   };
   value.forEach((rule, index) => {
     const path = `$.operation.portable_rules[${index}]`;
@@ -305,6 +306,7 @@ function validatePortableRules(value: unknown, add: AddDiagnostic): void {
     }
     rejectUnknown(rule, allowed, path, add);
     for (const key of allowed.filter((key) => !["targetType", "fromType", "toType"].includes(key))) {
+      if (rule.kind === "collection.unique" && key === "key" && rule[key] === undefined) continue;
       requireString(rule[key], `${path}.${key}`, add);
     }
     for (const key of ["targetType", "fromType", "toType"]) {
