@@ -511,6 +511,7 @@ bool FCrddSynchronizeModelPortableConformanceTest::RunTest(const FString&)
             TestEqual(TEXT("case 17: rollback"), Result.FailedRequirement, TEXT("DM-UNKNOWN-EDIT-INTENT"));
         }
     }
+
     return true;
 }
 #endif

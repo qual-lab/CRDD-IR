@@ -9,7 +9,9 @@ import { generateTestManifest } from "../src/test-manifest.ts";
 import { generateUnity } from "../src/unity.ts";
 import { generateUnreal } from "../src/unreal.ts";
 import { canonicalJson } from "../src/portable-rules.ts";
+import { verifyTargetParity } from "../src/target-parity.ts";
 import { validateUnityTargetProfile } from "../src/unity-target.ts";
+import { validateUnrealTargetProfile } from "../src/unreal-target.ts";
 
 const source = "test/fixtures/contracts/compound-evidence-contract.md";
 
@@ -33,6 +35,10 @@ function request(variant = "space") {
       slot_disposition: "accepted",
       value_interval: { minimum: "1", maximum: "2" },
       absolute_error_upper_bound: "0.01",
+      segments: [
+        { id: "segment-a", labels: ["primary", "exterior"] },
+        { id: "segment-b", labels: [] },
+      ],
       numeric_lexemes: {
         negative_zero: "-0",
         exponent: "1e+21",
@@ -43,6 +49,7 @@ function request(variant = "space") {
       canonical_evidence_hash: "",
     },
     state: {
+      persisted_segments: [{ id: "previous", labels: ["previous"] }],
       evidence_version: "v1",
       quantity_kind: "",
       scope_id: "scope-\b\f\u0001-雪-😀",
@@ -53,6 +60,7 @@ function request(variant = "space") {
       slot_disposition: "",
       value_interval: { minimum: "1", maximum: "2" },
       absolute_error_upper_bound: "0.01",
+      segments: [{ id: "initial", labels: ["initial"] }],
       numeric_lexemes: {
         negative_zero: "-0",
         exponent: "1e+21",
@@ -142,8 +150,19 @@ test("compound evidence generates type-safe Unreal and Unity targets determinist
   const cs = unity.find((file) => file.name.endsWith(".Generated.cs"))!.content;
   assert.match(cpp, /Variant::Unknown|Variant = .*::Unknown/);
   assert.match(cpp, /TArray<FString> FragmentIds/);
+  assert.equal((cpp.match(/struct FCrddPreserveEvidenceSegmentsItem/g) ?? []).length, 1);
+  assert.match(cpp, /TArray<FString> Labels/);
+  assert.match(cpp, /TArray<FCrddPreserveEvidenceSegmentsItem> Segments/);
+  assert.match(cpp, /TArray<FCrddPreserveEvidenceSegmentsItem> PersistedSegments/);
   assert.match(cs, /Variant\.Unknown|Variant;/);
   assert.match(cs, /List<string> FragmentIds/);
+  assert.match(cs, /List<string> Labels/);
+  assert.equal((cs.match(/class PreserveEvidenceSegmentsItem/g) ?? []).length, 1);
+  assert.match(cs, /List<PreserveEvidenceSegmentsItem> PersistedSegments/);
+  assert.doesNotMatch(cs, /Labels = item\.Labels[, }]/);
+  assert.doesNotMatch(cs, /PersistedSegments = input\.Segments;/);
+  assert.match(cs, /Labels = .*Labels\.ConvertAll\(item => item\)/);
+  assert.match(cs, /PersistedSegments = input\.Segments\.ConvertAll/);
   assert.match(cppSource, /CrddCanonicalInputSha256/);
   assert.match(cppSource, /case TEXT\('\\\\b'\)|case TEXT\('\\b'\)/);
   assert.match(cppSource, /0x1f/);
@@ -153,4 +172,23 @@ test("compound evidence generates type-safe Unreal and Unity targets determinist
   assert.ok(generateTestManifest(compilation.ir).cases.some((item) =>
     item.sourceRequirement === "EV-FRAGMENTS-UNIQUE"
   ));
+});
+
+test("nested collections and structural type reuse are attributed in parity evidence", async () => {
+  const compilation = await compileMarkdown(source);
+  const unrealProfile = validateUnrealTargetProfile(JSON.parse(
+    await readFile("examples/unreal/profiles/ue-5.8-editor.json", "utf8"),
+  ));
+  const unityProfile = validateUnityTargetProfile(JSON.parse(
+    await readFile("examples/unity/profiles/unity-6-il2cpp.json", "utf8"),
+  ));
+  const first = verifyTargetParity(compilation, unrealProfile, unityProfile);
+  const second = verifyTargetParity(compilation, unrealProfile, unityProfile);
+  assert.deepEqual(first, second);
+  assert.equal(first.equivalent, true);
+  assert.equal(first.checks.sharedSnapshotOwnership, true);
+  assert.equal(first.targets[0].snapshotOwnershipSha256, first.targets[1].snapshotOwnershipSha256);
+  assert.equal(first.snapshotOwnershipSha256, first.targets[0].snapshotOwnershipSha256);
+  assert.ok(first.requirements.includes("IR-STRUCTURAL-TYPE-001"));
+  assert.ok(first.requirements.includes("IR-NESTED-COLLECTION-001"));
 });

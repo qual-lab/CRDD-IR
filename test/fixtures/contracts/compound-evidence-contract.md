@@ -5,7 +5,7 @@ schema: crdd-source-contract/v0.1
 operation:
   id: preserve-evidence
   kind: command
-  traces: [IR-EVIDENCE-ROUNDTRIP-001]
+  traces: [IR-EVIDENCE-ROUNDTRIP-001, IR-STRUCTURAL-TYPE-001, IR-NESTED-COLLECTION-001]
   input:
     evidence_version: { type: string, enum: [v1] }
     quantity_kind: { type: string }
@@ -36,6 +36,15 @@ operation:
         minimum: { type: string, enum: ["1"] }
         maximum: { type: string, enum: ["2"] }
     absolute_error_upper_bound: { type: string, enum: ["0.01"] }
+    segments:
+      type: array
+      items:
+        type: object
+        properties:
+          id: { type: string, minLength: 1 }
+          labels:
+            type: array
+            items: { type: string }
     numeric_lexemes:
       type: object
       properties:
@@ -49,6 +58,15 @@ operation:
       maxItems: 1024
     canonical_evidence_hash: { type: string, pattern: "^[0-9a-f]{64}$" }
   state:
+    persisted_segments:
+      type: array
+      items:
+        type: object
+        properties:
+          id: { type: string, minLength: 1 }
+          labels:
+            type: array
+            items: { type: string }
     evidence_version: { type: string, enum: [v1] }
     quantity_kind: { type: string }
     scope_id: { type: string, enum: ["scope-\b\f\u0001-雪-😀"] }
@@ -78,6 +96,15 @@ operation:
         minimum: { type: string, enum: ["1"] }
         maximum: { type: string, enum: ["2"] }
     absolute_error_upper_bound: { type: string, enum: ["0.01"] }
+    segments:
+      type: array
+      items:
+        type: object
+        properties:
+          id: { type: string, minLength: 1 }
+          labels:
+            type: array
+            items: { type: string }
     numeric_lexemes:
       type: object
       properties:
@@ -101,6 +128,11 @@ operation:
       id: EV-FRAGMENTS-UNIQUE
       error: DUPLICATE_FRAGMENT_ID
       collection: input.fragment_ids
+    - kind: collection.unique
+      id: EV-SEGMENTS-UNIQUE
+      error: DUPLICATE_SEGMENT_ID
+      collection: input.segments
+      key: id
   effects:
     - { target: state.evidence_version, action: assign, expression: input.evidence_version }
     - { target: state.quantity_kind, action: assign, expression: input.quantity_kind }
@@ -112,11 +144,13 @@ operation:
     - { target: state.slot_disposition, action: assign, expression: input.slot_disposition }
     - { target: state.value_interval, action: assign, expression: input.value_interval }
     - { target: state.absolute_error_upper_bound, action: assign, expression: input.absolute_error_upper_bound }
+    - { target: state.persisted_segments, action: assign, expression: input.segments }
     - { target: state.numeric_lexemes, action: assign, expression: input.numeric_lexemes }
     - { target: state.fragment_ids, action: assign, expression: input.fragment_ids }
     - { target: state.canonical_evidence_hash, action: assign, expression: input.canonical_evidence_hash }
   errors:
     - { code: EVIDENCE_HASH_MISMATCH, traces: [IR-EVIDENCE-ROUNDTRIP-001] }
     - { code: DUPLICATE_FRAGMENT_ID, traces: [IR-PRIMITIVE-COLLECTION-001] }
+    - { code: DUPLICATE_SEGMENT_ID, traces: [IR-NESTED-COLLECTION-001] }
   transaction: { atomic: true, rollback_on_failure: true }
 ```

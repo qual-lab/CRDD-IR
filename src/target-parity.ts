@@ -7,6 +7,7 @@ import { getTargetAdapter } from "./target-registry.ts";
 import { generateTestManifest } from "./test-manifest.ts";
 import type { UnityNumericProjection, UnityTargetProfile } from "./unity-target.ts";
 import type { UnrealNumericProjection, UnrealTargetProfile } from "./unreal-target.ts";
+import { snapshotOwnershipDigestFromGenerated } from "./snapshot-ownership.ts";
 
 type NormalizedNumericProjection = {
   kind: "signed-integer" | "binary-float";
@@ -17,18 +18,20 @@ type NormalizedNumericProjection = {
 };
 
 export type TargetParityReport = {
-  protocol: "crdd-ir/target-parity-v0.2";
+  protocol: "crdd-ir/target-parity-v0.3";
   requirements: string[];
   operation: string;
   irSha256: string;
   conformanceSha256: string;
   portableRulesSha256: string;
+  snapshotOwnershipSha256: string;
   targets: Array<{
     id: "unreal" | "unity";
     profileSha256: string;
     irSha256: string;
     conformanceSha256: string;
     portableRulesSha256: string;
+    snapshotOwnershipSha256: string;
     generatedFiles: Array<{ path: string; sha256: string }>;
   }>;
   numericProjections: Array<{
@@ -43,6 +46,7 @@ export type TargetParityReport = {
     sharedConformanceSemantics: boolean;
     equivalentNumericProjections: boolean;
     sharedPortableRuleSemantics: boolean;
+    sharedSnapshotOwnership: boolean;
   };
   equivalent: boolean;
 };
@@ -97,14 +101,17 @@ export function verifyTargetParity(
     sharedPortableRuleSemantics:
       new Set(targets.map((target) => target.portableRulesSha256)).size === 1 &&
       targets[0].portableRulesSha256 === portableRulesSha256,
+    sharedSnapshotOwnership:
+      new Set(targets.map((target) => target.snapshotOwnershipSha256)).size === 1,
   };
   return {
-    protocol: "crdd-ir/target-parity-v0.2",
+    protocol: "crdd-ir/target-parity-v0.3",
     requirements: parityRequirements(compilation),
     operation: compilation.ir.operation.id,
     irSha256: compilation.digest,
     conformanceSha256,
     portableRulesSha256,
+    snapshotOwnershipSha256: targets[0].snapshotOwnershipSha256,
     targets,
     numericProjections,
     checks,
@@ -121,6 +128,14 @@ function parityRequirements(compilation: CompilationResult): string[] {
   if (fields.some((field) => field.type === "array" && field.items.type !== "object")) {
     requirements.push("IR-PRIMITIVE-COLLECTION-001");
   }
+  if (fields.some(hasNestedPrimitiveCollection)) requirements.push("IR-NESTED-COLLECTION-001");
+  const objectCollectionShapes = fields.flatMap((field) => {
+    const item = field.type === "array" ? field.items : field.type === "map" ? field.values : undefined;
+    return item?.type === "object" ? [canonicalJson(item)] : [];
+  });
+  if (new Set(objectCollectionShapes).size < objectCollectionShapes.length) {
+    requirements.push("IR-STRUCTURAL-TYPE-001");
+  }
   if (kinds.has("evidence.canonical-hash")) requirements.push("IR-EVIDENCE-ROUNDTRIP-001");
   if (kinds.has("opaque.integrity")) requirements.push("IR-OPAQUE-001");
   if (
@@ -128,6 +143,23 @@ function parityRequirements(compilation: CompilationResult): string[] {
     kinds.has("opaque.reject-edit-when-inactive")
   ) requirements.push("IR-IMMUTABLE-001");
   return requirements;
+}
+
+function hasNestedPrimitiveCollection(field: FieldDefinition, nested = false): boolean {
+  if (field.type === "array") {
+    if (nested && field.items.type !== "object" && field.items.type !== "array" && field.items.type !== "map") {
+      return true;
+    }
+    return hasNestedPrimitiveCollection(field.items, true);
+  }
+  if (field.type === "object") return Object.values(field.properties).some((child) =>
+    hasNestedPrimitiveCollection(child, true)
+  );
+  if (field.type === "map") return hasNestedPrimitiveCollection(field.values, true);
+  if (field.type === "union") return field.variants.some((variant) =>
+    hasNestedPrimitiveCollection(variant, true)
+  );
+  return false;
 }
 
 function targetEvidence(
@@ -144,6 +176,7 @@ function targetEvidence(
     irSha256,
     conformanceSha256,
     portableRulesSha256,
+    snapshotOwnershipSha256: snapshotOwnershipDigestFromGenerated(files),
     generatedFiles: files
       .map((file) => ({ path: file.name, sha256: generatedTextSha256(file.content) }))
       .sort((left, right) => left.path.localeCompare(right.path)),
