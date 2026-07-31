@@ -69,6 +69,7 @@ namespace Crdd.Generated.Tests
             Assert.That(result.State.CapacityRemainingCredit, Is.EqualTo(0), "case 5 capacity.remaining");
             Assert.That(result.State.Records.Count, Is.EqualTo(0), "case 5 records count");
         }
+
     }
 }
 #endif

@@ -60,6 +60,9 @@ bool FCrddPreserveEvidencePortableConformanceTest::RunTest(const FString&)
         {
             TestEqual(TEXT("case 1: rollback"), Result.FailedRequirement, TEXT(""));
         }
+        TestTrue(TEXT("case 1: preserve-evidence-success trace IR-EVIDENCE-ROUNDTRIP-001"), Result.Traces.Contains(TEXT("IR-EVIDENCE-ROUNDTRIP-001")));
+        TestTrue(TEXT("case 1: preserve-evidence-success trace IR-STRUCTURAL-TYPE-001"), Result.Traces.Contains(TEXT("IR-STRUCTURAL-TYPE-001")));
+        TestTrue(TEXT("case 1: preserve-evidence-success trace IR-NESTED-COLLECTION-001"), Result.Traces.Contains(TEXT("IR-NESTED-COLLECTION-001")));
     }
 
     {
@@ -110,6 +113,9 @@ bool FCrddPreserveEvidencePortableConformanceTest::RunTest(const FString&)
         {
             TestEqual(TEXT("case 2: rollback"), Result.FailedRequirement, TEXT(""));
         }
+        TestTrue(TEXT("case 2: preserve-evidence-subject-ref-boundary-face trace IR-EVIDENCE-ROUNDTRIP-001"), Result.Traces.Contains(TEXT("IR-EVIDENCE-ROUNDTRIP-001")));
+        TestTrue(TEXT("case 2: preserve-evidence-subject-ref-boundary-face trace IR-STRUCTURAL-TYPE-001"), Result.Traces.Contains(TEXT("IR-STRUCTURAL-TYPE-001")));
+        TestTrue(TEXT("case 2: preserve-evidence-subject-ref-boundary-face trace IR-NESTED-COLLECTION-001"), Result.Traces.Contains(TEXT("IR-NESTED-COLLECTION-001")));
     }
 
     {
@@ -160,6 +166,9 @@ bool FCrddPreserveEvidencePortableConformanceTest::RunTest(const FString&)
         {
             TestEqual(TEXT("case 3: rollback"), Result.FailedRequirement, TEXT(""));
         }
+        TestTrue(TEXT("case 3: preserve-evidence-subject-ref-building trace IR-EVIDENCE-ROUNDTRIP-001"), Result.Traces.Contains(TEXT("IR-EVIDENCE-ROUNDTRIP-001")));
+        TestTrue(TEXT("case 3: preserve-evidence-subject-ref-building trace IR-STRUCTURAL-TYPE-001"), Result.Traces.Contains(TEXT("IR-STRUCTURAL-TYPE-001")));
+        TestTrue(TEXT("case 3: preserve-evidence-subject-ref-building trace IR-NESTED-COLLECTION-001"), Result.Traces.Contains(TEXT("IR-NESTED-COLLECTION-001")));
     }
 
     {
@@ -210,6 +219,7 @@ bool FCrddPreserveEvidencePortableConformanceTest::RunTest(const FString&)
         {
             TestEqual(TEXT("case 4: rollback"), Result.FailedRequirement, TEXT("EV-CANONICAL-HASH"));
         }
+        TestTrue(TEXT("case 4: ev-canonical-hash-rejected trace IR-EVIDENCE-ROUNDTRIP-001"), Result.Traces.Contains(TEXT("IR-EVIDENCE-ROUNDTRIP-001")));
     }
 
     {
@@ -262,6 +272,7 @@ bool FCrddPreserveEvidencePortableConformanceTest::RunTest(const FString&)
         {
             TestEqual(TEXT("case 5: rollback"), Result.FailedRequirement, TEXT("EV-FRAGMENTS-UNIQUE"));
         }
+        TestTrue(TEXT("case 5: ev-fragments-unique-rejected trace IR-PRIMITIVE-COLLECTION-001"), Result.Traces.Contains(TEXT("IR-PRIMITIVE-COLLECTION-001")));
     }
 
     {
@@ -316,6 +327,7 @@ bool FCrddPreserveEvidencePortableConformanceTest::RunTest(const FString&)
         {
             TestEqual(TEXT("case 6: rollback"), Result.FailedRequirement, TEXT("EV-SEGMENTS-UNIQUE"));
         }
+        TestTrue(TEXT("case 6: ev-segments-unique-rejected trace IR-NESTED-COLLECTION-001"), Result.Traces.Contains(TEXT("IR-NESTED-COLLECTION-001")));
     }
 
     {

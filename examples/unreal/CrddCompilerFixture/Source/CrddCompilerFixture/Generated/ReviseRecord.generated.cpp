@@ -78,6 +78,7 @@ FCrddReviseRecordResult FCrddReviseRecordOperation::Execute(
     FCrddReviseRecordResult Result;
     Result.bSucceeded = true;
     Result.State = InitialState;
+    Result.Traces = {TEXT("REQ-RECORD-UPDATE-001")};
     Result.State.Audit.Mode = Input.Options.Mode;
     for (FCrddReviseRecordRecordsItem& Item : Result.State.Records)
     {
@@ -86,7 +87,6 @@ FCrddReviseRecordResult FCrddReviseRecordOperation::Execute(
             Item.LengthUnit = Input.NewLengthUnit;
         }
     }
-    Result.Traces = {TEXT("REQ-RECORD-UPDATE-001")};
     return Result;
 }
 

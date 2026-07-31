@@ -28,7 +28,8 @@ $results = Join-Path $repository ".crdd-ir\unity-verification"
 $build = Join-Path $results "Player\CrddCompilerFixture.exe"
 $portableSource = Join-Path $repository "test\fixtures\contracts\portable-contract.md"
 $compoundEvidenceSource = Join-Path $repository "test\fixtures\contracts\compound-evidence-contract.md"
-$sources = @($Source, $portableSource, $compoundEvidenceSource) |
+$conditionalEffectsSource = Join-Path $repository "test\fixtures\contracts\conditional-effects.md"
+$sources = @($Source, $portableSource, $compoundEvidenceSource, $conditionalEffectsSource) |
     ForEach-Object { [System.IO.Path]::GetFullPath($_) } |
     Select-Object -Unique
 

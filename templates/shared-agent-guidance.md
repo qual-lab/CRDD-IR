@@ -7,6 +7,7 @@
 - Run `.\tools\crdd-ir.ps1 doctor` before the first generation or after changing project/Unreal configuration.
 - Run `.\tools\crdd-ir.ps1 verify` after changing generated implementation or Unreal integration.
 - Treat `crdd-ir.config.json` as the project integration contract; do not hard-code project paths in generated scripts.
+- After human review, adopt an intentional config change with `.\tools\crdd-ir.ps1 adopt-config`; never run adoption automatically in CI.
 - Do not edit generated source code, generated 3D assets, or generated manifests directly.
 - Do not commit Internal IR or cache content under `.crdd-ir/`.
 - Store reproducible verification evidence under `evidence/crdd-ir/`.

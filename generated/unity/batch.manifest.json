@@ -19,11 +19,11 @@
         },
         {
           "path": "ApplyRecord.Conformance.Generated.Tests.cs",
-          "sha256": "6be81e5e298eb64eb21e1bba581d356593ffdc74cb27816c4a42b519c8f356d5"
+          "sha256": "a0787629c7bbbf4b7649965ffb3e3ef4531c0ac76c3eaaae17196c16b9af7dd8"
         },
         {
           "path": "ApplyRecord.Generated.cs",
-          "sha256": "277fd0388097f01bc94f1c2a9da1f5dd49fc1834fea6d0f317ebff834ddace58"
+          "sha256": "0875204de4fa5a601e7e565fc8bb1f0657f4b20b5d3f467aff5cfb54efb35967"
         }
       ]
     },
@@ -43,11 +43,11 @@
         },
         {
           "path": "ReviseRecord.Conformance.Generated.Tests.cs",
-          "sha256": "77464773fe75d8478d2e974250286d41ea2c19e263901270b44bf2fb00342de1"
+          "sha256": "9eb5d6cb7ef7323c74c4703bae60b1da8e312372538512311fdbe037b780fe01"
         },
         {
           "path": "ReviseRecord.Generated.cs",
-          "sha256": "93060f579ee549e515a59112575dddef0b46d9d04d324ff0801ee468cdde3c1c"
+          "sha256": "c29983f9c5b81030c6df08bb771da9b4bcf3f77bffce47c7e3878b1bd1dc7a64"
         }
       ]
     }

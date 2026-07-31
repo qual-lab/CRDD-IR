@@ -23,11 +23,11 @@
         },
         {
           "path": "AppendRecord.generated.cpp",
-          "sha256": "d3933a11b3416e22497c463c0efac548a39d3f8bff544b42ff299247936ffd02"
+          "sha256": "fd2bf6bd27d9eec0ff28769182a2be1f78cc442c53be6abb167b6ced7884b709"
         },
         {
           "path": "AppendRecord.generated.h",
-          "sha256": "93667610554c7e9378af4396a352e476ecb8488bbbad5c2205717336d9c317f4"
+          "sha256": "b52459f0e6ece7e542465fc856295b21dd7c768ded27ad43afbabfe6445d5ce5"
         },
         {
           "path": "AppendRecord.numeric.generated.spec.cpp",
@@ -55,11 +55,11 @@
         },
         {
           "path": "ApplyRecord.generated.cpp",
-          "sha256": "7615eaf0169f01305956f8e9e6991f99440017a02757401a631d56768e3ec436"
+          "sha256": "b08de9bf96f5d8084a0104ad21f3ea34756dd8901591e5ec8b19d1e24b83603f"
         },
         {
           "path": "ApplyRecord.generated.h",
-          "sha256": "05ec0ae7a51b6b1d4c7941e7b09b611858181aa8dd9574f543c6956947aaf259"
+          "sha256": "362fc34be95bcb27f4a80a5b81af4f2d94990e9076db9863736a929a6b83b580"
         }
       ]
     },
@@ -83,15 +83,47 @@
         },
         {
           "path": "PreserveEvidence.generated.cpp",
-          "sha256": "f2c6a08a98b91c61d0c48114399eb72fe3905ad74becacc9fcb1e6808604f574"
+          "sha256": "bf9c9d9c10489f727f03a6c0c8a12d813334fb41fad5921724952f72396bc953"
         },
         {
           "path": "PreserveEvidence.generated.h",
-          "sha256": "22724d8a2de06b0cab1dcb90a355b2ea013544164c054db31151321d05d0ab19"
+          "sha256": "960c36be3063ffcf12d3b17ceb3a9216db746f94f8def1f9acc14993a61f4eb0"
         },
         {
           "path": "PreserveEvidenceConformance.spec.cpp",
-          "sha256": "9e2b1abbfd5974eab29a9e8e595ed59519d1885e46c9d2f7451a9453c45bc951"
+          "sha256": "9d2c1b2c4daafc2a585300949e4febe9937927c8a4e2c942369570a329f0b7e8"
+        }
+      ]
+    },
+    {
+      "id": "ResolveDecision",
+      "source": "test/fixtures/contracts/conditional-effects.md",
+      "digest": "2e30d8f4500536d9621cec21f148b55372448d9dd5b528e2439eed513cde6027",
+      "outputDirectory": ".",
+      "files": [
+        {
+          "path": "ResolveDecision.bridge.generated.cpp",
+          "sha256": "5b5f3863d42f6309d09a331300333ffb670abc4c5ba9b88f586c7f0d27725fd5"
+        },
+        {
+          "path": "ResolveDecision.bridge.generated.h",
+          "sha256": "56bce6f5b2e276f16a3861d67b36f6022d5909dfbeb4fd7d775414e658aa9e1d"
+        },
+        {
+          "path": "ResolveDecision.bridge.generated.spec.cpp",
+          "sha256": "7ac4fd4119b1d4bda64695a9a85df51fad8632f45dd40afc0898343d4daf7d16"
+        },
+        {
+          "path": "ResolveDecision.generated.cpp",
+          "sha256": "dcabf79f362a9ad311f80a1543d8e436d764767ebf7848d9677eb4d298b823a4"
+        },
+        {
+          "path": "ResolveDecision.generated.h",
+          "sha256": "9927f0d825a4d1a6c50b626747af2d120613129ba8681120c42f4f165f260d11"
+        },
+        {
+          "path": "ResolveDecisionConformance.spec.cpp",
+          "sha256": "13bd044f05b4356e84b0c574a91156b2f787eac4be2d7dac193231f9cd89af67"
         }
       ]
     },
@@ -115,11 +147,11 @@
         },
         {
           "path": "ReviseRecord.generated.cpp",
-          "sha256": "ef6414a5b451d36a0ebb7413518dcfb3a0667249397309b617822782f7190dce"
+          "sha256": "c50dff63cc5168d429dd977d5a25b7e5bb6f62c74e69a12883231d9c8fc8da66"
         },
         {
           "path": "ReviseRecord.generated.h",
-          "sha256": "1277744cf3a4336e87f92470b561c098347568a75f6440f2ab9d4f8b5310c7a4"
+          "sha256": "ad4c0feff01370cabd8edd355e90c0f4180eb858dd55ce0612d5b6efb6ceb4e5"
         }
       ]
     },
@@ -143,15 +175,15 @@
         },
         {
           "path": "SynchronizeModel.generated.cpp",
-          "sha256": "85f036141fe7690b728a0bd9bf240ab01e0640923aa67177357166981289ff79"
+          "sha256": "270b929386c11659066d4fbf7a94012e0920f30f6a21651e344ce4f16f995bb9"
         },
         {
           "path": "SynchronizeModel.generated.h",
-          "sha256": "668b5e8fdc7d9c2638c09d94f53bcbbee4e75e3cf5a485a33d4c6bb299d9f0a2"
+          "sha256": "65cca09989f15e72bf92d09e7c53a66c93b2c89ff4e139ef2cd68acc5f19b943"
         },
         {
           "path": "SynchronizeModelConformance.spec.cpp",
-          "sha256": "5272c287cb375772e4bb756e33e667c3fd3046eb3207ac4bedeb556aaf651724"
+          "sha256": "a29e99eddf8d8f24a9fc2af3b002ef0c2793186b6750dd6fd78caa327c9c602f"
         }
       ]
     }

@@ -78,6 +78,7 @@ export type Requirement = {
   id: string;
   expression: string;
   error: string;
+  when?: string;
 };
 
 export type PortableRule =
@@ -164,7 +165,12 @@ export type PortableRule =
       hash: string;
     };
 
-export type Effect =
+type EffectBranch = {
+  when?: string;
+  traces?: string[];
+};
+
+export type Effect = (
   | {
       target: string;
       action: "assign";
@@ -190,7 +196,8 @@ export type Effect =
       action: "update";
       where: Record<string, unknown>;
       set: Record<string, unknown>;
-    };
+    }
+) & EffectBranch;
 
 export type CrddError = {
   code: string;
