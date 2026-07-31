@@ -32,6 +32,9 @@ export async function compileMarkdown(path: string): Promise<CompilationResult> 
         id: requirement.id,
         expression: normalizeWithContext(requirement.condition, fields, requirement.id),
         error: requirement.error,
+        ...(requirement.when
+          ? { when: normalizeWithContext(requirement.when, fields, `${requirement.id}.when`) }
+          : {}),
       })),
       ...(contract.operation.portable_rules
         ? { portableRules: structuredClone(contract.operation.portable_rules) }
@@ -41,8 +44,16 @@ export async function compileMarkdown(path: string): Promise<CompilationResult> 
           ? {
               ...effect,
               expression: normalizeWithContext(effect.expression, fields, effect.target),
+              ...(effect.when
+                ? { when: normalizeWithContext(effect.when, fields, `${effect.target}.when`) }
+                : {}),
             }
-          : structuredClone(effect),
+          : {
+              ...structuredClone(effect),
+              ...(effect.when
+                ? { when: normalizeWithContext(effect.when, fields, `${effect.target}.when`) }
+                : {}),
+            },
       ),
       errors: contract.operation.errors,
       ...(contract.operation.transaction ? {

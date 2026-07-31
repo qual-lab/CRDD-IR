@@ -7,8 +7,10 @@ export function simulate(ir: CrddIr, request: SimulationRequest): SimulationResu
   const originalState = structuredClone(request.state);
   const workingState = structuredClone(request.state);
   const context = { input, state: workingState };
+  const appliedTraces: string[] = [];
 
   for (const requirement of ir.operation.requires) {
+    if (requirement.when !== undefined && evaluateExpression(requirement.when, context) !== true) continue;
     const satisfied = evaluateExpression(requirement.expression, context);
     if (satisfied !== true) {
       return {
@@ -36,6 +38,13 @@ export function simulate(ir: CrddIr, request: SimulationRequest): SimulationResu
 
   try {
     for (const effect of ir.operation.effects) {
+      if (effect.when !== undefined) {
+        const selected = evaluateExpression(effect.when, context);
+        if (selected !== true && selected !== false) {
+          throw new Error(`Effect condition must evaluate to boolean: "${effect.when}"`);
+        }
+        if (!selected) continue;
+      }
       const target = stripStatePrefix(effect.target);
       if (effect.action === "assign") {
         setPath(workingState, target, evaluateExpression(effect.expression, context));
@@ -64,6 +73,7 @@ export function simulate(ir: CrddIr, request: SimulationRequest): SimulationResu
           }
         }
       }
+      appliedTraces.push(...(effect.traces ?? []));
     }
   } catch (error) {
     if (ir.operation.transaction.atomic && ir.operation.transaction.rollbackOnFailure) {
@@ -76,7 +86,7 @@ export function simulate(ir: CrddIr, request: SimulationRequest): SimulationResu
     ok: true,
     operation: ir.operation.id,
     state: workingState,
-    traces: ir.operation.traces,
+    traces: [...ir.operation.traces, ...appliedTraces],
   };
 }
 

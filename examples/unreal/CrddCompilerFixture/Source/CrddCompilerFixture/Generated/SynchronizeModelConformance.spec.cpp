@@ -34,6 +34,7 @@ bool FCrddSynchronizeModelPortableConformanceTest::RunTest(const FString&)
         {
             TestEqual(TEXT("case 1: rollback"), Result.FailedRequirement, TEXT("DM-UNKNOWN-EDIT-INTENT"));
         }
+        TestTrue(TEXT("case 1: synchronize-model-success trace IR-IMMUTABLE-001"), Result.Traces.Contains(TEXT("IR-IMMUTABLE-001")));
     }
 
     {
@@ -69,6 +70,7 @@ bool FCrddSynchronizeModelPortableConformanceTest::RunTest(const FString&)
         {
             TestEqual(TEXT("case 2: rollback"), Result.FailedRequirement, TEXT("DM-ELEMENT-ID-UNIQUE"));
         }
+        TestTrue(TEXT("case 2: dm-element-id-unique-rejected trace IR-COLLECTION-001"), Result.Traces.Contains(TEXT("IR-COLLECTION-001")));
     }
 
     {
@@ -99,6 +101,7 @@ bool FCrddSynchronizeModelPortableConformanceTest::RunTest(const FString&)
         {
             TestEqual(TEXT("case 3: rollback"), Result.FailedRequirement, TEXT("DM-FRAME-REFERENCE"));
         }
+        TestTrue(TEXT("case 3: dm-frame-reference-rejected trace IR-COLLECTION-001"), Result.Traces.Contains(TEXT("IR-COLLECTION-001")));
     }
 
     {
@@ -132,6 +135,7 @@ bool FCrddSynchronizeModelPortableConformanceTest::RunTest(const FString&)
         {
             TestEqual(TEXT("case 4: rollback"), Result.FailedRequirement, TEXT("DM-PARENT-MEMBERSHIP"));
         }
+        TestTrue(TEXT("case 4: dm-parent-membership-rejected trace IR-COLLECTION-001"), Result.Traces.Contains(TEXT("IR-COLLECTION-001")));
     }
 
     {
@@ -160,6 +164,7 @@ bool FCrddSynchronizeModelPortableConformanceTest::RunTest(const FString&)
         {
             TestEqual(TEXT("case 5: rollback"), Result.FailedRequirement, TEXT("DM-RELATION-ENDPOINTS"));
         }
+        TestTrue(TEXT("case 5: dm-relation-endpoints-rejected trace IR-COLLECTION-001"), Result.Traces.Contains(TEXT("IR-COLLECTION-001")));
     }
 
     {
@@ -195,6 +200,7 @@ bool FCrddSynchronizeModelPortableConformanceTest::RunTest(const FString&)
         {
             TestEqual(TEXT("case 6: rollback"), Result.FailedRequirement, TEXT("DM-MAP-ELEMENT-ID-UNIQUE"));
         }
+        TestTrue(TEXT("case 6: dm-map-element-id-unique-rejected trace IR-COLLECTION-001"), Result.Traces.Contains(TEXT("IR-COLLECTION-001")));
     }
 
     {
@@ -225,6 +231,7 @@ bool FCrddSynchronizeModelPortableConformanceTest::RunTest(const FString&)
         {
             TestEqual(TEXT("case 7: rollback"), Result.FailedRequirement, TEXT("DM-MAP-FRAME-REFERENCE"));
         }
+        TestTrue(TEXT("case 7: dm-map-frame-reference-rejected trace IR-COLLECTION-001"), Result.Traces.Contains(TEXT("IR-COLLECTION-001")));
     }
 
     {
@@ -258,6 +265,7 @@ bool FCrddSynchronizeModelPortableConformanceTest::RunTest(const FString&)
         {
             TestEqual(TEXT("case 8: rollback"), Result.FailedRequirement, TEXT("DM-MAP-PARENT-MEMBERSHIP"));
         }
+        TestTrue(TEXT("case 8: dm-map-parent-membership-rejected trace IR-COLLECTION-001"), Result.Traces.Contains(TEXT("IR-COLLECTION-001")));
     }
 
     {
@@ -286,6 +294,7 @@ bool FCrddSynchronizeModelPortableConformanceTest::RunTest(const FString&)
         {
             TestEqual(TEXT("case 9: rollback"), Result.FailedRequirement, TEXT("DM-MAP-RELATION-ENDPOINTS"));
         }
+        TestTrue(TEXT("case 9: dm-map-relation-endpoints-rejected trace IR-COLLECTION-001"), Result.Traces.Contains(TEXT("IR-COLLECTION-001")));
     }
 
     {
@@ -321,6 +330,7 @@ bool FCrddSynchronizeModelPortableConformanceTest::RunTest(const FString&)
         {
             TestEqual(TEXT("case 10: rollback"), Result.FailedRequirement, TEXT("DM-NEW-ELEMENT-ID-AVAILABLE"));
         }
+        TestTrue(TEXT("case 10: dm-new-element-id-available-rejected trace IR-COLLECTION-001"), Result.Traces.Contains(TEXT("IR-COLLECTION-001")));
     }
 
     {
@@ -358,6 +368,7 @@ bool FCrddSynchronizeModelPortableConformanceTest::RunTest(const FString&)
         {
             TestEqual(TEXT("case 11: rollback"), Result.FailedRequirement, TEXT("DM-PROPOSED-ELEMENTS-UNIQUE"));
         }
+        TestTrue(TEXT("case 11: dm-proposed-elements-unique-rejected trace IR-COLLECTION-001"), Result.Traces.Contains(TEXT("IR-COLLECTION-001")));
     }
 
     {
@@ -385,6 +396,7 @@ bool FCrddSynchronizeModelPortableConformanceTest::RunTest(const FString&)
         {
             TestEqual(TEXT("case 12: rollback"), Result.FailedRequirement, TEXT("DM-NEW-NUMERIC-ID-AVAILABLE"));
         }
+        TestTrue(TEXT("case 12: dm-new-numeric-id-available-rejected trace IR-COLLECTION-001"), Result.Traces.Contains(TEXT("IR-COLLECTION-001")));
     }
 
     {
@@ -410,6 +422,7 @@ bool FCrddSynchronizeModelPortableConformanceTest::RunTest(const FString&)
         {
             TestEqual(TEXT("case 13: rollback"), Result.FailedRequirement, TEXT("DM-UNKNOWN-BYTES"));
         }
+        TestTrue(TEXT("case 13: dm-unknown-bytes-rejected trace IR-OPAQUE-001"), Result.Traces.Contains(TEXT("IR-OPAQUE-001")));
     }
 
     {
@@ -435,6 +448,7 @@ bool FCrddSynchronizeModelPortableConformanceTest::RunTest(const FString&)
         {
             TestEqual(TEXT("case 14: rollback"), Result.FailedRequirement, TEXT("DM-STORED-UNKNOWN-BYTES"));
         }
+        TestTrue(TEXT("case 14: dm-stored-unknown-bytes-rejected trace IR-OPAQUE-001"), Result.Traces.Contains(TEXT("IR-OPAQUE-001")));
     }
 
     {
@@ -460,6 +474,7 @@ bool FCrddSynchronizeModelPortableConformanceTest::RunTest(const FString&)
         {
             TestEqual(TEXT("case 15: rollback"), Result.FailedRequirement, TEXT(""));
         }
+        TestTrue(TEXT("case 15: dm-unknown-preserved-active-edit trace REQ-PORTABLE-001"), Result.Traces.Contains(TEXT("REQ-PORTABLE-001")));
     }
 
     {
@@ -485,6 +500,7 @@ bool FCrddSynchronizeModelPortableConformanceTest::RunTest(const FString&)
         {
             TestEqual(TEXT("case 16: rollback"), Result.FailedRequirement, TEXT("DM-UNKNOWN-PRESERVED"));
         }
+        TestTrue(TEXT("case 16: dm-unknown-preserved-rejected trace IR-IMMUTABLE-001"), Result.Traces.Contains(TEXT("IR-IMMUTABLE-001")));
     }
 
     {
@@ -510,6 +526,7 @@ bool FCrddSynchronizeModelPortableConformanceTest::RunTest(const FString&)
         {
             TestEqual(TEXT("case 17: rollback"), Result.FailedRequirement, TEXT("DM-UNKNOWN-EDIT-INTENT"));
         }
+        TestTrue(TEXT("case 17: dm-unknown-edit-intent-rejected trace IR-IMMUTABLE-001"), Result.Traces.Contains(TEXT("IR-IMMUTABLE-001")));
     }
 
     return true;

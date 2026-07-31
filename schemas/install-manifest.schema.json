@@ -1,13 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://crdd.dev/schema/install-manifest/v0.1.json",
-  "title": "CRDD IR Installation Manifest v0.1",
+  "$id": "https://crdd.dev/schema/install-manifest/v0.2.json",
+  "title": "CRDD IR Installation Manifest v0.2",
   "type": "object",
-  "required": ["protocol", "toolVersion", "installedAtUtc", "files"],
+  "required": ["protocol", "toolVersion", "files"],
   "properties": {
-    "protocol": { "const": "crdd-ir/install-manifest-v0.1" },
+    "protocol": { "const": "crdd-ir/install-manifest-v0.2" },
     "toolVersion": { "type": "string", "minLength": 1 },
-    "installedAtUtc": { "type": "string", "format": "date-time" },
     "files": {
       "type": "array",
       "items": {

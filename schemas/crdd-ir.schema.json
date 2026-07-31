@@ -27,7 +27,10 @@
           "additionalProperties": { "$ref": "#/$defs/field" }
         },
         "output": { "$ref": "#/$defs/field" },
-        "requires": { "type": "array" },
+        "requires": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/requirement" }
+        },
         "portableRules": {
           "type": "array",
           "items": { "$ref": "#/$defs/portableRule" }
@@ -60,6 +63,17 @@
     }
   },
   "$defs": {
+    "requirement": {
+      "type": "object",
+      "required": ["id", "expression", "error"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "expression": { "type": "string", "minLength": 1 },
+        "error": { "type": "string", "minLength": 1 },
+        "when": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
     "extension": {
       "type": "object",
       "required": ["protocol", "data"],
@@ -225,7 +239,9 @@
           "properties": {
             "target": { "type": "string", "minLength": 1 },
             "action": { "enum": ["assign", "increment"] },
-            "expression": { "type": "string", "minLength": 1 }
+            "expression": { "type": "string", "minLength": 1 },
+            "when": { "type": "string", "minLength": 1 },
+            "traces": { "$ref": "#/$defs/traces" }
           },
           "additionalProperties": false
         },
@@ -235,7 +251,9 @@
           "properties": {
             "target": { "type": "string", "minLength": 1 },
             "action": { "const": "append" },
-            "value": {}
+            "value": {},
+            "when": { "type": "string", "minLength": 1 },
+            "traces": { "$ref": "#/$defs/traces" }
           },
           "additionalProperties": false
         },
@@ -245,7 +263,9 @@
           "properties": {
             "target": { "type": "string", "minLength": 1 },
             "action": { "const": "remove" },
-            "where": { "type": "object", "minProperties": 1 }
+            "where": { "type": "object", "minProperties": 1 },
+            "when": { "type": "string", "minLength": 1 },
+            "traces": { "$ref": "#/$defs/traces" }
           },
           "additionalProperties": false
         },
@@ -256,7 +276,9 @@
             "target": { "type": "string", "minLength": 1 },
             "action": { "const": "update" },
             "where": { "type": "object", "minProperties": 1 },
-            "set": { "type": "object", "minProperties": 1 }
+            "set": { "type": "object", "minProperties": 1 },
+            "when": { "type": "string", "minLength": 1 },
+            "traces": { "$ref": "#/$defs/traces" }
           },
           "additionalProperties": false
         },

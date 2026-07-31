@@ -7,6 +7,7 @@ export type SourceRequirement = {
   id: string;
   condition: string;
   error: string;
+  when?: string;
 };
 
 export type SourceContract = {
@@ -214,10 +215,11 @@ function validateSourceContract(
         add("CRDD_SOURCE_TYPE", base, "must be an object");
         continue;
       }
-      rejectUnknown(requirement, ["id", "condition", "error"], base, add);
+      rejectUnknown(requirement, ["id", "condition", "error", "when"], base, add);
       requireString(requirement.id, `${base}.id`, add);
       requireString(requirement.condition, `${base}.condition`, add);
       requireString(requirement.error, `${base}.error`, add);
+      if (requirement.when !== undefined) requireString(requirement.when, `${base}.when`, add);
     }
   }
   if (Array.isArray(operation.effects)) {
@@ -228,15 +230,18 @@ function validateSourceContract(
         continue;
       }
       const action = effect.action;
+      const branchFields = ["when", "traces"];
       const allowed = action === "append"
-        ? ["target", "action", "value"]
+        ? ["target", "action", "value", ...branchFields]
         : action === "remove"
-          ? ["target", "action", "where"]
+          ? ["target", "action", "where", ...branchFields]
           : action === "update"
-            ? ["target", "action", "where", "set"]
-        : ["target", "action", "expression"];
+            ? ["target", "action", "where", "set", ...branchFields]
+        : ["target", "action", "expression", ...branchFields];
       rejectUnknown(effect, allowed, base, add);
       requireString(effect.target, `${base}.target`, add);
+      if (effect.when !== undefined) requireString(effect.when, `${base}.when`, add);
+      if (effect.traces !== undefined) requireStringArray(effect.traces, `${base}.traces`, add);
       if (!["assign", "append", "increment", "remove", "update"].includes(String(action))) {
         add(
           "CRDD_SOURCE_EFFECT",

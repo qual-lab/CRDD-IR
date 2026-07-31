@@ -28,7 +28,9 @@ export function generateUnreal(
     { name: `${operationName}.generated.h`, content: generateHeader(operation, metadata) },
     { name: `${operationName}.generated.cpp`, content: generateSource(operation, metadata.numericProjection ?? {}) },
     ...generateUnrealBridge(operation),
-    ...((operation.portableRules?.length ?? 0) > 0
+    ...((operation.portableRules?.length ?? 0) > 0 ||
+      operation.effects.some((effect) => effect.when !== undefined) ||
+      operation.requires.some((requirement) => requirement.when !== undefined)
       ? [{
           name: `${operationName}Conformance.spec.cpp`,
           content: generatePortableConformanceFixture(ir, operation),
@@ -219,7 +221,7 @@ function generateSource(
       const guard = compiled.overflowChecks.length > 0
         ? `${compiled.overflowChecks.join(" || ")} || !(${compiled.expression})`
         : `!(${compiled.expression})`;
-      return `    // ${requirement.id}: ${requirement.expression}
+      const failureCheck = `    // ${requirement.id}: ${requirement.expression}
 ${compiled.statements.map((statement) => `    ${statement}`).join("\n")}${compiled.statements.length ? "\n" : ""}    if (${guard})
     {
         return Failure(
@@ -228,6 +230,30 @@ ${compiled.statements.map((statement) => `    ${statement}`).join("\n")}${compil
             InitialState,
             {${error.traces.map((trace) => `TEXT("${trace}")`).join(", ")}}
         );
+    }`;
+      if (!requirement.when) return failureCheck;
+      const selector = compileCheckedExpression(
+        requirement.when,
+        operation,
+        "InitialState",
+        operation.requires.length + requirementIndex,
+      );
+      const selectorOverflow = selector.overflowChecks.length > 0
+        ? `    if (${selector.overflowChecks.join(" || ")})
+    {
+        return Failure(
+            ECrdd${operationName}Error::${pascalCase(requirement.error)},
+            TEXT("${requirement.id}"),
+            InitialState,
+            {${error.traces.map((trace) => `TEXT("${trace}")`).join(", ")}}
+        );
+    }
+`
+        : "";
+      return `    // ${requirement.id} when ${requirement.when}
+${selector.statements.map((statement) => `    ${statement}`).join("\n")}${selector.statements.length ? "\n" : ""}${selectorOverflow}    if (${selector.expression})
+    {
+${failureCheck.split("\n").map((line) => `    ${line}`).join("\n")}
     }`;
     })
     .join("\n\n");
@@ -387,8 +413,8 @@ ${allChecks}
     FCrdd${operationName}Result Result;
     Result.bSucceeded = true;
     Result.State = InitialState;
-${effects}
     Result.Traces = {${successTraces}};
+${effects}
     return Result;
 }
 
@@ -991,6 +1017,9 @@ function generatePortableConformanceFixture(ir: CrddIr, operation: Operation): s
       "State",
       operation,
     );
+    const traceAssertions = expected.traces.map((trace) =>
+      `        TestTrue(TEXT("case ${index + 1}: ${testCase.id} trace ${escapeCpp(trace)}"), Result.Traces.Contains(TEXT("${escapeCpp(trace)}")));`
+    ).join("\n");
     return `    {
         FCrdd${operationName}Input Input;
         FCrdd${operationName}State State;
@@ -1006,6 +1035,7 @@ ${[...inputAssignments, ...stateAssignments].map((line) => `        ${line}`).jo
         {
             TestEqual(TEXT("case ${index + 1}: rollback"), Result.FailedRequirement, TEXT("${escapeCpp(expected.ok ? "" : expected.failedRequirement)}"));
         }
+${traceAssertions}
     }`;
   }).join("\n\n");
   const snapshotOwnership = cppSnapshotOwnershipTest(operation);
@@ -1342,6 +1372,19 @@ function compileCheckedExpression(
 }
 
 function cppEffect(effect: Effect, operation: Operation): string {
+  const body = cppEffectBody(effect, operation);
+  const trace = effect.traces?.map((item) =>
+    `    Result.Traces.Add(TEXT("${escape(item)}"));`
+  ).join("\n") ?? "";
+  const statements = [body, trace].filter(Boolean).join("\n");
+  if (!effect.when) return statements;
+  return `    if (${cppExpression(effect.when, operation, "Result.State")})
+    {
+${statements.split("\n").map((line) => `    ${line}`).join("\n")}
+    }`;
+}
+
+function cppEffectBody(effect: Effect, operation: Operation): string {
   if (effect.action === "assign") {
     const crossScope = cppCrossScopeAssignment(effect, operation);
     if (crossScope) return crossScope;

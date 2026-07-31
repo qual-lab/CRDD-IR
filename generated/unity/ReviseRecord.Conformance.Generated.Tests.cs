@@ -60,6 +60,7 @@ namespace Crdd.Generated.Tests
             Assert.That(result.State.Records[0].RecordId, Is.EqualTo("sample"), "case 4 records[0] record_id");
             Assert.That(result.State.Records[0].LengthUnit, Is.EqualTo(0), "case 4 records[0] length");
         }
+
     }
 }
 #endif

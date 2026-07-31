@@ -126,8 +126,8 @@ FCrddAppendRecordResult FCrddAppendRecordOperation::Execute(
     FCrddAppendRecordResult Result;
     Result.bSucceeded = true;
     Result.State = InitialState;
-    Result.State.Records.Add({Input.RecordId, Input.SpanMm, Input.ExtentMm, Input.DepthMm, Input.SegmentSpanMm, Input.SegmentExtentMm, Input.OffsetMm, Input.BaselineMm});
     Result.Traces = {TEXT("REQ-NUMERIC-BOUNDARY")};
+    Result.State.Records.Add({Input.RecordId, Input.SpanMm, Input.ExtentMm, Input.DepthMm, Input.SegmentSpanMm, Input.SegmentExtentMm, Input.OffsetMm, Input.BaselineMm});
     return Result;
 }
 

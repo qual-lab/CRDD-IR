@@ -292,7 +292,7 @@ function contract(
     const error = operation.errors.find((item) => item.code === requirement.error)!;
     return `            try
             {
-                if (!(checked(${csExpression(requirement.expression, operation)})))
+                if (${requirement.when ? `checked(${csExpression(requirement.when, operation)}) && ` : ""}!(checked(${csExpression(requirement.expression, operation)})))
                     return Failure(${name}Error.${identifier(requirement.error)}, "${escape(requirement.id)}", initialState, new[] { ${error.traces.map((trace) => `"${escape(trace)}"`).join(", ")} });
             }
             catch (OverflowException)
@@ -999,6 +999,18 @@ function unionVariant(
 }
 
 function csEffect(effect: Effect, operation: Operation): string {
+  const body = csEffectBody(effect, operation);
+  const trace = effect.traces?.length
+    ? `\n            result.Traces = result.Traces.Concat(new[] { ${effect.traces.map((item) => `"${escape(item)}"`).join(", ")} }).ToArray();`
+    : "";
+  if (!effect.when) return `${body}${trace}`;
+  return `            if (${csExpression(effect.when, operation, "result.State")})
+            {
+${indent(`${body}${trace}`, 4)}
+            }`;
+}
+
+function csEffectBody(effect: Effect, operation: Operation): string {
   if (effect.action === "assign") {
     const crossScope = csCrossScopeAssignment(effect, operation);
     if (crossScope) return crossScope;

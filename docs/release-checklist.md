@@ -1,15 +1,15 @@
-# v0.6.0 release checklist
+# v0.7.0 release checklist
 
-This checklist prepares CRDD IR v0.6.0 for publication. Do not tag, publish,
+This checklist prepares CRDD IR v0.7.0 for publication. Do not tag, publish,
 or merge to `main` until the release Go is recorded.
 
 ## Source
 
-- [ ] `feature/nested-portable-collections-v0.6.0` is reviewed and merged into `develop`
+- [ ] `feature/conditional-effects-adopt-config-v0.7.0` is reviewed and merged into `develop`
 - [ ] `develop` is merged into `main` through a release PR
 - [ ] the release commit has a clean working tree
-- [ ] `package.json` and `package-lock.json` use `0.6.0`
-- [ ] tracked generated target files identify generator `0.6.0`
+- [ ] `package.json` and `package-lock.json` use `0.7.0`
+- [ ] tracked generated target files identify generator `0.7.0`
 - [ ] Source Contract and Internal IR remain schema-valid without migration
 
 ## Automated verification
@@ -24,16 +24,27 @@ npm.cmd run verify:unity
 npm.cmd run pack:check
 ```
 
-- [ ] Node tests pass (reference result: 146/146)
+- [ ] Node tests pass (reference result: 153/153)
 - [ ] Installer regression tests pass
 - [ ] verification-lock tests pass
 - [ ] Unreal Editor Build and Automation pass
 - [ ] Unreal Shipping Cook, Stage, Pak, IoStore, Package, and Archive pass
-- [ ] Unity EditMode tests pass (reference result: 42/42)
+- [ ] Unity EditMode tests pass (reference result: 50/50)
 - [ ] Unity Windows x64 IL2CPP Player Build passes
 - [ ] npm package contains `src`, `schemas`, `scripts`, `docs`, and templates
 
-## v0.6.0 semantic gates
+## v0.7.0 semantic gates
+
+- [ ] every `effect.when` enum branch has generated success coverage
+- [ ] conditional Requires has generated failure and rollback coverage
+- [ ] unknown enum values fail closed before branch evaluation
+- [ ] applied branch traces match across Simulator, Unreal, and Unity
+- [ ] remove/invert branch mutations are killed
+- [ ] all branch effects share one atomic transaction snapshot
+- [ ] `project adopt-config --dry-run` leaves the manifest byte-identical
+- [ ] config adoption reports old/new SHA-256 and changes only its manifest entry
+- [ ] unsafe source, target, or output changes cannot be adopted
+- [ ] Doctor and CI never adopt a changed config implicitly
 
 - [ ] `IR-TARGET-001` and `IR-PARITY-001` pass
 - [ ] TypeScript query and asynchronous targets preserve Core semantics
@@ -64,7 +75,7 @@ npm.cmd run pack:check
 
 ## Documentation and adopter gate
 
-- [ ] v0.6.0 release notes match the reviewed implementation
+- [ ] v0.7.0 release notes match the reviewed implementation
 - [ ] compound-value and canonical-Evidence syntax is documented
 - [ ] known top-level/nesting limits are documented
 - [ ] adopter verifies a pinned release candidate in its Unreal and Unity products
@@ -74,18 +85,18 @@ npm.cmd run pack:check
 
 ```powershell
 git switch develop
-git merge --no-ff feature/nested-portable-collections-v0.6.0
+git merge --no-ff feature/conditional-effects-adopt-config-v0.7.0
 git push origin develop
 # Create and merge the reviewed develop -> main release PR.
 git switch main
 git pull --ff-only
-git tag -a v0.6.0 -m "CRDD IR v0.6.0"
+git tag -a v0.7.0 -m "CRDD IR v0.7.0"
 git push origin main
 git push origin v0.6.0
 ```
 
 - [ ] tag points to the reviewed `main` release commit
-- [ ] GitHub Release title is `CRDD IR v0.6.0`
-- [ ] release body uses `docs/releases/v0.6.0.md`
+- [ ] GitHub Release title is `CRDD IR v0.7.0`
+- [ ] release body uses `docs/releases/v0.7.0.md`
 - [ ] source archive works from a clean checkout
-- [ ] adopting repositories can pin their Submodule to `v0.6.0`
+- [ ] adopting repositories can pin their Submodule to `v0.7.0`
