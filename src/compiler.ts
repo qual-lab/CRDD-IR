@@ -56,6 +56,19 @@ export async function compileMarkdown(path: string): Promise<CompilationResult> 
             },
       ),
       errors: contract.operation.errors,
+      ...(contract.operation.conformance ? {
+        conformance: {
+          ...(contract.operation.conformance.baseline
+            ? { baseline: structuredClone(contract.operation.conformance.baseline) }
+            : {}),
+          ...(contract.operation.conformance.seeds ? {
+            seeds: contract.operation.conformance.seeds.map((seed) => ({
+              ...structuredClone(seed),
+              when: normalizeWithContext(seed.when, fields, `conformance seed ${seed.id}`),
+            })),
+          } : {}),
+        },
+      } : {}),
       ...(contract.operation.transaction ? {
         transaction: {
           atomic: contract.operation.transaction.atomic,

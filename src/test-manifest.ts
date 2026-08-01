@@ -9,9 +9,14 @@ import { defaultUnitRegistry } from "./unit-registry.ts";
 import { canonicalJson } from "./portable-rules.ts";
 
 export function generateTestManifest(ir: CrddIr): TestManifest {
+  validateConformancePlan(ir);
+  const declaredBaseline = ir.operation.conformance?.baseline;
+  const initialBaseline = mergeFixture(createBaseline(ir), declaredBaseline);
+  if (declaredBaseline) assertFixtureValues(ir, declaredBaseline, "conformance baseline");
   const baseline = refreshEvidenceHashes(ir, canonicalizeBaselineUnits(
     ir,
-    satisfyRequirements(ir, createBaseline(ir)),
+    declaredBaseline ? requireSatisfied(ir, initialBaseline, "conformance baseline")
+      : satisfyRequirements(ir, initialBaseline),
   ));
   const cases: TestCase[] = [
     {
@@ -41,32 +46,46 @@ export function generateTestManifest(ir: CrddIr): TestManifest {
   for (const [index, effect] of ir.operation.effects.entries()) {
     if (!effect.when || ownedBranches.has(effect.when)) continue;
     ownedBranches.add(effect.when);
+    const seed = conformanceSeed(ir, effect.when);
     const selection = effect.when.match(/^input\.([A-Za-z_]\w*)\s*==\s*("(?:[^"\\]|\\.)*")$/);
-    if (!selection) {
+    if (!selection && !seed) {
       throw new Error(
         `Cannot derive deterministic branch coverage for effect[${index}] condition "${effect.when}"; ` +
-        "supported branch fixtures require input.<enum> == <string literal>",
+        "declare a conformance seed or use input.<enum> == <string literal>",
       );
     }
-    const [, fieldName, literal] = selection;
-    const field = ir.operation.input[fieldName];
-    const value = JSON.parse(literal) as string;
-    if (field?.type !== "string" || !field.enum?.includes(value)) {
-      throw new Error(`Effect branch "${effect.when}" must select a declared input enum value`);
+    let arrange = structuredClone(baseline);
+    let branchId: string;
+    if (selection) {
+      const [, fieldName, literal] = selection;
+      const field = ir.operation.input[fieldName];
+      const value = JSON.parse(literal) as string;
+      if (field?.type !== "string" || !field.enum?.includes(value)) {
+        throw new Error(`Effect branch "${effect.when}" must select a declared input enum value`);
+      }
+      arrange.input[fieldName] = value;
+      branchId = `${slug(ir.operation.id)}-branch-${slug(fieldName)}-${slug(value)}`;
+    } else {
+      branchId = `${slug(ir.operation.id)}-branch-${slug(seed!.id)}`;
     }
-    const arrange = structuredClone(baseline);
-    arrange.input[fieldName] = value;
+    if (seed) arrange = mergeFixture(arrange, seed);
+    if (seed) assertFixtureValues(ir, seed, `conformance seed "${seed.id}"`);
+    if (evaluateExpression(effect.when, arrange as unknown as Record<string, unknown>) !== true) {
+      throw new Error(`Conformance seed "${seed?.id ?? "<generated>"}" does not select effect branch "${effect.when}"`);
+    }
     const conflicting = ir.operation.requires.filter((requirement) =>
       !requirementSatisfied(requirement, arrange)
     );
     if (conflicting.length > 0) {
       throw new Error(
-        `Cannot cover effect branch "${effect.when}" because Requires conflict: ` +
+        (seed
+          ? `Conformance seed "${seed.id}" for effect branch "${effect.when}" is invalid; Requires conflict: `
+          : `Cannot cover effect branch "${effect.when}" because Requires conflict: `) +
         conflicting.map((item) => item.id).join(", "),
       );
     }
     cases.push({
-      id: `${slug(ir.operation.id)}-branch-${slug(fieldName)}-${slug(value)}`,
+      id: branchId,
       description: `effect branch ${effect.when} is selected atomically`,
       arrange,
       expect: { ok: true },
@@ -562,12 +581,11 @@ function fieldDefinition(
   reference: string,
 ): import("./model.ts").FieldDefinition | undefined {
   const [root, ...parts] = reference.split(".");
-  let field: import("./model.ts").FieldDefinition | undefined =
-    root === "input"
-      ? ir.operation.input[parts.shift() ?? ""]
-      : root === "state"
-        ? ir.operation.state[parts.shift() ?? ""]
-        : undefined;
+  const fields = root === "input" ? ir.operation.input : root === "state" ? ir.operation.state : undefined;
+  if (!fields) return undefined;
+  const exact = fields[parts.join(".")];
+  if (exact) return exact;
+  let field: import("./model.ts").FieldDefinition | undefined = fields[parts.shift() ?? ""];
   for (const part of parts) {
     if (field?.type !== "object") return undefined;
     field = field.properties[part];
@@ -743,22 +761,168 @@ function selectRequirementBranch(
   baseline: SimulationRequest,
 ): SimulationRequest {
   if (!requirement.when) return baseline;
+  const seed = conformanceSeed(ir, requirement.when);
   const selection = requirement.when.match(/^input\.([A-Za-z_]\w*)\s*==\s*("(?:[^"\\]|\\.)*")$/);
-  if (!selection) {
+  if (!selection && !seed) {
     throw new Error(
       `Cannot derive deterministic failure coverage for conditional Requires "${requirement.id}"; ` +
       `unsupported selector "${requirement.when}"`,
     );
   }
-  const [, fieldName, literal] = selection;
-  const value = JSON.parse(literal) as string;
-  const field = ir.operation.input[fieldName];
-  if (field?.type !== "string" || !field.enum?.includes(value)) {
-    throw new Error(`Conditional Requires "${requirement.id}" must select a declared input enum value`);
-  }
   const selected = structuredClone(baseline);
-  selected.input[fieldName] = value;
-  return selected;
+  if (selection) {
+    const [, fieldName, literal] = selection;
+    const value = JSON.parse(literal) as string;
+    const field = ir.operation.input[fieldName];
+    if (field?.type !== "string" || !field.enum?.includes(value)) {
+      throw new Error(`Conditional Requires "${requirement.id}" must select a declared input enum value`);
+    }
+    selected.input[fieldName] = value;
+  }
+  const arranged = seed ? mergeFixture(selected, seed) : selected;
+  if (seed) assertFixtureValues(ir, seed, `conformance seed "${seed.id}"`);
+  if (evaluateExpression(requirement.when, arranged as unknown as Record<string, unknown>) !== true) {
+    throw new Error(`Conformance seed "${seed?.id ?? "<generated>"}" does not select conditional Requires "${requirement.id}"`);
+  }
+  if (!requirementSatisfied(requirement, arranged)) {
+    throw new Error(`Conformance seed "${seed?.id ?? "<generated>"}" does not satisfy conditional Requires "${requirement.id}"`);
+  }
+  const conflicting = ir.operation.requires.filter((candidate) =>
+    candidate.id !== requirement.id && !requirementSatisfied(candidate, arranged)
+  );
+  if (conflicting.length > 0) {
+    throw new Error(
+      (seed
+        ? `Conformance seed "${seed.id}" for conditional Requires "${requirement.id}" is invalid; Requires conflict: `
+        : `Cannot cover conditional Requires "${requirement.id}" because Requires conflict: `) +
+      conflicting.map((item) => item.id).join(", "),
+    );
+  }
+  return arranged;
+}
+
+function validateConformancePlan(ir: CrddIr): void {
+  const plan = ir.operation.conformance;
+  if (!plan) return;
+  if (plan.baseline) assertFixtureValues(ir, plan.baseline, "conformance baseline");
+  const ownedConditions = new Set([
+    ...ir.operation.effects.flatMap((effect) => effect.when ? [effect.when] : []),
+    ...ir.operation.requires.flatMap((requirement) => requirement.when ? [requirement.when] : []),
+  ]);
+  const seen = new Set<string>();
+  for (const seed of plan.seeds ?? []) {
+    if (seen.has(seed.when)) {
+      throw new Error(`Conformance seeds must not duplicate normalized condition "${seed.when}"`);
+    }
+    seen.add(seed.when);
+    if (!ownedConditions.has(seed.when)) {
+      throw new Error(`Conformance seed "${seed.id}" does not match an effect or Requires condition`);
+    }
+    assertFixtureValues(ir, seed, `conformance seed "${seed.id}"`);
+  }
+}
+
+function conformanceSeed(ir: CrddIr, when: string) {
+  return ir.operation.conformance?.seeds?.find((seed) => seed.when === when);
+}
+
+function mergeFixture(
+  request: SimulationRequest,
+  values?: Partial<SimulationRequest>,
+): SimulationRequest {
+  if (!values) return structuredClone(request);
+  return {
+    input: mergeRecord(request.input, values.input),
+    state: mergeRecord(request.state, values.state),
+  };
+}
+
+function mergeRecord(
+  base: Record<string, unknown>,
+  overrides?: Record<string, unknown>,
+): Record<string, unknown> {
+  const result = structuredClone(base);
+  for (const [key, value] of Object.entries(overrides ?? {})) {
+    const current = result[key];
+    result[key] = isPlainRecord(current) && isPlainRecord(value)
+      ? mergeRecord(current, value)
+      : structuredClone(value);
+  }
+  return result;
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function requireSatisfied(ir: CrddIr, request: SimulationRequest, label: string): SimulationRequest {
+  const failed = ir.operation.requires.filter((requirement) => !requirementSatisfied(requirement, request));
+  if (failed.length > 0) {
+    throw new Error(`${label} violates Requires: ${failed.map((item) => item.id).join(", ")}`);
+  }
+  return request;
+}
+
+function assertFixtureValues(ir: CrddIr, request: Partial<SimulationRequest>, label: string): void {
+  for (const scope of ["input", "state"] as const) {
+    for (const [name, value] of Object.entries(request[scope] ?? {})) {
+      validateFixtureValue(ir, `${scope}.${name}`, value, label);
+    }
+  }
+}
+
+function validateFixtureValue(ir: CrddIr, reference: string, value: unknown, label: string): void {
+  const field = fieldDefinition(ir, reference);
+  if (field) {
+    if (field.type === "object" && isPlainRecord(value)) {
+      for (const [name, child] of Object.entries(value)) {
+        if (!field.properties[name]) throw new Error(`${label} references undefined field "${reference}.${name}"`);
+        validateFixtureValue(ir, `${reference}.${name}`, child, label);
+      }
+      return;
+    }
+    if (!valueAllows(field, value)) throw new Error(`${label} has invalid value for ${reference}`);
+    return;
+  }
+  if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+    const entries = Object.entries(value as Record<string, unknown>);
+    if (entries.length > 0) {
+      entries.forEach(([name, child]) => validateFixtureValue(ir, `${reference}.${name}`, child, label));
+      return;
+    }
+  }
+  throw new Error(`${label} references undefined field "${reference}"`);
+}
+
+function valueAllows(field: import("./model.ts").FieldDefinition, value: unknown): boolean {
+  if (value === null) return field.nullable === true;
+  if (field.type === "number" || field.type === "integer") {
+    return typeof value === "number" && Number.isFinite(value) &&
+      (field.type !== "integer" || Number.isSafeInteger(value)) &&
+      (field.minimum === undefined || value >= field.minimum) &&
+      (field.maximum === undefined || value <= field.maximum);
+  }
+  if (field.type === "string") return typeof value === "string" &&
+    (!field.enum || field.enum.includes(value)) &&
+    (field.minLength === undefined || value.length >= field.minLength) &&
+    (field.maxLength === undefined || value.length <= field.maxLength) &&
+    (field.pattern === undefined || new RegExp(field.pattern).test(value));
+  if (field.type === "boolean") return typeof value === "boolean";
+  if (field.type === "array") return Array.isArray(value) &&
+    (field.minItems === undefined || value.length >= field.minItems) &&
+    (field.maxItems === undefined || value.length <= field.maxItems) &&
+    value.every((item) => valueAllows(field.items, item));
+  if (field.type === "map") return typeof value === "object" && value !== null && !Array.isArray(value) &&
+    Object.values(value as Record<string, unknown>).every((item) => valueAllows(field.values, item));
+  if (field.type === "object") return typeof value === "object" && value !== null && !Array.isArray(value) &&
+    Object.entries(field.properties).every(([name, child]) =>
+      child.optional || Object.hasOwn(value, name)) &&
+    Object.entries(value as Record<string, unknown>).every(([name, child]) =>
+      field.properties[name] !== undefined && valueAllows(field.properties[name], child));
+  if (field.type === "union") return typeof value === "object" && value !== null && !Array.isArray(value) &&
+    field.variants.some((variant) => valueAllows(variant, value));
+  return typeof value === "object" && value !== null &&
+    typeof (value as Record<string, unknown>).base64 === "string";
 }
 
 function canonicalRequest(request: SimulationRequest): string {

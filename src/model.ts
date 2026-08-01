@@ -215,6 +215,15 @@ export type Operation = {
   portableRules?: PortableRule[];
   effects: Effect[];
   errors: CrddError[];
+  conformance?: {
+    baseline?: Partial<SimulationRequest>;
+    seeds?: Array<{
+      id: string;
+      when: string;
+      input?: Record<string, unknown>;
+      state?: Record<string, unknown>;
+    }>;
+  };
   transaction?: {
     atomic: boolean;
     rollbackOnFailure: boolean;

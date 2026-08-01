@@ -134,6 +134,7 @@ async function main(argv: string[]): Promise<void> {
   if (command === "check") {
     const sourcePath = required(argv[1], "CRDD Markdown file");
     const compilation = await compileMarkdown(sourcePath);
+    generateTestManifest(compilation.ir);
     if (option(argv, "--format") === "json") {
       console.log(JSON.stringify({
         protocol: "crdd-ir/diagnostics-v0.1",
