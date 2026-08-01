@@ -46,16 +46,16 @@ export function generateTestManifest(ir: CrddIr): TestManifest {
   for (const [index, effect] of ir.operation.effects.entries()) {
     if (!effect.when || ownedBranches.has(effect.when)) continue;
     ownedBranches.add(effect.when);
-    const seed = conformanceSeed(ir, effect.when);
+    const seeds = conformanceSeeds(ir, effect.when);
     const selection = effect.when.match(/^input\.([A-Za-z_]\w*)\s*==\s*("(?:[^"\\]|\\.)*")$/);
-    if (!selection && !seed) {
+    if (!selection && seeds.length === 0) {
       throw new Error(
         `Cannot derive deterministic branch coverage for effect[${index}] condition "${effect.when}"; ` +
         "declare a conformance seed or use input.<enum> == <string literal>",
       );
     }
-    let arrange = structuredClone(baseline);
-    let branchId: string;
+    let selectedBaseline = structuredClone(baseline);
+    let generatedBranchId: string | undefined;
     if (selection) {
       const [, fieldName, literal] = selection;
       const field = ir.operation.input[fieldName];
@@ -63,34 +63,37 @@ export function generateTestManifest(ir: CrddIr): TestManifest {
       if (field?.type !== "string" || !field.enum?.includes(value)) {
         throw new Error(`Effect branch "${effect.when}" must select a declared input enum value`);
       }
-      arrange.input[fieldName] = value;
-      branchId = `${slug(ir.operation.id)}-branch-${slug(fieldName)}-${slug(value)}`;
-    } else {
-      branchId = `${slug(ir.operation.id)}-branch-${slug(seed!.id)}`;
+      selectedBaseline.input[fieldName] = value;
+      generatedBranchId = `${slug(ir.operation.id)}-branch-${slug(fieldName)}-${slug(value)}`;
     }
-    if (seed) arrange = mergeFixture(arrange, seed);
-    if (seed) assertFixtureValues(ir, seed, `conformance seed "${seed.id}"`);
-    if (evaluateExpression(effect.when, arrange as unknown as Record<string, unknown>) !== true) {
-      throw new Error(`Conformance seed "${seed?.id ?? "<generated>"}" does not select effect branch "${effect.when}"`);
+    const variants = seeds.length > 0 ? seeds : [undefined];
+    for (const seed of variants) {
+      const arrange = seed ? mergeFixture(selectedBaseline, seed) : structuredClone(selectedBaseline);
+      if (seed) assertFixtureValues(ir, seed, `conformance seed "${seed.id}"`);
+      if (evaluateExpression(effect.when, arrange as unknown as Record<string, unknown>) !== true) {
+        throw new Error(`Conformance seed "${seed?.id ?? "<generated>"}" does not select effect branch "${effect.when}"`);
+      }
+      const conflicting = ir.operation.requires.filter((requirement) => !requirementSatisfied(requirement, arrange));
+      if (conflicting.length > 0) {
+        throw new Error(
+          (seed
+            ? `Conformance seed "${seed.id}" for effect branch "${effect.when}" is invalid; Requires conflict: `
+            : `Cannot cover effect branch "${effect.when}" because Requires conflict: `) +
+          conflicting.map((item) => item.id).join(", "),
+        );
+      }
+      cases.push({
+        id: seed
+          ? `${slug(ir.operation.id)}-branch-${slug(seed.id)}`
+          : generatedBranchId!,
+        description: `effect branch ${effect.when}${seed ? ` seed ${seed.id}` : ""} is selected atomically`,
+        arrange,
+        expect: { ok: true },
+      });
     }
-    const conflicting = ir.operation.requires.filter((requirement) =>
-      !requirementSatisfied(requirement, arrange)
-    );
-    if (conflicting.length > 0) {
-      throw new Error(
-        (seed
-          ? `Conformance seed "${seed.id}" for effect branch "${effect.when}" is invalid; Requires conflict: `
-          : `Cannot cover effect branch "${effect.when}" because Requires conflict: `) +
-        conflicting.map((item) => item.id).join(", "),
-      );
-    }
-    cases.push({
-      id: branchId,
-      description: `effect branch ${effect.when} is selected atomically`,
-      arrange,
-      expect: { ok: true },
-    });
   }
+
+  cases.push(...generateCombinationCoverage(ir, baseline));
 
   for (const requirement of ir.operation.requires) {
     const requirementBaseline = selectRequirementBranch(ir, requirement, baseline);
@@ -761,7 +764,7 @@ function selectRequirementBranch(
   baseline: SimulationRequest,
 ): SimulationRequest {
   if (!requirement.when) return baseline;
-  const seed = conformanceSeed(ir, requirement.when);
+  const seed = conformanceSeeds(ir, requirement.when)[0];
   const selection = requirement.when.match(/^input\.([A-Za-z_]\w*)\s*==\s*("(?:[^"\\]|\\.)*")$/);
   if (!selection && !seed) {
     throw new Error(
@@ -809,21 +812,109 @@ function validateConformancePlan(ir: CrddIr): void {
     ...ir.operation.effects.flatMap((effect) => effect.when ? [effect.when] : []),
     ...ir.operation.requires.flatMap((requirement) => requirement.when ? [requirement.when] : []),
   ]);
-  const seen = new Set<string>();
   for (const seed of plan.seeds ?? []) {
-    if (seen.has(seed.when)) {
-      throw new Error(`Conformance seeds must not duplicate normalized condition "${seed.when}"`);
-    }
-    seen.add(seed.when);
     if (!ownedConditions.has(seed.when)) {
       throw new Error(`Conformance seed "${seed.id}" does not match an effect or Requires condition`);
     }
     assertFixtureValues(ir, seed, `conformance seed "${seed.id}"`);
   }
+  for (const coverage of plan.coverage ?? []) validateCoverageDeclaration(ir, coverage);
 }
 
-function conformanceSeed(ir: CrddIr, when: string) {
-  return ir.operation.conformance?.seeds?.find((seed) => seed.when === when);
+function conformanceSeeds(ir: CrddIr, when: string) {
+  return ir.operation.conformance?.seeds?.filter((seed) => seed.when === when) ?? [];
+}
+
+function validateCoverageDeclaration(
+  ir: CrddIr,
+  coverage: NonNullable<NonNullable<CrddIr["operation"]["conformance"]>["coverage"]>[number],
+): void {
+  if (new Set(coverage.fields).size !== coverage.fields.length) {
+    throw new Error(`Conformance coverage "${coverage.id}" contains duplicate fields`);
+  }
+  for (const reference of coverage.fields) {
+    const field = fieldDefinition(ir, reference);
+    if (!field) throw new Error(`Conformance coverage "${coverage.id}" references undefined field "${reference}"`);
+    if (field.type !== "boolean" && !(field.type === "string" && field.enum && field.enum.length > 0)) {
+      throw new Error(
+        `Conformance coverage "${coverage.id}" field "${reference}" must be boolean or a string enum`,
+      );
+    }
+  }
+}
+
+function generateCombinationCoverage(ir: CrddIr, baseline: SimulationRequest): TestCase[] {
+  return (ir.operation.conformance?.coverage ?? []).flatMap((coverage) => {
+    const domains = coverage.fields.map((reference) => {
+      const field = fieldDefinition(ir, reference)!;
+      return field.type === "boolean" ? [false, true] : [...field.enum!];
+    });
+    const candidateCount = domains.reduce((total, values) => total * values.length, 1);
+    if (!Number.isSafeInteger(candidateCount) || candidateCount > 65_536) {
+      throw new Error(
+        `Conformance coverage "${coverage.id}" has ${candidateCount} candidate combinations; maximum is 65536`,
+      );
+    }
+    const combinations: SimulationRequest[] = [];
+    const enumerate = (index: number, candidate: SimulationRequest): void => {
+      if (index === coverage.fields.length) {
+        if (coverage.when &&
+            evaluateExpression(coverage.when, candidate as unknown as Record<string, unknown>) !== true) return;
+        if (ir.operation.requires.every((requirement) => requirementSatisfied(requirement, candidate))) {
+          combinations.push(candidate);
+        }
+        return;
+      }
+      for (const value of domains[index]) {
+        const next = structuredClone(candidate);
+        setPath(next as unknown as Record<string, unknown>, coverage.fields[index], value);
+        enumerate(index + 1, next);
+      }
+    };
+    enumerate(0, structuredClone(baseline));
+    if (combinations.length === 0) {
+      throw new Error(`Conformance coverage "${coverage.id}" has no legal combination after Requires filtering`);
+    }
+    combinations.sort((left, right) => canonicalRequest(left).localeCompare(canonicalRequest(right)));
+    const selected = coverage.strategy === "exhaustive"
+      ? combinations
+      : selectPairwise(coverage.fields, combinations);
+    return selected.map((arrange, index) => ({
+      id: `${slug(ir.operation.id)}-coverage-${slug(coverage.id)}-${String(index + 1).padStart(3, "0")}`,
+      description: `${coverage.strategy} coverage ${coverage.id} legal combination ${index + 1}`,
+      arrange,
+      expect: { ok: true as const },
+    }));
+  });
+}
+
+function selectPairwise(fields: string[], candidates: SimulationRequest[]): SimulationRequest[] {
+  const pairs = (candidate: SimulationRequest): Set<string> => {
+    const result = new Set<string>();
+    for (let left = 0; left < fields.length; left += 1) {
+      for (let right = left + 1; right < fields.length; right += 1) {
+        result.add(`${fields[left]}=${canonicalJson(getPath(candidate, fields[left]))}|` +
+          `${fields[right]}=${canonicalJson(getPath(candidate, fields[right]))}`);
+      }
+    }
+    return result;
+  };
+  const candidatePairs = candidates.map((candidate) => pairs(candidate));
+  const uncovered = new Set(candidatePairs.flatMap((items) => [...items]));
+  const selected: SimulationRequest[] = [];
+  const remaining = candidates.map((candidate, index) => ({ candidate, index }));
+  while (uncovered.size > 0) {
+    remaining.sort((left, right) => {
+      const leftScore = [...candidatePairs[left.index]].filter((pair) => uncovered.has(pair)).length;
+      const rightScore = [...candidatePairs[right.index]].filter((pair) => uncovered.has(pair)).length;
+      return rightScore - leftScore || canonicalRequest(left.candidate).localeCompare(canonicalRequest(right.candidate));
+    });
+    const best = remaining.shift();
+    if (!best) break;
+    selected.push(best.candidate);
+    for (const pair of candidatePairs[best.index]) uncovered.delete(pair);
+  }
+  return selected;
 }
 
 function mergeFixture(

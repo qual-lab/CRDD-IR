@@ -149,6 +149,16 @@ export function validateIr(value: unknown): Diagnostic[] {
       validateBooleanExpression(seed.when, path, input, state, diagnostics);
     });
   }
+  if (isRecord(operation.conformance) && Array.isArray(operation.conformance.coverage)) {
+    const input = isRecord(operation.input) ? operation.input as Record<string, FieldDefinition> : {};
+    const state = isRecord(operation.state) ? operation.state as Record<string, FieldDefinition> : {};
+    operation.conformance.coverage.forEach((coverage, index) => {
+      if (!isRecord(coverage) || typeof coverage.when !== "string") return;
+      const path = `$.operation.conformance.coverage[${index}].when`;
+      validateExpressionReferences(coverage.when, path, input, state, diagnostics);
+      validateBooleanExpression(coverage.when, path, input, state, diagnostics);
+    });
+  }
   validatePortableRules(operation.portableRules, errorCodes, diagnostics);
 
   if (kind !== "query" && !isRecord(operation.transaction)) {

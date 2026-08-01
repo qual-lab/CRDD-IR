@@ -19,13 +19,36 @@ test("reviewable seeds cover branches that require coordinated field values dete
   assert.deepEqual(first, second);
 
   const one = first.cases.find((item) => item.id.endsWith("branch-count-band-one"));
-  const two = first.cases.find((item) => item.id.endsWith("branch-count-band-two"));
-  assert.deepEqual(one?.arrange.input, {
+  const oneA = first.cases.find((item) => item.id.endsWith("branch-one-signal-a"));
+  const oneB = first.cases.find((item) => item.id.endsWith("branch-one-signal-b"));
+  const two = first.cases.find((item) => item.id.endsWith("branch-two-signals-a-b"));
+  assert.equal(one, undefined);
+  assert.deepEqual(oneA?.arrange.input, {
     count_band: "one", signal_a: true, signal_b: false, signal_c: false,
+  });
+  assert.deepEqual(oneB?.arrange.input, {
+    count_band: "one", signal_a: false, signal_b: true, signal_c: false,
   });
   assert.deepEqual(two?.arrange.input, {
     count_band: "two", signal_a: true, signal_b: true, signal_c: false,
   });
+});
+
+test("exhaustive and pairwise coverage retain only legal deterministic combinations", async () => {
+  const { ir } = await compileMarkdown(source);
+  const exhaustive = generateTestManifest(ir).cases.filter((item) =>
+    item.id.includes("coverage-legal-count-signals")
+  );
+  assert.equal(exhaustive.length, 7);
+  assert.ok(exhaustive.every((item) => item.expect.ok));
+
+  const pairwiseIr = structuredClone(ir);
+  pairwiseIr.operation.conformance!.coverage![0].strategy = "pairwise";
+  const first = generateTestManifest(pairwiseIr).cases.filter((item) => item.id.includes("coverage-"));
+  const second = generateTestManifest(pairwiseIr).cases.filter((item) => item.id.includes("coverage-"));
+  assert.deepEqual(first, second);
+  assert.ok(first.length <= exhaustive.length);
+  assert.ok(first.length > 0);
 });
 
 test("invalid or absent seeds do not legalize a branch that violates Requires", async () => {

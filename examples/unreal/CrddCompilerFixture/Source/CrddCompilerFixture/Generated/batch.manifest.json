@@ -66,7 +66,7 @@
     {
       "id": "ClassifyRecord",
       "source": "test/fixtures/contracts/multi-field-conformance.md",
-      "digest": "f651d71f1a145b40486e0cf79ef6cd7a33051d7e9e6796a5a0bef1406c41c656",
+      "digest": "32ccd6cc80c904ba6cf76a584a3e207b770c4d3dcaac3dd62e13fa738f4767f6",
       "outputDirectory": ".",
       "files": [
         {
@@ -87,11 +87,11 @@
         },
         {
           "path": "ClassifyRecord.generated.h",
-          "sha256": "5e6a6cdd0527b769d0178194d7afda4d4799d7162e215500d12aacc4ca75b68e"
+          "sha256": "fbe03745174abb19280e9ccdc228bdaadf41be2cfd5d7b0a1703afe162e9aa03"
         },
         {
           "path": "ClassifyRecordConformance.spec.cpp",
-          "sha256": "6344fd87ba2118f297a4ef28a16c6b00187c3f41459624e2bf4f6b72fa83a880"
+          "sha256": "16f24f892b35b84ef69f7b1bd9d7a6122d05201b162de0ef7cb67ac2fdf3d78c"
         }
       ]
     },

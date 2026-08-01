@@ -67,9 +67,9 @@ bool FCrddClassifyRecordPortableConformanceTest::RunTest(const FString&)
         State.Accepted = false;
         State.Marked = false;
         const FCrddClassifyRecordResult Result = FCrddClassifyRecordOperation::Execute(Input, State);
-        TestTrue(TEXT("case 3: classify-record-branch-count-band-one success"), Result.bSucceeded);
+        TestTrue(TEXT("case 3: classify-record-branch-one-signal-a success"), Result.bSucceeded);
         TestEqual(
-            TEXT("case 3: classify-record-branch-count-band-one error"),
+            TEXT("case 3: classify-record-branch-one-signal-a error"),
             FCrddClassifyRecordOperation::ErrorCode(Result.Error),
             TEXT("")
         );
@@ -77,7 +77,30 @@ bool FCrddClassifyRecordPortableConformanceTest::RunTest(const FString&)
         {
             TestEqual(TEXT("case 3: rollback"), Result.FailedRequirement, TEXT(""));
         }
-        TestTrue(TEXT("case 3: classify-record-branch-count-band-one trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
+        TestTrue(TEXT("case 3: classify-record-branch-one-signal-a trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
+    }
+
+    {
+        FCrddClassifyRecordInput Input;
+        FCrddClassifyRecordState State;
+        Input.CountBand = TEXT("one");
+        Input.SignalA = false;
+        Input.SignalB = true;
+        Input.SignalC = false;
+        State.Accepted = false;
+        State.Marked = false;
+        const FCrddClassifyRecordResult Result = FCrddClassifyRecordOperation::Execute(Input, State);
+        TestTrue(TEXT("case 4: classify-record-branch-one-signal-b success"), Result.bSucceeded);
+        TestEqual(
+            TEXT("case 4: classify-record-branch-one-signal-b error"),
+            FCrddClassifyRecordOperation::ErrorCode(Result.Error),
+            TEXT("")
+        );
+        if (!Result.bSucceeded)
+        {
+            TestEqual(TEXT("case 4: rollback"), Result.FailedRequirement, TEXT(""));
+        }
+        TestTrue(TEXT("case 4: classify-record-branch-one-signal-b trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
     }
 
     {
@@ -90,17 +113,17 @@ bool FCrddClassifyRecordPortableConformanceTest::RunTest(const FString&)
         State.Accepted = false;
         State.Marked = false;
         const FCrddClassifyRecordResult Result = FCrddClassifyRecordOperation::Execute(Input, State);
-        TestTrue(TEXT("case 4: classify-record-branch-count-band-two success"), Result.bSucceeded);
+        TestTrue(TEXT("case 5: classify-record-branch-two-signals-a-b success"), Result.bSucceeded);
         TestEqual(
-            TEXT("case 4: classify-record-branch-count-band-two error"),
+            TEXT("case 5: classify-record-branch-two-signals-a-b error"),
             FCrddClassifyRecordOperation::ErrorCode(Result.Error),
             TEXT("")
         );
         if (!Result.bSucceeded)
         {
-            TestEqual(TEXT("case 4: rollback"), Result.FailedRequirement, TEXT(""));
+            TestEqual(TEXT("case 5: rollback"), Result.FailedRequirement, TEXT(""));
         }
-        TestTrue(TEXT("case 4: classify-record-branch-count-band-two trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
+        TestTrue(TEXT("case 5: classify-record-branch-two-signals-a-b trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
     }
 
     {
@@ -113,17 +136,178 @@ bool FCrddClassifyRecordPortableConformanceTest::RunTest(const FString&)
         State.Accepted = false;
         State.Marked = false;
         const FCrddClassifyRecordResult Result = FCrddClassifyRecordOperation::Execute(Input, State);
-        TestTrue(TEXT("case 5: classify-record-branch-one-signal-a-marked success"), Result.bSucceeded);
+        TestTrue(TEXT("case 6: classify-record-branch-one-signal-a-marked success"), Result.bSucceeded);
         TestEqual(
-            TEXT("case 5: classify-record-branch-one-signal-a-marked error"),
+            TEXT("case 6: classify-record-branch-one-signal-a-marked error"),
             FCrddClassifyRecordOperation::ErrorCode(Result.Error),
             TEXT("")
         );
         if (!Result.bSucceeded)
         {
-            TestEqual(TEXT("case 5: rollback"), Result.FailedRequirement, TEXT(""));
+            TestEqual(TEXT("case 6: rollback"), Result.FailedRequirement, TEXT(""));
         }
-        TestTrue(TEXT("case 5: classify-record-branch-one-signal-a-marked trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
+        TestTrue(TEXT("case 6: classify-record-branch-one-signal-a-marked trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
+    }
+
+    {
+        FCrddClassifyRecordInput Input;
+        FCrddClassifyRecordState State;
+        Input.CountBand = TEXT("none");
+        Input.SignalA = false;
+        Input.SignalB = false;
+        Input.SignalC = false;
+        State.Accepted = false;
+        State.Marked = false;
+        const FCrddClassifyRecordResult Result = FCrddClassifyRecordOperation::Execute(Input, State);
+        TestTrue(TEXT("case 7: classify-record-coverage-legal-count-signals-001 success"), Result.bSucceeded);
+        TestEqual(
+            TEXT("case 7: classify-record-coverage-legal-count-signals-001 error"),
+            FCrddClassifyRecordOperation::ErrorCode(Result.Error),
+            TEXT("")
+        );
+        if (!Result.bSucceeded)
+        {
+            TestEqual(TEXT("case 7: rollback"), Result.FailedRequirement, TEXT(""));
+        }
+        TestTrue(TEXT("case 7: classify-record-coverage-legal-count-signals-001 trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
+    }
+
+    {
+        FCrddClassifyRecordInput Input;
+        FCrddClassifyRecordState State;
+        Input.CountBand = TEXT("one");
+        Input.SignalA = false;
+        Input.SignalB = false;
+        Input.SignalC = true;
+        State.Accepted = false;
+        State.Marked = false;
+        const FCrddClassifyRecordResult Result = FCrddClassifyRecordOperation::Execute(Input, State);
+        TestTrue(TEXT("case 8: classify-record-coverage-legal-count-signals-002 success"), Result.bSucceeded);
+        TestEqual(
+            TEXT("case 8: classify-record-coverage-legal-count-signals-002 error"),
+            FCrddClassifyRecordOperation::ErrorCode(Result.Error),
+            TEXT("")
+        );
+        if (!Result.bSucceeded)
+        {
+            TestEqual(TEXT("case 8: rollback"), Result.FailedRequirement, TEXT(""));
+        }
+        TestTrue(TEXT("case 8: classify-record-coverage-legal-count-signals-002 trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
+    }
+
+    {
+        FCrddClassifyRecordInput Input;
+        FCrddClassifyRecordState State;
+        Input.CountBand = TEXT("one");
+        Input.SignalA = false;
+        Input.SignalB = true;
+        Input.SignalC = false;
+        State.Accepted = false;
+        State.Marked = false;
+        const FCrddClassifyRecordResult Result = FCrddClassifyRecordOperation::Execute(Input, State);
+        TestTrue(TEXT("case 9: classify-record-coverage-legal-count-signals-003 success"), Result.bSucceeded);
+        TestEqual(
+            TEXT("case 9: classify-record-coverage-legal-count-signals-003 error"),
+            FCrddClassifyRecordOperation::ErrorCode(Result.Error),
+            TEXT("")
+        );
+        if (!Result.bSucceeded)
+        {
+            TestEqual(TEXT("case 9: rollback"), Result.FailedRequirement, TEXT(""));
+        }
+        TestTrue(TEXT("case 9: classify-record-coverage-legal-count-signals-003 trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
+    }
+
+    {
+        FCrddClassifyRecordInput Input;
+        FCrddClassifyRecordState State;
+        Input.CountBand = TEXT("one");
+        Input.SignalA = true;
+        Input.SignalB = false;
+        Input.SignalC = false;
+        State.Accepted = false;
+        State.Marked = false;
+        const FCrddClassifyRecordResult Result = FCrddClassifyRecordOperation::Execute(Input, State);
+        TestTrue(TEXT("case 10: classify-record-coverage-legal-count-signals-004 success"), Result.bSucceeded);
+        TestEqual(
+            TEXT("case 10: classify-record-coverage-legal-count-signals-004 error"),
+            FCrddClassifyRecordOperation::ErrorCode(Result.Error),
+            TEXT("")
+        );
+        if (!Result.bSucceeded)
+        {
+            TestEqual(TEXT("case 10: rollback"), Result.FailedRequirement, TEXT(""));
+        }
+        TestTrue(TEXT("case 10: classify-record-coverage-legal-count-signals-004 trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
+    }
+
+    {
+        FCrddClassifyRecordInput Input;
+        FCrddClassifyRecordState State;
+        Input.CountBand = TEXT("two");
+        Input.SignalA = false;
+        Input.SignalB = true;
+        Input.SignalC = true;
+        State.Accepted = false;
+        State.Marked = false;
+        const FCrddClassifyRecordResult Result = FCrddClassifyRecordOperation::Execute(Input, State);
+        TestTrue(TEXT("case 11: classify-record-coverage-legal-count-signals-005 success"), Result.bSucceeded);
+        TestEqual(
+            TEXT("case 11: classify-record-coverage-legal-count-signals-005 error"),
+            FCrddClassifyRecordOperation::ErrorCode(Result.Error),
+            TEXT("")
+        );
+        if (!Result.bSucceeded)
+        {
+            TestEqual(TEXT("case 11: rollback"), Result.FailedRequirement, TEXT(""));
+        }
+        TestTrue(TEXT("case 11: classify-record-coverage-legal-count-signals-005 trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
+    }
+
+    {
+        FCrddClassifyRecordInput Input;
+        FCrddClassifyRecordState State;
+        Input.CountBand = TEXT("two");
+        Input.SignalA = true;
+        Input.SignalB = false;
+        Input.SignalC = true;
+        State.Accepted = false;
+        State.Marked = false;
+        const FCrddClassifyRecordResult Result = FCrddClassifyRecordOperation::Execute(Input, State);
+        TestTrue(TEXT("case 12: classify-record-coverage-legal-count-signals-006 success"), Result.bSucceeded);
+        TestEqual(
+            TEXT("case 12: classify-record-coverage-legal-count-signals-006 error"),
+            FCrddClassifyRecordOperation::ErrorCode(Result.Error),
+            TEXT("")
+        );
+        if (!Result.bSucceeded)
+        {
+            TestEqual(TEXT("case 12: rollback"), Result.FailedRequirement, TEXT(""));
+        }
+        TestTrue(TEXT("case 12: classify-record-coverage-legal-count-signals-006 trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
+    }
+
+    {
+        FCrddClassifyRecordInput Input;
+        FCrddClassifyRecordState State;
+        Input.CountBand = TEXT("two");
+        Input.SignalA = true;
+        Input.SignalB = true;
+        Input.SignalC = false;
+        State.Accepted = false;
+        State.Marked = false;
+        const FCrddClassifyRecordResult Result = FCrddClassifyRecordOperation::Execute(Input, State);
+        TestTrue(TEXT("case 13: classify-record-coverage-legal-count-signals-007 success"), Result.bSucceeded);
+        TestEqual(
+            TEXT("case 13: classify-record-coverage-legal-count-signals-007 error"),
+            FCrddClassifyRecordOperation::ErrorCode(Result.Error),
+            TEXT("")
+        );
+        if (!Result.bSucceeded)
+        {
+            TestEqual(TEXT("case 13: rollback"), Result.FailedRequirement, TEXT(""));
+        }
+        TestTrue(TEXT("case 13: classify-record-coverage-legal-count-signals-007 trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
     }
 
     {
@@ -136,17 +320,17 @@ bool FCrddClassifyRecordPortableConformanceTest::RunTest(const FString&)
         State.Accepted = false;
         State.Marked = false;
         const FCrddClassifyRecordResult Result = FCrddClassifyRecordOperation::Execute(Input, State);
-        TestFalse(TEXT("case 6: count-none-falsified success"), Result.bSucceeded);
+        TestFalse(TEXT("case 14: count-none-falsified success"), Result.bSucceeded);
         TestEqual(
-            TEXT("case 6: count-none-falsified error"),
+            TEXT("case 14: count-none-falsified error"),
             FCrddClassifyRecordOperation::ErrorCode(Result.Error),
             TEXT("COUNT_MISMATCH")
         );
         if (!Result.bSucceeded)
         {
-            TestEqual(TEXT("case 6: rollback"), Result.FailedRequirement, TEXT("count-none"));
+            TestEqual(TEXT("case 14: rollback"), Result.FailedRequirement, TEXT("count-none"));
         }
-        TestTrue(TEXT("case 6: count-none-falsified trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
+        TestTrue(TEXT("case 14: count-none-falsified trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
     }
 
     {
@@ -159,17 +343,17 @@ bool FCrddClassifyRecordPortableConformanceTest::RunTest(const FString&)
         State.Accepted = false;
         State.Marked = false;
         const FCrddClassifyRecordResult Result = FCrddClassifyRecordOperation::Execute(Input, State);
-        TestFalse(TEXT("case 7: count-one-falsified success"), Result.bSucceeded);
+        TestFalse(TEXT("case 15: count-one-falsified success"), Result.bSucceeded);
         TestEqual(
-            TEXT("case 7: count-one-falsified error"),
+            TEXT("case 15: count-one-falsified error"),
             FCrddClassifyRecordOperation::ErrorCode(Result.Error),
             TEXT("COUNT_MISMATCH")
         );
         if (!Result.bSucceeded)
         {
-            TestEqual(TEXT("case 7: rollback"), Result.FailedRequirement, TEXT("count-one"));
+            TestEqual(TEXT("case 15: rollback"), Result.FailedRequirement, TEXT("count-one"));
         }
-        TestTrue(TEXT("case 7: count-one-falsified trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
+        TestTrue(TEXT("case 15: count-one-falsified trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
     }
 
     {
@@ -182,17 +366,17 @@ bool FCrddClassifyRecordPortableConformanceTest::RunTest(const FString&)
         State.Accepted = false;
         State.Marked = false;
         const FCrddClassifyRecordResult Result = FCrddClassifyRecordOperation::Execute(Input, State);
-        TestFalse(TEXT("case 8: count-two-falsified success"), Result.bSucceeded);
+        TestFalse(TEXT("case 16: count-two-falsified success"), Result.bSucceeded);
         TestEqual(
-            TEXT("case 8: count-two-falsified error"),
+            TEXT("case 16: count-two-falsified error"),
             FCrddClassifyRecordOperation::ErrorCode(Result.Error),
             TEXT("COUNT_MISMATCH")
         );
         if (!Result.bSucceeded)
         {
-            TestEqual(TEXT("case 8: rollback"), Result.FailedRequirement, TEXT("count-two"));
+            TestEqual(TEXT("case 16: rollback"), Result.FailedRequirement, TEXT("count-two"));
         }
-        TestTrue(TEXT("case 8: count-two-falsified trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
+        TestTrue(TEXT("case 16: count-two-falsified trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
     }
 
     return true;

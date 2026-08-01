@@ -67,6 +67,14 @@ export async function compileMarkdown(path: string): Promise<CompilationResult> 
               when: normalizeWithContext(seed.when, fields, `conformance seed ${seed.id}`),
             })),
           } : {}),
+          ...(contract.operation.conformance.coverage ? {
+            coverage: contract.operation.conformance.coverage.map((coverage) => ({
+              ...structuredClone(coverage),
+              ...(coverage.when
+                ? { when: normalizeWithContext(coverage.when, fields, `conformance coverage ${coverage.id}`) }
+                : {}),
+            })),
+          } : {}),
         },
       } : {}),
       ...(contract.operation.transaction ? {

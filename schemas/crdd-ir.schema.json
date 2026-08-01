@@ -90,6 +90,23 @@
             "anyOf": [{ "required": ["input"] }, { "required": ["state"] }],
             "additionalProperties": false
           }
+        },
+        "coverage": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "strategy", "fields"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "strategy": { "enum": ["pairwise", "exhaustive"] },
+              "fields": {
+                "type": "array", "minItems": 2, "uniqueItems": true,
+                "items": { "type": "string", "pattern": "^(input|state)\\.[A-Za-z_][A-Za-z0-9_.]*$" }
+              },
+              "when": { "type": "string", "minLength": 1 }
+            },
+            "additionalProperties": false
+          }
         }
       },
       "additionalProperties": false

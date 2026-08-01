@@ -31,6 +31,12 @@ export type SourceContract = {
         input?: Record<string, unknown>;
         state?: Record<string, unknown>;
       }>;
+      coverage?: Array<{
+        id: string;
+        strategy: "pairwise" | "exhaustive";
+        fields: string[];
+        when?: string;
+      }>;
     };
     transaction?: {
       atomic: boolean;
@@ -292,13 +298,12 @@ function validateConformance(value: unknown, add: AddDiagnostic): void {
     add("CRDD_SOURCE_TYPE", path, "must be an object");
     return;
   }
-  rejectUnknown(value, ["baseline", "seeds"], path, add);
+  rejectUnknown(value, ["baseline", "seeds", "coverage"], path, add);
   if (value.baseline !== undefined) validateFixtureValues(value.baseline, `${path}.baseline`, add);
   if (value.seeds !== undefined && !Array.isArray(value.seeds)) {
     add("CRDD_SOURCE_TYPE", `${path}.seeds`, "must be an array");
   } else if (Array.isArray(value.seeds)) {
     const ids = new Set<string>();
-    const conditions = new Set<string>();
     value.seeds.forEach((seed, index) => {
       const seedPath = `${path}.seeds[${index}]`;
       if (!isRecord(seed)) {
@@ -312,14 +317,36 @@ function validateConformance(value: unknown, add: AddDiagnostic): void {
         add("CRDD_SOURCE_DUPLICATE", `${seedPath}.id`, `duplicate conformance seed ID "${seed.id}"`);
       }
       if (typeof seed.id === "string") ids.add(seed.id);
-      if (typeof seed.when === "string" && conditions.has(seed.when)) {
-        add("CRDD_SOURCE_DUPLICATE", `${seedPath}.when`, `duplicate conformance seed condition "${seed.when}"`);
-      }
-      if (typeof seed.when === "string") conditions.add(seed.when);
       validateFixtureValues(seed, seedPath, add);
       if (seed.input === undefined && seed.state === undefined) {
         add("CRDD_SOURCE_REQUIRED", seedPath, "must define input or state values");
       }
+    });
+  }
+  if (value.coverage !== undefined && !Array.isArray(value.coverage)) {
+    add("CRDD_SOURCE_TYPE", `${path}.coverage`, "must be an array");
+  } else if (Array.isArray(value.coverage)) {
+    const ids = new Set<string>();
+    value.coverage.forEach((coverage, index) => {
+      const coveragePath = `${path}.coverage[${index}]`;
+      if (!isRecord(coverage)) {
+        add("CRDD_SOURCE_TYPE", coveragePath, "must be an object");
+        return;
+      }
+      rejectUnknown(coverage, ["id", "strategy", "fields", "when"], coveragePath, add);
+      requireString(coverage.id, `${coveragePath}.id`, add);
+      if (!['pairwise', 'exhaustive'].includes(String(coverage.strategy))) {
+        add("CRDD_SOURCE_TYPE", `${coveragePath}.strategy`, 'must be "pairwise" or "exhaustive"');
+      }
+      requireStringArray(coverage.fields, `${coveragePath}.fields`, add);
+      if (Array.isArray(coverage.fields) && coverage.fields.length < 2) {
+        add("CRDD_SOURCE_TYPE", `${coveragePath}.fields`, "must contain at least two fields");
+      }
+      if (coverage.when !== undefined) requireString(coverage.when, `${coveragePath}.when`, add);
+      if (typeof coverage.id === "string" && ids.has(coverage.id)) {
+        add("CRDD_SOURCE_DUPLICATE", `${coveragePath}.id`, `duplicate coverage ID "${coverage.id}"`);
+      }
+      if (typeof coverage.id === "string") ids.add(coverage.id);
     });
   }
 }

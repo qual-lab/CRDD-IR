@@ -223,6 +223,12 @@ export type Operation = {
       input?: Record<string, unknown>;
       state?: Record<string, unknown>;
     }>;
+    coverage?: Array<{
+      id: string;
+      strategy: "pairwise" | "exhaustive";
+      fields: string[];
+      when?: string;
+    }>;
   };
   transaction?: {
     atomic: boolean;

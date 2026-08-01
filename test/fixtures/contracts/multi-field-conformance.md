@@ -67,6 +67,13 @@ operation:
           signal_a: true
           signal_b: false
           signal_c: false
+      - id: one-signal-b
+        when: input.count_band == "one"
+        input:
+          count_band: one
+          signal_a: false
+          signal_b: true
+          signal_c: false
       - id: two-signals-a-b
         when: input.count_band == "two"
         input:
@@ -81,6 +88,10 @@ operation:
           signal_a: true
           signal_b: false
           signal_c: false
+    coverage:
+      - id: legal-count-signals
+        strategy: exhaustive
+        fields: [input.count_band, input.signal_a, input.signal_b, input.signal_c]
   transaction:
     atomic: true
     rollback_on_failure: true

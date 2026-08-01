@@ -16,6 +16,10 @@ Do not tag, publish, or merge to `main` until release Go is recorded.
 
 - [ ] a reviewed baseline is validated without solver mutation
 - [ ] a branch seed can coordinate multiple input and state values
+- [ ] multiple seed IDs can own one normalized condition and remain independent
+- [ ] exhaustive coverage emits every legal combination
+- [ ] pairwise coverage covers every legal value pair deterministically
+- [ ] combination coverage excludes every Requires-invalid candidate
 - [ ] unknown fields, invalid values, unused or duplicate seeds fail closed
 - [ ] seed application never weakens or bypasses Requires
 - [ ] invalid seeds report their ID and conflicting Requires
