@@ -160,6 +160,7 @@ CRDD Markdownが正本です。Internal IR instanceを専用フォルダへ恒�
 - [Portable collection and opaque-data contracts](docs/portable-data-contracts.md)
 - [Compound values and reversible Evidence](docs/compound-evidence.md)
 - [Conditional effects and branch requirements](docs/conditional-effects.md)
+- [Reviewable multi-field conformance fixtures](docs/conformance-fixtures.md)
 - [Project configuration and reviewed adoption](docs/project-configuration.md)
 - [Verify lock events](docs/verify-events.md)
 - [v0.1.2 release notes](docs/releases/v0.1.2.md)
@@ -170,7 +171,8 @@ CRDD Markdownが正本です。Internal IR instanceを専用フォルダへ恒�
 - [v0.5.0 release notes](docs/releases/v0.5.0.md)
 - [v0.6.0 release notes](docs/releases/v0.6.0.md)
 - [v0.7.0 release notes](docs/releases/v0.7.0.md)
-- [v0.7.0 release checklist](docs/release-checklist.md)
+- [v0.8.0 release notes](docs/releases/v0.8.0.md)
+- [v0.8.0 release checklist](docs/release-checklist.md)
 - [Unreal fixture](examples/unreal/CrddCompilerFixture/README.md)
 - [Unity fixture](examples/unity/CrddCompilerFixture/README.md)
 
