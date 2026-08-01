@@ -40,6 +40,7 @@
           "items": { "$ref": "#/$defs/effect" }
         },
         "errors": { "type": "array" },
+        "conformance": { "$ref": "#/$defs/irConformance" },
         "execution": { "$ref": "#/$defs/execution" },
         "emits": {
           "type": "array",
@@ -63,6 +64,53 @@
     }
   },
   "$defs": {
+    "fixtureValues": {
+      "type": "object",
+      "properties": {
+        "input": { "type": "object" },
+        "state": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "irConformance": {
+      "type": "object",
+      "properties": {
+        "baseline": { "$ref": "#/$defs/fixtureValues" },
+        "seeds": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "when"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "when": { "type": "string", "minLength": 1 },
+              "input": { "type": "object" },
+              "state": { "type": "object" }
+            },
+            "anyOf": [{ "required": ["input"] }, { "required": ["state"] }],
+            "additionalProperties": false
+          }
+        },
+        "coverage": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "strategy", "fields"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "strategy": { "enum": ["pairwise", "exhaustive"] },
+              "fields": {
+                "type": "array", "minItems": 2, "uniqueItems": true,
+                "items": { "type": "string", "pattern": "^(input|state)\\.[A-Za-z_][A-Za-z0-9_.]*$" }
+              },
+              "when": { "type": "string", "minLength": 1 }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
     "requirement": {
       "type": "object",
       "required": ["id", "expression", "error"],

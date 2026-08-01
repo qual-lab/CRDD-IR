@@ -27,7 +27,7 @@
         },
         {
           "path": "AppendRecord.generated.h",
-          "sha256": "b52459f0e6ece7e542465fc856295b21dd7c768ded27ad43afbabfe6445d5ce5"
+          "sha256": "50599696079cde0ce3ba32577ea120e2210b925404eb1b0a6239dab04468ea49"
         },
         {
           "path": "AppendRecord.numeric.generated.spec.cpp",
@@ -59,7 +59,39 @@
         },
         {
           "path": "ApplyRecord.generated.h",
-          "sha256": "362fc34be95bcb27f4a80a5b81af4f2d94990e9076db9863736a929a6b83b580"
+          "sha256": "d2129db8fe57896822b57f245c818d7dbfc81b0d0cb48a3adb36644256d0bd06"
+        }
+      ]
+    },
+    {
+      "id": "ClassifyRecord",
+      "source": "test/fixtures/contracts/multi-field-conformance.md",
+      "digest": "32ccd6cc80c904ba6cf76a584a3e207b770c4d3dcaac3dd62e13fa738f4767f6",
+      "outputDirectory": ".",
+      "files": [
+        {
+          "path": "ClassifyRecord.bridge.generated.cpp",
+          "sha256": "85c024cf4b92b881c805446115eeebffdc4dda6c27534b14ecb232f5426174e8"
+        },
+        {
+          "path": "ClassifyRecord.bridge.generated.h",
+          "sha256": "48f0b8365b237a16758d374359a00d11e9e411c20fb9df1f6d06e774aab5a9b5"
+        },
+        {
+          "path": "ClassifyRecord.bridge.generated.spec.cpp",
+          "sha256": "774777c19f3698828e35588273950eafb917e1e9a467ab866420c1ac1debc279"
+        },
+        {
+          "path": "ClassifyRecord.generated.cpp",
+          "sha256": "e8c3b6cbd7ab7d20ee51f6677a9f5fe41122be668ac9c789c3967daa4660a44c"
+        },
+        {
+          "path": "ClassifyRecord.generated.h",
+          "sha256": "fbe03745174abb19280e9ccdc228bdaadf41be2cfd5d7b0a1703afe162e9aa03"
+        },
+        {
+          "path": "ClassifyRecordConformance.spec.cpp",
+          "sha256": "16f24f892b35b84ef69f7b1bd9d7a6122d05201b162de0ef7cb67ac2fdf3d78c"
         }
       ]
     },
@@ -87,7 +119,7 @@
         },
         {
           "path": "PreserveEvidence.generated.h",
-          "sha256": "960c36be3063ffcf12d3b17ceb3a9216db746f94f8def1f9acc14993a61f4eb0"
+          "sha256": "837cdb701e9a677a46bd842d2764c378011403843cc30b111c42a50c6aa8a09f"
         },
         {
           "path": "PreserveEvidenceConformance.spec.cpp",
@@ -119,7 +151,7 @@
         },
         {
           "path": "ResolveDecision.generated.h",
-          "sha256": "9927f0d825a4d1a6c50b626747af2d120613129ba8681120c42f4f165f260d11"
+          "sha256": "56d92af4a5f6ee51dd259af89b27e62ad7892ba8ecd13da7da8905fe0196d944"
         },
         {
           "path": "ResolveDecisionConformance.spec.cpp",
@@ -151,7 +183,7 @@
         },
         {
           "path": "ReviseRecord.generated.h",
-          "sha256": "ad4c0feff01370cabd8edd355e90c0f4180eb858dd55ce0612d5b6efb6ceb4e5"
+          "sha256": "f27f97977ecf19b5be006038480025e7d65e5a1578be72d99f573793f2460006"
         }
       ]
     },
@@ -179,7 +211,7 @@
         },
         {
           "path": "SynchronizeModel.generated.h",
-          "sha256": "65cca09989f15e72bf92d09e7c53a66c93b2c89ff4e139ef2cd68acc5f19b943"
+          "sha256": "b2aa00412c89d97e9c89c564fa1b2acc63da7092e64f6f3a467dcb5d60083bd9"
         },
         {
           "path": "SynchronizeModelConformance.spec.cpp",
