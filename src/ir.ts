@@ -850,6 +850,8 @@ function validateBooleanExpression(
     const typeOf = (node: ExpressionNode): FieldDefinition["type"] | "unknown" => {
       if (node.kind === "literal") return typeof node.value as "number" | "string" | "boolean";
       if (node.kind === "reference") return fieldForReference(node.path, input, state)?.type ?? "unknown";
+      if (node.kind === "quantifier") return "boolean";
+      if (node.kind === "aggregate" || node.kind === "joinAggregate") return "integer";
       if (node.kind === "unary") return node.operator === "!" ? "boolean" : typeOf(node.operand);
       if (["==", "!=", ">", ">=", "<", "<=", "&&", "||"].includes(node.operator)) {
         return "boolean";
@@ -918,7 +920,8 @@ function validateAssignmentUnits(
 ): void {
   try {
     const expressionType = inferExpressionType(parseSourceExpression(expression), input, state);
-    if (expressionType === "boolean" && target.type === "boolean") return;
+    if (expressionType === target.type ||
+        (["number", "integer"].includes(expressionType) && ["number", "integer"].includes(target.type))) return;
   } catch {
     // Reference and expression validators report the detailed diagnostic.
   }
@@ -944,6 +947,7 @@ function inferExpressionType(
   if (node.kind === "literal") return typeof node.value as "number" | "string" | "boolean";
   if (node.kind === "reference") return fieldForReference(node.path, input, state)?.type ?? "unknown";
   if (node.kind === "quantifier") return "boolean";
+  if (node.kind === "aggregate" || node.kind === "joinAggregate") return "integer";
   if (node.kind === "unary") return node.operator === "!" ? "boolean" : inferExpressionType(node.operand, input, state);
   if (["==", "!=", ">", ">=", "<", "<=", "&&", "||"].includes(node.operator)) return "boolean";
   return inferExpressionType(node.left, input, state);
@@ -1019,6 +1023,9 @@ function validateField(rawField: Record<string, unknown>, path: string, diagnost
   if (typeof rawField.type !== "string" || !allowedFieldTypes.has(rawField.type)) {
     diagnostics.push(error(`${path}.type`, "has an unsupported field type"));
     return;
+  }
+  if (rawField.visibility !== undefined && rawField.visibility !== "private") {
+    diagnostics.push(error(`${path}.visibility`, 'must be "private" when declared'));
   }
   if (rawField.minimum !== undefined && typeof rawField.minimum !== "number") {
     diagnostics.push(error(`${path}.minimum`, "must be a number"));
@@ -1126,6 +1133,14 @@ function validateField(rawField: Record<string, unknown>, path: string, diagnost
       return;
     }
     validateField(rawField.values, `${path}.values`, diagnostics);
+    for (const key of ["minItems", "maxItems"] as const) {
+      if (rawField[key] !== undefined && (!Number.isInteger(rawField[key]) || rawField[key] < 0)) {
+        diagnostics.push(error(`${path}.${key}`, "must be a non-negative integer"));
+      }
+    }
+    if (typeof rawField.minItems === "number" && typeof rawField.maxItems === "number" && rawField.minItems > rawField.maxItems) {
+      diagnostics.push(error(path, "minItems must be <= maxItems"));
+    }
   } else if (rawField.type === "object") {
     if (!isRecord(rawField.properties) || Object.keys(rawField.properties).length === 0) {
       diagnostics.push(error(`${path}.properties`, "must be a non-empty object"));

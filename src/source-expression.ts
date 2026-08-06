@@ -6,7 +6,8 @@ type Token =
   | { kind: "number"; value: number; unit?: string; offset: number }
   | { kind: "string"; value: string; offset: number }
   | { kind: "boolean"; value: boolean; offset: number }
-  | { kind: "function"; value: "all" | "any"; offset: number }
+  | { kind: "function"; value: "all" | "any" | "count" | "sum" | "join_count" | "join_sum"; offset: number }
+  | { kind: "identifier"; value: string; offset: number }
   | { kind: "operator"; value: string; offset: number }
   | { kind: "paren"; value: "(" | ")"; offset: number }
   | { kind: "comma"; value: ","; offset: number };
@@ -16,11 +17,31 @@ export type ExpressionNode =
   | { kind: "literal"; value: number | string | boolean; unit?: string }
   | { kind: "unary"; operator: "!" | "-"; operand: ExpressionNode }
   | { kind: "binary"; operator: string; left: ExpressionNode; right: ExpressionNode }
-  | { kind: "quantifier"; operator: "all" | "any"; collection: ExpressionNode; predicate: ExpressionNode };
+  | { kind: "quantifier"; operator: "all" | "any"; collection: ExpressionNode; predicate: ExpressionNode }
+  | {
+      kind: "aggregate";
+      operator: "count" | "sum";
+      collection: ExpressionNode;
+      alias: string;
+      value?: ExpressionNode;
+      predicate: ExpressionNode;
+    }
+  | {
+      kind: "joinAggregate";
+      operator: "join_count" | "join_sum";
+      leftCollection: ExpressionNode;
+      leftAlias: string;
+      rightCollection: ExpressionNode;
+      rightAlias: string;
+      value?: ExpressionNode;
+      predicate: ExpressionNode;
+    };
 
 type ValueType = {
   kind: "number" | "boolean" | "string" | "array" | "object" | "map" | "union" | "opaque";
   unit?: string;
+  minimum?: number;
+  maximum?: number;
 };
 
 export function normalizeSourceExpression(
@@ -29,7 +50,12 @@ export function normalizeSourceExpression(
   unitRegistry: UnitRegistry = defaultUnitRegistry,
 ): string {
   const ast = parseSourceExpression(expression);
-  inferAndNormalize(ast, fields, unitRegistry);
+  const inferred = inferAndNormalize(ast, fields, unitRegistry);
+  if (containsAggregate(ast) && inferred.kind === "number" &&
+      (inferred.minimum === undefined || inferred.maximum === undefined ||
+       !Number.isSafeInteger(inferred.minimum) || !Number.isSafeInteger(inferred.maximum))) {
+    throw new Error("aggregate arithmetic requires statically safe minimum/maximum and collection bounds");
+  }
   return printExpression(ast);
 }
 
@@ -66,8 +92,17 @@ export function parseSourceExpression(expression: string): ExpressionNode {
   }
 
   function parseAdditive(): ExpressionNode {
-    let left = parseUnary();
+    let left = parseMultiplicative();
     while (tokens[cursor]?.kind === "operator" && ["+", "-"].includes(tokens[cursor].value)) {
+      const operator = tokens[cursor++].value;
+      left = { kind: "binary", operator, left, right: parseMultiplicative() };
+    }
+    return left;
+  }
+
+  function parseMultiplicative(): ExpressionNode {
+    let left = parseUnary();
+    while (tokens[cursor]?.kind === "operator" && ["*", "/"].includes(tokens[cursor].value)) {
       const operator = tokens[cursor++].value;
       left = { kind: "binary", operator, left, right: parseUnary() };
     }
@@ -92,15 +127,45 @@ export function parseSourceExpression(expression: string): ExpressionNode {
         throw syntaxError(expression, token.offset, `function ${token.value} requires (`);
       }
       const collection = parseOr();
-      if (tokens[cursor++]?.kind !== "comma") {
-        throw syntaxError(expression, token.offset, `function ${token.value} requires two arguments`);
+      if (tokens[cursor++]?.kind !== "comma") throw syntaxError(expression, token.offset, `function ${token.value} requires more arguments`);
+      if (token.value === "all" || token.value === "any") {
+        const predicate = parseOr();
+        const closing = tokens[cursor++];
+        if (closing?.kind !== "paren" || closing.value !== ")") throw syntaxError(expression, token.offset, `function ${token.value} requires closing )`);
+        return { kind: "quantifier", operator: token.value, collection, predicate };
       }
-      const predicate = parseOr();
+      const alias = tokens[cursor++];
+      if (alias?.kind !== "identifier") throw syntaxError(expression, token.offset, `function ${token.value} requires an item alias`);
+      if (tokens[cursor++]?.kind !== "comma") throw syntaxError(expression, token.offset, `function ${token.value} requires more arguments`);
+      if (token.value === "count" || token.value === "sum") {
+        const first = parseOr();
+        let value: ExpressionNode | undefined;
+        let predicate = first;
+        if (token.value === "sum") {
+          value = first;
+          if (tokens[cursor++]?.kind !== "comma") throw syntaxError(expression, token.offset, "function sum requires a predicate");
+          predicate = parseOr();
+        }
+        const closing = tokens[cursor++];
+        if (closing?.kind !== "paren" || closing.value !== ")") throw syntaxError(expression, token.offset, `function ${token.value} requires closing )`);
+        return { kind: "aggregate", operator: token.value, collection, alias: alias.value, ...(value ? { value } : {}), predicate };
+      }
+      const rightCollection = parseOr();
+      if (tokens[cursor++]?.kind !== "comma") throw syntaxError(expression, token.offset, `function ${token.value} requires a right alias`);
+      const rightAlias = tokens[cursor++];
+      if (rightAlias?.kind !== "identifier") throw syntaxError(expression, token.offset, `function ${token.value} requires a right alias`);
+      if (tokens[cursor++]?.kind !== "comma") throw syntaxError(expression, token.offset, `function ${token.value} requires more arguments`);
+      const first = parseOr();
+      let value: ExpressionNode | undefined;
+      let predicate = first;
+      if (token.value === "join_sum") {
+        value = first;
+        if (tokens[cursor++]?.kind !== "comma") throw syntaxError(expression, token.offset, "function join_sum requires a predicate");
+        predicate = parseOr();
+      }
       const closing = tokens[cursor++];
-      if (closing?.kind !== "paren" || closing.value !== ")") {
-        throw syntaxError(expression, token.offset, `function ${token.value} requires closing )`);
-      }
-      return { kind: "quantifier", operator: token.value, collection, predicate };
+      if (closing?.kind !== "paren" || closing.value !== ")") throw syntaxError(expression, token.offset, `function ${token.value} requires closing )`);
+      return { kind: "joinAggregate", operator: token.value, leftCollection: collection, leftAlias: alias.value, rightCollection, rightAlias: rightAlias.value, ...(value ? { value } : {}), predicate };
     }
     if (token.kind === "reference") return { kind: "reference", path: token.value };
     if (token.kind === "number") return { kind: "literal", value: token.value, unit: token.unit };
@@ -135,7 +200,7 @@ function tokenize(expression: string): Token[] {
       offset += whitespace[0].length;
       continue;
     }
-    const operator = rest.match(/^(&&|\|\||>=|<=|==|!=|>|<|\+|-|!)/);
+    const operator = rest.match(/^(&&|\|\||>=|<=|==|!=|>|<|\+|-|\*|\/|!)/);
     if (operator) {
       tokens.push({ kind: "operator", value: operator[1], offset });
       offset += operator[1].length;
@@ -164,13 +229,13 @@ function tokenize(expression: string): Token[] {
       offset += booleanLiteral[0].length;
       continue;
     }
-    const fn = rest.match(/^(all|any)\b/);
+    const fn = rest.match(/^(join_count|join_sum|all|any|count|sum)\b/);
     if (fn) {
-      tokens.push({ kind: "function", value: fn[1] as "all" | "any", offset });
+      tokens.push({ kind: "function", value: fn[1] as Extract<Token, { kind: "function" }>["value"], offset });
       offset += fn[0].length;
       continue;
     }
-    const reference = rest.match(/^(?:input|state|previous|item)\.[A-Za-z_][A-Za-z0-9_.]*/);
+    const reference = rest.match(/^[A-Za-z_][A-Za-z0-9_]*\.[A-Za-z_][A-Za-z0-9_.]*/);
     if (reference) {
       tokens.push({ kind: "reference", value: reference[0], offset });
       offset += reference[0].length;
@@ -186,6 +251,12 @@ function tokenize(expression: string): Token[] {
       offset += 1;
       continue;
     }
+    const identifier = rest.match(/^[A-Za-z_][A-Za-z0-9_]*/);
+    if (identifier) {
+      tokens.push({ kind: "identifier", value: identifier[0], offset });
+      offset += identifier[0].length;
+      continue;
+    }
     throw syntaxError(expression, offset, `unsupported syntax near "${rest.slice(0, 20)}"`);
   }
   return tokens;
@@ -199,11 +270,12 @@ function inferAndNormalize(
   if (node.kind === "reference") {
     const field = fields[node.path];
     if (!field) throw new Error(`references undefined field "${node.path}"`);
-    if (field.type === "integer" || field.type === "number") return { kind: "number", unit: field.unit };
+    if (field.type === "integer" || field.type === "number") return { kind: "number", unit: field.unit, minimum: field.minimum, maximum: field.maximum };
     return { kind: field.type, unit: field.unit };
   }
   if (node.kind === "literal") {
-    return { kind: typeof node.value as ValueType["kind"], unit: node.unit };
+    return { kind: typeof node.value as ValueType["kind"], unit: node.unit,
+      ...(typeof node.value === "number" ? { minimum: node.value, maximum: node.value } : {}) };
   }
   if (node.kind === "quantifier") {
     if (node.collection.kind !== "reference") throw new Error(`${node.operator} collection must be a reference`);
@@ -222,11 +294,43 @@ function inferAndNormalize(
     if (predicate.kind !== "boolean") throw new Error(`${node.operator} predicate must be boolean`);
     return { kind: "boolean" };
   }
+  if (node.kind === "aggregate") {
+    const collection = collectionDefinition(node.collection, fields, node.operator);
+    const item = collection.type === "array" ? collection.items : collection.values;
+    const scoped = withAlias(fields, node.alias, item);
+    const predicate = inferAndNormalize(node.predicate, scoped, unitRegistry);
+    if (predicate.kind !== "boolean") throw new Error(`${node.operator} predicate must be boolean`);
+    const limit = collection.maxItems;
+    if (limit === undefined) throw new Error(`${node.operator} collection requires maxItems for overflow proof`);
+    if (node.operator === "count") return { kind: "number", minimum: 0, maximum: limit };
+    const value = inferAndNormalize(node.value!, scoped, unitRegistry);
+    if (value.kind !== "number") throw new Error("sum value must be numeric");
+    if (value.minimum === undefined || value.maximum === undefined) throw new Error("sum value requires numeric minimum/maximum bounds");
+    return aggregateRange(value, limit);
+  }
+  if (node.kind === "joinAggregate") {
+    const leftCollection = collectionDefinition(node.leftCollection, fields, node.operator);
+    const rightCollection = collectionDefinition(node.rightCollection, fields, node.operator);
+    const left = leftCollection.type === "array" ? leftCollection.items : leftCollection.values;
+    const right = rightCollection.type === "array" ? rightCollection.items : rightCollection.values;
+    if (leftCollection.maxItems === undefined || rightCollection.maxItems === undefined) throw new Error(`${node.operator} collections require maxItems for overflow proof`);
+    const limit = leftCollection.maxItems * rightCollection.maxItems;
+    if (!Number.isSafeInteger(limit)) throw new Error(`${node.operator} pair count can overflow`);
+    if (node.leftAlias === node.rightAlias) throw new Error(`${node.operator} aliases must be distinct`);
+    const scoped = withAlias(withAlias(fields, node.leftAlias, left), node.rightAlias, right);
+    const predicate = inferAndNormalize(node.predicate, scoped, unitRegistry);
+    if (predicate.kind !== "boolean") throw new Error(`${node.operator} predicate must be boolean`);
+    if (node.operator === "join_count") return { kind: "number", minimum: 0, maximum: limit };
+    const value = inferAndNormalize(node.value!, scoped, unitRegistry);
+    if (value.kind !== "number") throw new Error("join_sum value must be numeric");
+    if (value.minimum === undefined || value.maximum === undefined) throw new Error("join_sum value requires numeric minimum/maximum bounds");
+    return aggregateRange(value, limit);
+  }
   if (node.kind === "unary") {
     const operand = inferAndNormalize(node.operand, fields, unitRegistry);
     if (node.operator === "!" && operand.kind !== "boolean") throw new Error("operator ! requires boolean");
     if (node.operator === "-" && operand.kind !== "number") throw new Error("unary - requires number");
-    return operand;
+    return node.operator === "-" ? { ...operand, minimum: operand.maximum === undefined ? undefined : -operand.maximum, maximum: operand.minimum === undefined ? undefined : -operand.minimum } : operand;
   }
 
   const left = inferAndNormalize(node.left, fields, unitRegistry);
@@ -244,9 +348,10 @@ function inferAndNormalize(
     }
     return { kind: "boolean" };
   }
-  if (node.operator === "+" || node.operator === "-") {
+  if (["+", "-", "*", "/"].includes(node.operator)) {
     normalizePair(node.left, left, node.right, right, unitRegistry);
-    return left.unit ? left : right;
+    if (left.kind !== "number") throw new Error(`operator ${node.operator} requires numeric operands`);
+    return arithmeticRange(node.operator, left, right);
   }
   throw new Error(`unsupported operator "${node.operator}"`);
 }
@@ -311,10 +416,60 @@ function printExpression(node: ExpressionNode, parentPrecedence = 0): string {
   if (node.kind === "quantifier") {
     return `${node.operator}(${printExpression(node.collection)}, ${printExpression(node.predicate)})`;
   }
+  if (node.kind === "aggregate") {
+    return `${node.operator}(${printExpression(node.collection)}, ${node.alias}, ${node.value ? `${printExpression(node.value)}, ` : ""}${printExpression(node.predicate)})`;
+  }
+  if (node.kind === "joinAggregate") {
+    return `${node.operator}(${printExpression(node.leftCollection)}, ${node.leftAlias}, ${printExpression(node.rightCollection)}, ${node.rightAlias}, ${node.value ? `${printExpression(node.value)}, ` : ""}${printExpression(node.predicate)})`;
+  }
 
   const precedence = operatorPrecedence(node.operator);
   const text = `${printExpression(node.left, precedence)} ${node.operator} ${printExpression(node.right, precedence + 1)}`;
   return precedence < parentPrecedence ? `(${text})` : text;
+}
+
+function collectionDefinition(node: ExpressionNode, fields: Record<string, FieldDefinition>, operator: string): Extract<FieldDefinition, { type: "array" | "map" }> {
+  if (node.kind !== "reference") throw new Error(`${operator} collection must be a reference`);
+  const collection = fields[node.path];
+  if (!collection || (collection.type !== "array" && collection.type !== "map")) throw new Error(`${operator} collection must reference an array or map`);
+  return collection;
+}
+
+function aggregateRange(value: ValueType, limit: number): ValueType {
+  const candidates = [0, value.minimum! * limit, value.maximum! * limit];
+  return { kind: "number", unit: value.unit, minimum: Math.min(...candidates), maximum: Math.max(...candidates) };
+}
+
+function arithmeticRange(operator: string, left: ValueType, right: ValueType): ValueType {
+  if (left.minimum === undefined || left.maximum === undefined || right.minimum === undefined || right.maximum === undefined) {
+    return { kind: "number", unit: left.unit ?? right.unit };
+  }
+  let values: number[];
+  if (operator === "+") values = [left.minimum + right.minimum, left.maximum + right.maximum];
+  else if (operator === "-") values = [left.minimum - right.maximum, left.maximum - right.minimum];
+  else if (operator === "*") values = [left.minimum * right.minimum, left.minimum * right.maximum, left.maximum * right.minimum, left.maximum * right.maximum];
+  else {
+    if (right.minimum <= 0 && right.maximum >= 0) throw new Error("division range includes zero");
+    values = [left.minimum / right.minimum, left.minimum / right.maximum, left.maximum / right.minimum, left.maximum / right.maximum];
+  }
+  return { kind: "number", unit: left.unit ?? right.unit, minimum: Math.min(...values), maximum: Math.max(...values) };
+}
+
+function containsAggregate(node: ExpressionNode): boolean {
+  if (node.kind === "aggregate" || node.kind === "joinAggregate") return true;
+  if (node.kind === "binary") return containsAggregate(node.left) || containsAggregate(node.right);
+  if (node.kind === "unary") return containsAggregate(node.operand);
+  if (node.kind === "quantifier") return containsAggregate(node.predicate);
+  return false;
+}
+
+function withAlias(fields: Record<string, FieldDefinition>, alias: string, item: FieldDefinition): Record<string, FieldDefinition> {
+  if (["input", "state", "previous", "item"].includes(alias)) throw new Error(`reserved collection alias "${alias}"`);
+  const scoped = { ...fields };
+  if (item.type === "object") {
+    for (const [path, field] of flattenItemFields(item.properties)) scoped[`${alias}.${path}`] = field;
+  } else scoped[`${alias}.value`] = item;
+  return scoped;
 }
 
 function flattenItemFields(
@@ -332,7 +487,8 @@ function operatorPrecedence(operator: string): number {
   if (operator === "||") return 1;
   if (operator === "&&") return 2;
   if (["==", "!=", ">", ">=", "<", "<="].includes(operator)) return 3;
-  return 4;
+  if (operator === "+" || operator === "-") return 4;
+  return 5;
 }
 
 function canonicalNumber(value: number): string {

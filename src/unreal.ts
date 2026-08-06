@@ -1381,12 +1381,12 @@ function compileCheckedExpression(
       const operand = compile(node.operand);
       return { ...operand, expression: `(${node.operator}${operand.expression})` };
     }
-    if (node.kind === "quantifier") {
+    if (node.kind === "quantifier" || node.kind === "aggregate" || node.kind === "joinAggregate") {
       return {
         expression: cppExpressionNode(node, operation, stateRoot),
         statements: [],
         overflowChecks: [],
-        integer: false,
+        integer: node.kind !== "quantifier",
       };
     }
     const left = compile(node.left);
@@ -1674,7 +1674,7 @@ function cppSemanticAssertions(
     for (const [name, value] of Object.entries(expected.output)) {
       const field = operation.output.properties[name];
       if (field && ["boolean", "integer", "number", "string"].includes(field.type)) {
-        lines.push(`        TestEqual(TEXT("case ${caseNumber}: output ${escapeCpp(name)}"), Result.Output.${cppField(name, field)}, ${cppFixtureLiteral(value)});`);
+        lines.push(`        TestEqual(TEXT("case ${caseNumber}: output ${escapeCpp(name)}"), Result.Output.${cppField(name, field)}, ${cppFixtureLiteral(value, field)});`);
       }
     }
   }
@@ -1687,9 +1687,13 @@ function cppSemanticAssertions(
   return lines.join("\n");
 }
 
-function cppFixtureLiteral(value: unknown): string {
+function cppFixtureLiteral(value: unknown, field?: FieldDefinition): string {
   if (typeof value === "boolean") return value ? "true" : "false";
-  if (typeof value === "number") return String(value);
+  if (typeof value === "number") {
+    if (field?.type === "integer") return `${cppType(field)}{${String(value)}}`;
+    if (field?.type === "number") return `${cppType(field)}{${String(value)}}`;
+    return String(value);
+  }
   if (typeof value === "string") return `FString(TEXT("${escapeCpp(value)}"))`;
   throw new Error(`Unsupported semantic fixture value ${JSON.stringify(value)}`);
 }
@@ -1763,6 +1767,7 @@ function cppExpressionNode(
   stateRoot: string,
   itemField?: FieldDefinition,
   itemRoot = "Item",
+  aliases: Record<string, { field: FieldDefinition; root: string }> = {},
 ): string {
   if (node.kind === "literal") {
     if (typeof node.value === "string") return `TEXT(${JSON.stringify(node.value)})`;
@@ -1770,6 +1775,8 @@ function cppExpressionNode(
     return String(node.value);
   }
   if (node.kind === "reference") {
+    const [alias, ...aliasParts] = node.path.split(".");
+    if (aliases[alias]) return cppAliasReference(aliasParts, aliases[alias]);
     if (node.path.startsWith("item.")) {
       if (!itemField) throw new Error(`Item reference outside collection predicate: ${node.path}`);
       const relative = node.path.slice("item.".length);
@@ -1788,7 +1795,7 @@ function cppExpressionNode(
     }
     return cppReference(node.path, operation, stateRoot);
   }
-  if (node.kind === "unary") return `(${node.operator}${cppExpressionNode(node.operand, operation, stateRoot, itemField, itemRoot)})`;
+  if (node.kind === "unary") return `(${node.operator}${cppExpressionNode(node.operand, operation, stateRoot, itemField, itemRoot, aliases)})`;
   if (node.kind === "quantifier") {
     if (node.collection.kind !== "reference") throw new Error(`${node.operator} collection must be a reference`);
     const collectionField = fieldForExpressionReference(node.collection.path, operation);
@@ -1797,9 +1804,51 @@ function cppExpressionNode(
     }
     const item = collectionField.type === "array" ? collectionField.items : collectionField.values;
     const algorithm = node.operator === "all" ? "AllOf" : "AnyOf";
-    return `Algo::${algorithm}(${cppReference(node.collection.path, operation, stateRoot)}, [&](const auto& Item) { return ${cppExpressionNode(node.predicate, operation, stateRoot, item, collectionField.type === "map" ? "Item.Value" : "Item")}; })`;
+    return `Algo::${algorithm}(${cppReference(node.collection.path, operation, stateRoot)}, [&](const auto& Item) { return ${cppExpressionNode(node.predicate, operation, stateRoot, item, collectionField.type === "map" ? "Item.Value" : "Item", aliases)}; })`;
   }
-  return `(${cppExpressionNode(node.left, operation, stateRoot, itemField, itemRoot)} ${node.operator} ${cppExpressionNode(node.right, operation, stateRoot, itemField, itemRoot)})`;
+  if (node.kind === "aggregate") {
+    const info = cppExpressionCollection(node.collection, operation, stateRoot);
+    const root = info.map ? `${node.alias}Entry.Value` : node.alias;
+    const scoped = { ...aliases, [node.alias]: { field: info.item, root } };
+    const predicate = cppExpressionNode(node.predicate, operation, stateRoot, itemField, itemRoot, scoped);
+    const value = node.operator === "sum" ? cppExpressionNode(node.value!, operation, stateRoot, itemField, itemRoot, scoped) : "1";
+    return `([&]() { int64 CrddTotal = 0; for (const auto& ${info.map ? `${node.alias}Entry` : node.alias} : ${info.source}) { if (${predicate}) { int64 CrddNext = 0; if (!CrddTryAddInt64(CrddTotal, ${value}, CrddNext)) return int64{0}; CrddTotal = CrddNext; } } return CrddTotal; })()`;
+  }
+  if (node.kind === "joinAggregate") {
+    const left = cppExpressionCollection(node.leftCollection, operation, stateRoot);
+    const right = cppExpressionCollection(node.rightCollection, operation, stateRoot);
+    const leftLoop = left.map ? `${node.leftAlias}Entry` : node.leftAlias;
+    const rightLoop = right.map ? `${node.rightAlias}Entry` : node.rightAlias;
+    const scoped = { ...aliases,
+      [node.leftAlias]: { field: left.item, root: left.map ? `${leftLoop}.Value` : leftLoop },
+      [node.rightAlias]: { field: right.item, root: right.map ? `${rightLoop}.Value` : rightLoop } };
+    const predicate = cppExpressionNode(node.predicate, operation, stateRoot, itemField, itemRoot, scoped);
+    const value = node.operator === "join_sum" ? cppExpressionNode(node.value!, operation, stateRoot, itemField, itemRoot, scoped) : "1";
+    return `([&]() { int64 CrddTotal = 0; for (const auto& ${leftLoop} : ${left.source}) { for (const auto& ${rightLoop} : ${right.source}) { if (${predicate}) { int64 CrddNext = 0; if (!CrddTryAddInt64(CrddTotal, ${value}, CrddNext)) return int64{0}; CrddTotal = CrddNext; } } } return CrddTotal; })()`;
+  }
+  return `(${cppExpressionNode(node.left, operation, stateRoot, itemField, itemRoot, aliases)} ${node.operator} ${cppExpressionNode(node.right, operation, stateRoot, itemField, itemRoot, aliases)})`;
+}
+
+function cppExpressionCollection(node: ExpressionNode, operation: Operation, stateRoot: string): { source: string; item: FieldDefinition; map: boolean } {
+  if (node.kind !== "reference") throw new Error("aggregate collection must be a reference");
+  const field = fieldForExpressionReference(node.path, operation);
+  if (!field || (field.type !== "array" && field.type !== "map")) throw new Error("aggregate requires a collection");
+  return { source: cppReference(node.path, operation, stateRoot), item: field.type === "array" ? field.items : field.values, map: field.type === "map" };
+}
+
+function cppAliasReference(parts: string[], alias: { field: FieldDefinition; root: string }): string {
+  if (alias.field.type !== "object") {
+    if (parts.join(".") !== "value") throw new Error("primitive aggregate alias only exposes value");
+    return alias.root;
+  }
+  let field: FieldDefinition = alias.field;
+  let result = alias.root;
+  for (const part of parts) {
+    if (field.type !== "object" || !field.properties[part]) throw new Error(`Unknown aggregate alias field ${part}`);
+    field = field.properties[part];
+    result += `.${cppField(part, field)}`;
+  }
+  return result;
 }
 
 function fieldForExpressionReference(reference: string, operation: Operation): FieldDefinition | undefined {

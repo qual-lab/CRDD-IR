@@ -132,6 +132,12 @@ function parityRequirements(compilation: CompilationResult): string[] {
       kinds.has("collection.all") || kinds.has("collection.any")) {
     requirements.push("IR-COLLECTION-QUANTIFIER-001");
   }
+  if (/\b(?:count|sum|join_count|join_sum)\(/.test(semanticExpressions)) {
+    requirements.push("IR-COLLECTION-AGGREGATE-001");
+  }
+  if (Object.values(compilation.ir.operation.input).some((field) => field.visibility === "private")) {
+    requirements.push("IR-PRIVATE-OUTPUT-001");
+  }
   if (compilation.ir.operation.returns !== undefined ||
       compilation.ir.operation.emits?.some((event) => event.value !== undefined)) {
     requirements.push("IR-OUTPUT-EVENT-001");

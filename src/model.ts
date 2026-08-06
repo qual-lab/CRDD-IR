@@ -10,6 +10,7 @@ export type ScalarFieldDefinition = {
   optional?: boolean;
   nullable?: boolean;
   default?: number | string | boolean;
+  visibility?: "private";
 };
 
 export type ObjectFieldDefinition = {
@@ -19,6 +20,7 @@ export type ObjectFieldDefinition = {
   nullable?: boolean;
   unit?: never;
   minimum?: never;
+  visibility?: "private";
 };
 
 export type ArrayFieldDefinition = {
@@ -30,15 +32,19 @@ export type ArrayFieldDefinition = {
   nullable?: boolean;
   unit?: never;
   minimum?: never;
+  visibility?: "private";
 };
 
 export type MapFieldDefinition = {
   type: "map";
   values: FieldDefinition;
+  minItems?: number;
+  maxItems?: number;
   optional?: boolean;
   nullable?: boolean;
   unit?: never;
   minimum?: never;
+  visibility?: "private";
 };
 
 export type UnionFieldDefinition = {
@@ -49,6 +55,7 @@ export type UnionFieldDefinition = {
   nullable?: boolean;
   unit?: never;
   minimum?: never;
+  visibility?: "private";
 };
 
 export type OpaqueFieldDefinition = {
@@ -59,6 +66,7 @@ export type OpaqueFieldDefinition = {
   nullable?: boolean;
   unit?: never;
   minimum?: never;
+  visibility?: "private";
 };
 
 export type FieldDefinition =
