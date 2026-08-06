@@ -23,11 +23,11 @@
         },
         {
           "path": "AppendRecord.generated.cpp",
-          "sha256": "fd2bf6bd27d9eec0ff28769182a2be1f78cc442c53be6abb167b6ced7884b709"
+          "sha256": "9290134a695d6ae86a7c9a0e5debe373fb37b6707f57982c28586c7bcfea7f42"
         },
         {
           "path": "AppendRecord.generated.h",
-          "sha256": "50599696079cde0ce3ba32577ea120e2210b925404eb1b0a6239dab04468ea49"
+          "sha256": "d22e0103ee56508a115efaace0f5773d8b859769455e061358be4da26a7402c4"
         },
         {
           "path": "AppendRecord.numeric.generated.spec.cpp",
@@ -55,11 +55,11 @@
         },
         {
           "path": "ApplyRecord.generated.cpp",
-          "sha256": "b08de9bf96f5d8084a0104ad21f3ea34756dd8901591e5ec8b19d1e24b83603f"
+          "sha256": "180dc9c3b4b4cc8d43f48c8a1a34b00f7186f271613c5cae6205633dedfa4712"
         },
         {
           "path": "ApplyRecord.generated.h",
-          "sha256": "d2129db8fe57896822b57f245c818d7dbfc81b0d0cb48a3adb36644256d0bd06"
+          "sha256": "9bea047866ea0437b845a8f22783fbdaa9794af6697bbdd36709889909aa0a02"
         }
       ]
     },
@@ -83,15 +83,47 @@
         },
         {
           "path": "ClassifyRecord.generated.cpp",
-          "sha256": "e8c3b6cbd7ab7d20ee51f6677a9f5fe41122be668ac9c789c3967daa4660a44c"
+          "sha256": "c02833a20ba8b488a8441e1e4b417ab5584e7fcd3fc52e020b251c09108fdccb"
         },
         {
           "path": "ClassifyRecord.generated.h",
-          "sha256": "fbe03745174abb19280e9ccdc228bdaadf41be2cfd5d7b0a1703afe162e9aa03"
+          "sha256": "6164c5410d54fe5773d5ef04c7ad701af2ccd029f2a5276acc4108d309682692"
         },
         {
           "path": "ClassifyRecordConformance.spec.cpp",
-          "sha256": "16f24f892b35b84ef69f7b1bd9d7a6122d05201b162de0ef7cb67ac2fdf3d78c"
+          "sha256": "f32cd11f915682889fec6ef6fb6ddc5a064b2272315d9f79f8c7fae07613b918"
+        }
+      ]
+    },
+    {
+      "id": "EvaluateThresholdSet",
+      "source": "test/fixtures/contracts/collection-result-events.md",
+      "digest": "51cbc596ce73fed4cf601e6ce79a121a80acb461e7e11e7e07001eacbab48915",
+      "outputDirectory": ".",
+      "files": [
+        {
+          "path": "EvaluateThresholdSet.bridge.generated.cpp",
+          "sha256": "1e6f1613973eaf3f664d9c08346e5441e6ebb80c1b8c457aea0de4f9392b7a42"
+        },
+        {
+          "path": "EvaluateThresholdSet.bridge.generated.h",
+          "sha256": "ff70f525b3827ca7b64054d2d9d69026b52ab7834c1c244f375e1273e214700c"
+        },
+        {
+          "path": "EvaluateThresholdSet.bridge.generated.spec.cpp",
+          "sha256": "e24827b8ef966592a32552c34f474e7a7dd94b2bb76d995e597bbf20b98ff5bf"
+        },
+        {
+          "path": "EvaluateThresholdSet.generated.cpp",
+          "sha256": "737a4ff741fc3df8df06ec7d303b45a17cdcbe7e98ea1eefcab613eb4bc50f3a"
+        },
+        {
+          "path": "EvaluateThresholdSet.generated.h",
+          "sha256": "e12dbc05abc4c5248cc59afa618e3f76afb2eff4914b918b191ce44d4bc47f60"
+        },
+        {
+          "path": "EvaluateThresholdSetConformance.spec.cpp",
+          "sha256": "c4adb963d8c990e9d4d329f63f78a72b45a31bc38ce77bcc96e2a631de12c056"
         }
       ]
     },
@@ -115,15 +147,15 @@
         },
         {
           "path": "PreserveEvidence.generated.cpp",
-          "sha256": "bf9c9d9c10489f727f03a6c0c8a12d813334fb41fad5921724952f72396bc953"
+          "sha256": "906eef13647baea6be89ecefc618afdc82ad69d3425984d56a8069b22cc11882"
         },
         {
           "path": "PreserveEvidence.generated.h",
-          "sha256": "837cdb701e9a677a46bd842d2764c378011403843cc30b111c42a50c6aa8a09f"
+          "sha256": "b3520f215f853d698ee152d64638be2ec654ebe2ef56975cea9ac5ca97714825"
         },
         {
           "path": "PreserveEvidenceConformance.spec.cpp",
-          "sha256": "9d2c1b2c4daafc2a585300949e4febe9937927c8a4e2c942369570a329f0b7e8"
+          "sha256": "44b8fc0992dcef1ccb793f27984b3ca70625a75bd78d9a8b30ebec9c139087d0"
         }
       ]
     },
@@ -147,15 +179,15 @@
         },
         {
           "path": "ResolveDecision.generated.cpp",
-          "sha256": "dcabf79f362a9ad311f80a1543d8e436d764767ebf7848d9677eb4d298b823a4"
+          "sha256": "9143b311642b1b59ced402f408ab5a99a7fd52855a021d515c2e2fb21b8fc05e"
         },
         {
           "path": "ResolveDecision.generated.h",
-          "sha256": "56d92af4a5f6ee51dd259af89b27e62ad7892ba8ecd13da7da8905fe0196d944"
+          "sha256": "3199b265fc5f3c91fc67b1a4ba4ca8e2003715edb969fddeee983c9bce31321a"
         },
         {
           "path": "ResolveDecisionConformance.spec.cpp",
-          "sha256": "13bd044f05b4356e84b0c574a91156b2f787eac4be2d7dac193231f9cd89af67"
+          "sha256": "4da2b01fe14455c0da99dc2bdec2a93369ada83d4937ea9432eb4f5c3b7cd80e"
         }
       ]
     },
@@ -179,11 +211,11 @@
         },
         {
           "path": "ReviseRecord.generated.cpp",
-          "sha256": "c50dff63cc5168d429dd977d5a25b7e5bb6f62c74e69a12883231d9c8fc8da66"
+          "sha256": "99dcfc4f803a0c15dfc8a1b79a41ef96fa84038a158ab1efe3c9147baf9fe4d8"
         },
         {
           "path": "ReviseRecord.generated.h",
-          "sha256": "f27f97977ecf19b5be006038480025e7d65e5a1578be72d99f573793f2460006"
+          "sha256": "092e6042b2c7b59721133ad6b558545fcd43244a3c5a7c9dfb383403c98c0aa2"
         }
       ]
     },
@@ -207,15 +239,15 @@
         },
         {
           "path": "SynchronizeModel.generated.cpp",
-          "sha256": "270b929386c11659066d4fbf7a94012e0920f30f6a21651e344ce4f16f995bb9"
+          "sha256": "db3d993fae6666e67441b081508647fce2eff44ef8a91c21136838996b161ddf"
         },
         {
           "path": "SynchronizeModel.generated.h",
-          "sha256": "b2aa00412c89d97e9c89c564fa1b2acc63da7092e64f6f3a467dcb5d60083bd9"
+          "sha256": "083b93f2fed23c1d8916b733f7118c056ade52c861fae7e22a594f186cb3910c"
         },
         {
           "path": "SynchronizeModelConformance.spec.cpp",
-          "sha256": "a29e99eddf8d8f24a9fc2af3b002ef0c2793186b6750dd6fd78caa327c9c602f"
+          "sha256": "141d38d5d2b84c222db0af0b1db17a4f55b3b80941af1b29b7d6f2891262e5cb"
         }
       ]
     }

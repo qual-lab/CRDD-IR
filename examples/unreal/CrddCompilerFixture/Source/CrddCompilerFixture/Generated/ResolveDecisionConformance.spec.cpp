@@ -31,6 +31,7 @@ bool FCrddResolveDecisionPortableConformanceTest::RunTest(const FString&)
         }
         TestTrue(TEXT("case 1: resolve-decision-success trace IR-CONDITIONAL-EFFECT-001"), Result.Traces.Contains(TEXT("IR-CONDITIONAL-EFFECT-001")));
         TestTrue(TEXT("case 1: resolve-decision-success trace BRANCH-CONTINUE"), Result.Traces.Contains(TEXT("BRANCH-CONTINUE")));
+
     }
 
     {
@@ -53,6 +54,7 @@ bool FCrddResolveDecisionPortableConformanceTest::RunTest(const FString&)
         }
         TestTrue(TEXT("case 2: resolve-decision-branch-decision-continue trace IR-CONDITIONAL-EFFECT-001"), Result.Traces.Contains(TEXT("IR-CONDITIONAL-EFFECT-001")));
         TestTrue(TEXT("case 2: resolve-decision-branch-decision-continue trace BRANCH-CONTINUE"), Result.Traces.Contains(TEXT("BRANCH-CONTINUE")));
+
     }
 
     {
@@ -75,6 +77,7 @@ bool FCrddResolveDecisionPortableConformanceTest::RunTest(const FString&)
         }
         TestTrue(TEXT("case 3: resolve-decision-branch-decision-withdraw trace IR-CONDITIONAL-EFFECT-001"), Result.Traces.Contains(TEXT("IR-CONDITIONAL-EFFECT-001")));
         TestTrue(TEXT("case 3: resolve-decision-branch-decision-withdraw trace BRANCH-WITHDRAW"), Result.Traces.Contains(TEXT("BRANCH-WITHDRAW")));
+
     }
 
     {
@@ -97,6 +100,7 @@ bool FCrddResolveDecisionPortableConformanceTest::RunTest(const FString&)
         }
         TestTrue(TEXT("case 4: danger-within-range-at-boundary trace IR-CONDITIONAL-EFFECT-001"), Result.Traces.Contains(TEXT("IR-CONDITIONAL-EFFECT-001")));
         TestTrue(TEXT("case 4: danger-within-range-at-boundary trace BRANCH-CONTINUE"), Result.Traces.Contains(TEXT("BRANCH-CONTINUE")));
+
     }
 
     {
@@ -118,6 +122,7 @@ bool FCrddResolveDecisionPortableConformanceTest::RunTest(const FString&)
             TestEqual(TEXT("case 5: rollback"), Result.FailedRequirement, TEXT("danger-within-range"));
         }
         TestTrue(TEXT("case 5: danger-within-range-outside-boundary trace IR-CONDITIONAL-EFFECT-001"), Result.Traces.Contains(TEXT("IR-CONDITIONAL-EFFECT-001")));
+
     }
 
     {
@@ -140,6 +145,7 @@ bool FCrddResolveDecisionPortableConformanceTest::RunTest(const FString&)
         }
         TestTrue(TEXT("case 6: danger-within-range-inside-boundary trace IR-CONDITIONAL-EFFECT-001"), Result.Traces.Contains(TEXT("IR-CONDITIONAL-EFFECT-001")));
         TestTrue(TEXT("case 6: danger-within-range-inside-boundary trace BRANCH-CONTINUE"), Result.Traces.Contains(TEXT("BRANCH-CONTINUE")));
+
     }
 
     {
@@ -161,6 +167,7 @@ bool FCrddResolveDecisionPortableConformanceTest::RunTest(const FString&)
             TestEqual(TEXT("case 7: rollback"), Result.FailedRequirement, TEXT("withdraw-only-while-active"));
         }
         TestTrue(TEXT("case 7: withdraw-only-while-active-falsified trace BRANCH-WITHDRAW"), Result.Traces.Contains(TEXT("BRANCH-WITHDRAW")));
+
     }
 
     return true;

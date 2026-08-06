@@ -3,10 +3,11 @@ import type { CrddIr, SimulationRequest, SimulationResult } from "./model.ts";
 import { evaluatePortableRules } from "./portable-rules.ts";
 
 export function simulate(ir: CrddIr, request: SimulationRequest): SimulationResult {
+  const projectsEvents = ir.operation.emits?.some((event) => event.value !== undefined) === true;
   const input = validateRequest(ir, request);
   const originalState = structuredClone(request.state);
   const workingState = structuredClone(request.state);
-  const context = { input, state: workingState };
+  const context = { input, state: workingState, previous: originalState };
   const appliedTraces: string[] = [];
 
   for (const requirement of ir.operation.requires) {
@@ -19,6 +20,7 @@ export function simulate(ir: CrddIr, request: SimulationRequest): SimulationResu
         error: requirement.error,
         failedRequirement: requirement.id,
         state: originalState,
+        ...(projectsEvents ? { events: [] } : {}),
         traces: tracesForError(ir, requirement.error),
       };
     }
@@ -32,6 +34,7 @@ export function simulate(ir: CrddIr, request: SimulationRequest): SimulationResu
       error: portableFailure.error,
       failedRequirement: portableFailure.id,
       state: originalState,
+      ...(projectsEvents ? { events: [] } : {}),
       traces: tracesForError(ir, portableFailure.error),
     };
   }
@@ -82,12 +85,35 @@ export function simulate(ir: CrddIr, request: SimulationRequest): SimulationResu
     throw error;
   }
 
+  const output = ir.operation.returns === undefined
+    ? undefined
+    : validateFieldValue(resolveExpressionMapping(ir.operation.returns, context), ir.operation.output!, "Output");
+  const events = (ir.operation.emits ?? []).flatMap((event) => {
+    if (event.when !== undefined && evaluateExpression(event.when, context) !== true) return [];
+    const payload = event.value === undefined
+      ? undefined
+      : validateFieldValue(resolveExpressionMapping(event.value, context), event.payload!, `Event ${event.type}`);
+    return [{ type: event.type, ...(payload === undefined ? {} : { payload }), traces: event.traces }];
+  });
+
   return {
     ok: true,
     operation: ir.operation.id,
     state: workingState,
+    ...(output === undefined ? {} : { output }),
+    ...(projectsEvents ? { events } : {}),
     traces: [...ir.operation.traces, ...appliedTraces],
   };
+}
+
+function resolveExpressionMapping(value: unknown, context: Record<string, unknown>): unknown {
+  if (typeof value === "string") return structuredClone(evaluateExpression(value, context));
+  if (Array.isArray(value)) return value.map((item) => resolveExpressionMapping(item, context));
+  if (typeof value === "object" && value !== null) {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) =>
+      [key, resolveExpressionMapping(item, context)]));
+  }
+  throw new Error("Expression mapping contains a non-expression leaf");
 }
 
 function matches(value: unknown, where: Record<string, unknown>): boolean {

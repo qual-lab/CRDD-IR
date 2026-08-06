@@ -4,6 +4,7 @@ import type { UnityTargetProfile } from "./unity-target.ts";
 import { generateTestManifest } from "./test-manifest.ts";
 import { simulate } from "./simulator.ts";
 import { snapshotOwnershipMarker } from "./snapshot-ownership.ts";
+import { parseSourceExpression, type ExpressionNode } from "./source-expression.ts";
 
 export type GeneratedUnityFile = {
   name: string;
@@ -52,6 +53,7 @@ function conformanceTests(
         "result.State",
         `case ${index + 1}`,
       ),
+      ...csSemanticAssertions(expected, operation),
     ].join("\n");
     return `        [Test]
         public void ${identifier(testCase.id)}()
@@ -278,6 +280,17 @@ function contract(
       field.type === "union" ? [unionClasses(name, "State", fieldName, field)] : []
     ),
     ...[...collectionClasses.entries()].map(([typeName, item]) => objectClassNamed(typeName, item, name)),
+    ...(operation.output?.type === "object" && operation.returns !== undefined
+      ? [objectClass(name, "", "Output", operation.output)] : []),
+    ...(operation.emits ?? []).flatMap((event) =>
+      event.value !== undefined && event.payload?.type === "object"
+        ? [objectClass(name, "", `${identifier(event.type)}Payload`, event.payload)] : []),
+    ...((operation.emits ?? []).some((event) => event.value !== undefined) ? [`public sealed class ${name}Event
+{
+    public string Type = "";
+${(operation.emits ?? []).filter((event) => event.value !== undefined)
+  .map((event) => `    public ${name}${identifier(event.type)}Payload ${identifier(event.type)} = new();`).join("\n")}
+}`] : []),
   ].join("\n\n");
   const inputFields = Object.entries(operation.input)
     .map(([fieldName, field]) =>
@@ -304,6 +317,7 @@ function contract(
     .map((rule) => csPortableRule(rule, operation))
     .join("\n\n");
   const effects = operation.effects.map((effect) => csEffect(effect, operation)).join("\n");
+  const semanticResult = csSemanticResult(operation);
   const errorCases = operation.errors
     .map((error) => `                ${name}Error.${identifier(error.code)} => "${escape(error.code)}",`)
     .join("\n");
@@ -369,7 +383,7 @@ ${errors}
         public ${name}Error Error;
         public string FailedRequirement = "";
         public ${name}State State = new();
-        public IReadOnlyList<string> Traces = Array.Empty<string>();
+${operation.returns === undefined ? "" : `        public ${name}Output Output = new();\n`}${(operation.emits ?? []).some((event) => event.value !== undefined) ? `        public IReadOnlyList<${name}Event> Events = Array.Empty<${name}Event>();\n` : ""}        public IReadOnlyList<string> Traces = Array.Empty<string>();
     }
 
     public static class ${name}Operation
@@ -386,6 +400,7 @@ ${checks && portableChecks ? "\n" : ""}${portableChecks}
                 Traces = new[] { ${operation.traces.map((trace) => `"${escape(trace)}"`).join(", ")} }
             };
 ${effects}
+${semanticResult}
             return result;
         }
 
@@ -524,6 +539,15 @@ function csPortableRule(rule: PortableRule, operation: Operation): string {
                             ${failure}
                 }
             }`;
+  }
+  if (rule.kind === "collection.all" || rule.kind === "collection.any") {
+    const item = csCollectionItem(operation, rule.collection);
+    const predicate = rule.predicates.map((entry) => csCollectionPredicate(entry, item, operation)).join(" && ");
+    const method = rule.kind === "collection.all" ? "All" : "Any";
+    return `            // ${rule.id}: ${rule.kind}
+            // CRDD-PORTABLE-SEMANTICS: ${marker}
+            if (!${csCollectionValues(rule.collection, operation)}.${method}(item => ${predicate}))
+                ${failure}`;
   }
   const collection = csCollectionValues(rule.collection, operation);
   if (rule.kind === "collection.unique") {
@@ -819,7 +843,7 @@ namespace ${profile.namespace}
     {
         public bool Succeeded;
         public ${name}BridgeSnapshotDto Snapshot = new();
-        public ${name}BridgeErrorDto Error = new();
+${operation.returns === undefined ? "" : `        public ${name}Output Output = new();\n`}${(operation.emits ?? []).some((event) => event.value !== undefined) ? `        public IReadOnlyList<${name}Event> Events = Array.Empty<${name}Event>();\n` : ""}        public ${name}BridgeErrorDto Error = new();
     }
 
     public interface I${name}ProductAdapter
@@ -861,7 +885,11 @@ namespace ${profile.namespace}
             if (!adapter.TryCommitSnapshot(candidate, original.Revision, out diagnostic))
                 return Failure(${name}BridgeFailure.Commit, "BRIDGE_COMMIT", diagnostic, original);
 
-            return new ${name}BridgeResultDto { Succeeded = true, Snapshot = candidate };
+            return new ${name}BridgeResultDto
+            {
+                Succeeded = true,
+                Snapshot = candidate${operation.returns === undefined ? "" : ",\n                Output = contract.Output"}${(operation.emits ?? []).some((event) => event.value !== undefined) ? ",\n                Events = contract.Events" : ""}
+            };
         }
 
         private static ${name}BridgeResultDto Failure(
@@ -1382,11 +1410,144 @@ function stateAssertions(
 }
 
 function csExpression(expression: string, operation: Operation, stateRoot = "initialState"): string {
-  return expression
-    .replace(/"(?:[^"\\]|\\.)*"/g, (literal) => literal)
-    .replace(/\b(?:input|state)\.[A-Za-z_][A-Za-z0-9_.]*/g, (reference) =>
-      csReference(reference, operation, stateRoot)
-    );
+  return stripCsOuterParens(csExpressionNode(parseSourceExpression(expression), operation, stateRoot))
+    .replace(/\(([^()]+) ([+-]) ([^()]+)\)/g, "$1 $2 $3");
+}
+
+function csCollectionPredicate(
+  predicate: Extract<PortableRule, { kind: "collection.all" | "collection.any" }>["predicates"][number],
+  item: Extract<FieldDefinition, { type: "object" }>,
+  operation: Operation,
+): string {
+  const fieldPath = (path: string) => path.split(".").map((part) => identifier(part)).join(".");
+  const leftDefinition = predicate.field.split(".").reduce<FieldDefinition | undefined>((current, part) =>
+    current?.type === "object" ? current.properties[part] : undefined, item);
+  const left = `item.${fieldPath(predicate.field)}`;
+  const right = predicate.reference !== undefined
+    ? (predicate.reference.startsWith("item.")
+      ? `item.${fieldPath(predicate.reference.slice(5))}`
+      : csPortablePath(predicate.reference, operation))
+    : csPredicateLiteral(predicate.value, leftDefinition!);
+  return `${left} ${portableComparisonOperator(predicate.operator)} ${right}`;
+}
+
+function csPredicateLiteral(value: unknown, field: FieldDefinition): string {
+  if (field.type === "string") return `"${escape(String(value ?? ""))}"`;
+  if (field.type === "boolean") return value ? "true" : "false";
+  if (field.type === "integer") return `${String(value ?? 0)}L`;
+  if (field.type === "number") return `${String(value ?? 0)}d`;
+  throw new Error(`Unsupported Unity portable predicate literal "${field.type}"`);
+}
+
+function portableComparisonOperator(operator: "eq" | "ne" | "lt" | "lte" | "gt" | "gte"): string {
+  return ({ eq: "==", ne: "!=", lt: "<", lte: "<=", gt: ">", gte: ">=" } as const)[operator];
+}
+
+function csSemanticAssertions(
+  expected: import("./model.ts").SimulationResult,
+  operation: Operation,
+): string[] {
+  const lines: string[] = [];
+  if (expected.ok && expected.output !== undefined && operation.output?.type === "object" &&
+      typeof expected.output === "object" && expected.output !== null && !Array.isArray(expected.output)) {
+    for (const [name, value] of Object.entries(expected.output)) {
+      const field = operation.output.properties[name];
+      if (field && ["boolean", "integer", "number", "string"].includes(field.type)) {
+        lines.push(`            Assert.That(result.Output.${csField(name, field)}, Is.EqualTo(${csFixtureLiteral(value)}));`);
+      }
+    }
+  }
+  if (expected.events !== undefined) {
+    lines.push(`            Assert.That(result.Events.Count, Is.EqualTo(${expected.events.length}));`);
+    expected.events.forEach((event, index) => {
+      lines.push(`            Assert.That(result.Events[${index}].Type, Is.EqualTo("${escape(event.type)}"));`);
+    });
+  }
+  return lines;
+}
+
+function csFixtureLiteral(value: unknown): string {
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "number") return String(value);
+  if (typeof value === "string") return `"${escape(value)}"`;
+  throw new Error(`Unsupported semantic fixture value ${JSON.stringify(value)}`);
+}
+
+function stripCsOuterParens(value: string): string {
+  if (!value.startsWith("(") || !value.endsWith(")")) return value;
+  let depth = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    if (value[index] === "(") depth += 1;
+    else if (value[index] === ")") depth -= 1;
+    if (depth === 0 && index < value.length - 1) return value;
+  }
+  return value.slice(1, -1);
+}
+
+function csSemanticResult(operation: Operation): string {
+  const name = identifier(operation.id);
+  const lines: string[] = [];
+  if (operation.returns !== undefined) {
+    if (operation.output?.type !== "object" || !isCsExpressionRecord(operation.returns)) throw new Error("Unity executable output requires object mapping");
+    for (const [fieldName, expression] of Object.entries(operation.returns)) {
+      if (typeof expression !== "string" || !operation.output.properties[fieldName]) throw new Error(`Invalid output mapping ${fieldName}`);
+      lines.push(`            result.Output.${csField(fieldName, operation.output.properties[fieldName])} = ${csExpression(expression, operation, "result.State")};`);
+    }
+  }
+  const executable = (operation.emits ?? []).filter((event) => event.value !== undefined);
+  if (executable.length) lines.push(`            var events = new List<${name}Event>();`);
+  for (const event of executable) {
+    if (event.payload?.type !== "object" || !isCsExpressionRecord(event.value)) throw new Error(`Invalid event mapping ${event.type}`);
+    const condition = event.when ? csExpression(event.when, operation, "result.State") : "true";
+    lines.push(`            if (${condition})\n            {`, `                var item = new ${name}Event { Type = "${escape(event.type)}" };`);
+    for (const [fieldName, expression] of Object.entries(event.value)) {
+      if (typeof expression !== "string" || !event.payload.properties[fieldName]) throw new Error(`Invalid event payload mapping ${fieldName}`);
+      lines.push(`                item.${identifier(event.type)}.${csField(fieldName, event.payload.properties[fieldName])} = ${csExpression(expression, operation, "result.State")};`);
+    }
+    lines.push("                events.Add(item);", "            }");
+  }
+  if (executable.length) lines.push("            result.Events = events;");
+  return lines.join("\n");
+}
+
+function isCsExpressionRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function csExpressionNode(
+  node: ExpressionNode,
+  operation: Operation,
+  stateRoot: string,
+  itemField?: FieldDefinition,
+): string {
+  if (node.kind === "literal") return typeof node.value === "string" ? JSON.stringify(node.value) : String(node.value).toLowerCase();
+  if (node.kind === "reference") {
+    if (node.path.startsWith("item.")) {
+      if (!itemField) throw new Error(`Item reference outside collection predicate: ${node.path}`);
+      const relative = node.path.slice(5);
+      if (itemField.type !== "object") return relative === "value" ? "item" : (() => { throw new Error(`Unknown Unity item reference ${node.path}`); })();
+      let current: FieldDefinition = itemField;
+      let result = "item";
+      for (const part of relative.split(".")) {
+        if (current.type !== "object" || !current.properties[part]) throw new Error(`Unknown Unity item reference ${node.path}`);
+        current = current.properties[part];
+        result += `.${csField(part, current)}`;
+      }
+      return result;
+    }
+    return csReference(node.path, operation, stateRoot);
+  }
+  if (node.kind === "unary") return `(${node.operator}${csExpressionNode(node.operand, operation, stateRoot, itemField)})`;
+  if (node.kind === "quantifier") {
+    if (node.collection.kind !== "reference") throw new Error(`${node.operator} collection must be a reference`);
+    const [scope, name] = node.collection.path.split(".");
+    const collection = scope === "input" ? operation.input[name] : operation.state[name];
+    if (!collection || (collection.type !== "array" && collection.type !== "map")) throw new Error(`${node.operator} requires collection`);
+    const item = collection.type === "array" ? collection.items : collection.values;
+    const source = csReference(node.collection.path, operation, stateRoot) + (collection.type === "map" ? ".Values" : "");
+    return `${source}.${node.operator === "all" ? "All" : "Any"}(item => ${csExpressionNode(node.predicate, operation, stateRoot, item)})`;
+  }
+  return `(${csExpressionNode(node.left, operation, stateRoot, itemField)} ${node.operator} ${csExpressionNode(node.right, operation, stateRoot, itemField)})`;
 }
 
 function csReference(reference: string, operation: Operation, stateRoot: string): string {
@@ -1394,11 +1555,11 @@ function csReference(reference: string, operation: Operation, stateRoot: string)
   const fields = scope === "input" ? operation.input : operation.state;
   const relative = parts.join(".");
   if (fields[relative]) {
-    return `${scope === "input" ? "input" : stateRoot}.${csField(relative, fields[relative])}`;
+    return `${scope === "input" ? "input" : scope === "previous" ? "initialState" : stateRoot}.${csField(relative, fields[relative])}`;
   }
   let field = fields[parts[0]];
   if (!field) throw new Error(`Unknown Unity reference "${reference}"`);
-  let result = `${scope === "input" ? "input" : stateRoot}.${csField(parts[0], field)}`;
+  let result = `${scope === "input" ? "input" : scope === "previous" ? "initialState" : stateRoot}.${csField(parts[0], field)}`;
   for (const part of parts.slice(1)) {
     if (field.type !== "object") throw new Error(`Unknown Unity reference "${reference}"`);
     field = field.properties[part];

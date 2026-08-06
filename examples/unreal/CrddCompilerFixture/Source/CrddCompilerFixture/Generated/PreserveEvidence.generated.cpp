@@ -7,6 +7,8 @@
 #include "Containers/StringConv.h"
 #include <initializer_list>
 #include <limits>
+#include "Algo/AllOf.h"
+#include "Algo/AnyOf.h"
 
 namespace
 {
@@ -291,6 +293,7 @@ FCrddPreserveEvidenceResult FCrddPreserveEvidenceOperation::Execute(
     Result.State.NumericLexemes.MaxFinite = Input.NumericLexemes.MaxFinite;
     Result.State.FragmentIds = Input.FragmentIds;
     Result.State.CanonicalEvidenceHash = Input.CanonicalEvidenceHash;
+
     return Result;
 }
 

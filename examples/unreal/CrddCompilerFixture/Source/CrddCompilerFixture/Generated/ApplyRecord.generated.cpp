@@ -5,6 +5,8 @@
 
 #include <initializer_list>
 #include <limits>
+#include "Algo/AllOf.h"
+#include "Algo/AnyOf.h"
 
 namespace
 {
@@ -82,6 +84,7 @@ FCrddApplyRecordResult FCrddApplyRecordOperation::Execute(
     Result.Traces = {TEXT("REQ-RECORD-001"), TEXT("DEC-CAPACITY-001")};
     Result.State.Records.Add({Input.LengthUnit, Input.AmountCredit});
     Result.State.CapacityRemainingCredit = Result.State.CapacityRemainingCredit - Input.AmountCredit;
+
     return Result;
 }
 
