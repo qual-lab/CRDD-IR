@@ -4,6 +4,8 @@
 
 #include <initializer_list>
 #include <limits>
+#include "Algo/AllOf.h"
+#include "Algo/AnyOf.h"
 
 namespace
 {
@@ -114,10 +116,11 @@ FCrddClassifyRecordResult FCrddClassifyRecordOperation::Execute(
     {
         Result.State.Accepted = true;
     }
-    if (Input.CountBand == TEXT("one") && Input.SignalA == true)
+    if ((Input.CountBand == TEXT("one")) && (Input.SignalA == true))
     {
         Result.State.Marked = true;
     }
+
     return Result;
 }
 

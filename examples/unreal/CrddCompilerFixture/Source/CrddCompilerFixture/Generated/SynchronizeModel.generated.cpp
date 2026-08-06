@@ -5,6 +5,8 @@
 #include "Misc/Base64.h"
 #include <initializer_list>
 #include <limits>
+#include "Algo/AllOf.h"
+#include "Algo/AnyOf.h"
 
 namespace
 {
@@ -421,6 +423,7 @@ FCrddSynchronizeModelResult FCrddSynchronizeModelOperation::Execute(
     Result.State = InitialState;
     Result.Traces = {TEXT("REQ-PORTABLE-001")};
     Result.State.UnknownExtension = Input.ProposedExtension;
+
     return Result;
 }
 

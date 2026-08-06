@@ -4,6 +4,8 @@
 
 #include <initializer_list>
 #include <limits>
+#include "Algo/AllOf.h"
+#include "Algo/AnyOf.h"
 
 namespace
 {
@@ -87,6 +89,7 @@ FCrddReviseRecordResult FCrddReviseRecordOperation::Execute(
             Item.LengthUnit = Input.NewLengthUnit;
         }
     }
+
     return Result;
 }
 

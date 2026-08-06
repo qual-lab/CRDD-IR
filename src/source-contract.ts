@@ -19,6 +19,7 @@ export type SourceContract = {
     input: Record<string, FieldDefinition>;
     state: Record<string, FieldDefinition>;
     output?: FieldDefinition;
+    returns?: unknown;
     requires: SourceRequirement[];
     portable_rules?: PortableRule[];
     effects: Effect[];
@@ -51,6 +52,8 @@ export type SourceContract = {
     emits?: Array<{
       type: string;
       payload?: FieldDefinition;
+      when?: string;
+      value?: unknown;
       delivery?: "at-most-once" | "at-least-once";
       traces: string[];
     }>;
@@ -161,7 +164,7 @@ function validateSourceContract(
   const operation = value.operation;
   rejectUnknown(
     operation,
-    ["id", "kind", "traces", "input", "state", "output", "requires", "effects", "errors",
+    ["id", "kind", "traces", "input", "state", "output", "returns", "requires", "effects", "errors",
       "extensions", "transaction", "execution", "emits", "portable_rules", "conformance"],
     "$.operation",
     add,
@@ -223,6 +226,24 @@ function validateSourceContract(
   }
   if (operation.emits !== undefined && !Array.isArray(operation.emits)) {
     add("CRDD_SOURCE_TYPE", "$.operation.emits", "must be an array");
+  }
+  if (operation.returns !== undefined && operation.output === undefined) {
+    add("CRDD_SOURCE_REQUIRED", "$.operation.output", "output is required when returns is declared");
+  }
+  if (operation.returns !== undefined) validateExpressionMapping(operation.returns, "$.operation.returns", add);
+  if (Array.isArray(operation.emits)) {
+    for (const [index, event] of operation.emits.entries()) {
+      const base = `$.operation.emits[${index}]`;
+      if (!isRecord(event)) { add("CRDD_SOURCE_TYPE", base, "must be an object"); continue; }
+      rejectUnknown(event, ["type", "payload", "when", "value", "delivery", "traces"], base, add);
+      requireString(event.type, `${base}.type`, add);
+      requireStringArray(event.traces, `${base}.traces`, add);
+      if (event.when !== undefined) requireString(event.when, `${base}.when`, add);
+      if (event.value !== undefined && event.payload === undefined) {
+        add("CRDD_SOURCE_REQUIRED", `${base}.payload`, "payload is required when value is declared");
+      }
+      if (event.value !== undefined) validateExpressionMapping(event.value, `${base}.value`, add);
+    }
   }
   if (Array.isArray(operation.requires)) {
     for (const [index, requirement] of operation.requires.entries()) {
@@ -416,6 +437,22 @@ function validatePortableRules(value: unknown, add: AddDiagnostic): void {
 }
 
 type AddDiagnostic = (code: string, path: string, message: string) => void;
+
+function validateExpressionMapping(value: unknown, path: string, add: AddDiagnostic): void {
+  if (typeof value === "string") {
+    if (value.length === 0) add("CRDD_SOURCE_REQUIRED", path, "expression must not be empty");
+    return;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => validateExpressionMapping(item, `${path}[${index}]`, add));
+    return;
+  }
+  if (isRecord(value)) {
+    for (const [key, item] of Object.entries(value)) validateExpressionMapping(item, `${path}.${key}`, add);
+    return;
+  }
+  add("CRDD_SOURCE_TYPE", path, "must be an expression string or a mapping of expression strings");
+}
 
 function rejectUnknown(
   value: Record<string, unknown>,

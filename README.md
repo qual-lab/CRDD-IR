@@ -171,8 +171,9 @@ CRDD Markdownが正本です。Internal IR instanceを専用フォルダへ恒�
 - [v0.5.0 release notes](docs/releases/v0.5.0.md)
 - [v0.6.0 release notes](docs/releases/v0.6.0.md)
 - [v0.7.0 release notes](docs/releases/v0.7.0.md)
-- [v0.8.0 release notes](docs/releases/v0.8.0.md)
-- [v0.8.0 release checklist](docs/release-checklist.md)
+- [Collection predicates and operation results](docs/collection-predicates-and-results.md)
+- [v0.9.0 release notes](docs/releases/v0.9.0.md)
+- [v0.9.0 release checklist](docs/release-checklist.md)
 - [Unreal fixture](examples/unreal/CrddCompilerFixture/README.md)
 - [Unity fixture](examples/unity/CrddCompilerFixture/README.md)
 

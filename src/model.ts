@@ -211,6 +211,7 @@ export type Operation = {
   input: Record<string, FieldDefinition>;
   state: Record<string, FieldDefinition>;
   output?: FieldDefinition;
+  returns?: unknown;
   requires: Requirement[];
   portableRules?: PortableRule[];
   effects: Effect[];
@@ -243,6 +244,8 @@ export type Operation = {
   emits?: Array<{
     type: string;
     payload?: FieldDefinition;
+    when?: string;
+    value?: unknown;
     delivery?: "at-most-once" | "at-least-once";
     traces: string[];
   }>;
@@ -277,6 +280,8 @@ export type SimulationResult =
       ok: true;
       operation: string;
       state: Record<string, unknown>;
+      output?: unknown;
+      events?: Array<{ type: string; payload?: unknown; traces: string[] }>;
       traces: string[];
     }
   | {
@@ -285,6 +290,7 @@ export type SimulationResult =
       error: string;
       failedRequirement: string;
       state: Record<string, unknown>;
+      events?: [];
       traces: string[];
     };
 

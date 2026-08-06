@@ -27,6 +27,7 @@
           "additionalProperties": { "$ref": "#/$defs/field" }
         },
         "output": { "$ref": "#/$defs/field" },
+        "returns": { "$ref": "#/$defs/expressionMapping" },
         "requires": {
           "type": "array",
           "items": { "$ref": "#/$defs/requirement" }
@@ -67,6 +68,13 @@
     }
   },
   "$defs": {
+    "expressionMapping": {
+      "oneOf": [
+        { "type": "string", "minLength": 1 },
+        { "type": "array", "items": { "$ref": "#/$defs/expressionMapping" } },
+        { "type": "object", "additionalProperties": { "$ref": "#/$defs/expressionMapping" } }
+      ]
+    },
     "fixtureValues": {
       "type": "object",
       "properties": {
@@ -457,6 +465,8 @@
       "properties": {
         "type": { "type": "string", "minLength": 1 },
         "payload": { "$ref": "#/$defs/field" },
+        "when": { "type": "string", "minLength": 1 },
+        "value": { "$ref": "#/$defs/expressionMapping" },
         "delivery": { "enum": ["at-most-once", "at-least-once"] },
         "traces": { "$ref": "#/$defs/traces" }
       },

@@ -59,6 +59,9 @@ export function validateIr(value: unknown): Diagnostic[] {
     if (!isRecord(operation.output)) diagnostics.push(error("$.operation.output", "must be a field definition"));
     else validateField(operation.output, "$.operation.output", diagnostics);
   }
+  if (operation.returns !== undefined && operation.output === undefined) {
+    diagnostics.push(error("$.operation.output", "is required when returns is declared"));
+  }
 
   if (!Array.isArray(operation.requires)) {
     diagnostics.push(error("$.operation.requires", "must be an array"));
@@ -283,6 +286,12 @@ function validateEvents(value: unknown, diagnostics: Diagnostic[]): void {
     if (event.payload !== undefined) {
       if (!isRecord(event.payload)) diagnostics.push(error(`${path}.payload`, "must be a field definition"));
       else validateField(event.payload, `${path}.payload`, diagnostics);
+    }
+    if (event.when !== undefined && typeof event.when !== "string") {
+      diagnostics.push(error(`${path}.when`, "must be an expression string"));
+    }
+    if (event.value !== undefined && event.payload === undefined) {
+      diagnostics.push(error(`${path}.payload`, "is required when value is declared"));
     }
   });
   reportDuplicateIds(types, "$.operation.emits", "event type", diagnostics);
@@ -736,6 +745,7 @@ function validateExpressionReferences(
   diagnostics: Diagnostic[],
 ): void {
   for (const reference of extractReferences(expression)) {
+    if (reference.startsWith("item.")) continue;
     if (!fieldForReference(reference, input, state)) {
       diagnostics.push(error(path, `references undefined field "${reference}"`));
     }
@@ -819,7 +829,14 @@ function validateAssignmentUnits(
   state: Record<string, FieldDefinition>,
   diagnostics: Diagnostic[],
 ): void {
+  try {
+    const expressionType = inferExpressionType(parseSourceExpression(expression), input, state);
+    if (expressionType === "boolean" && target.type === "boolean") return;
+  } catch {
+    // Reference and expression validators report the detailed diagnostic.
+  }
   for (const reference of extractReferences(expression)) {
+    if (reference.startsWith("item.")) continue;
     const source = fieldForReference(reference, input, state);
     if (!source) continue;
     if (source.type !== target.type) {
@@ -830,6 +847,19 @@ function validateAssignmentUnits(
       );
     }
   }
+}
+
+function inferExpressionType(
+  node: ExpressionNode,
+  input: Record<string, FieldDefinition>,
+  state: Record<string, FieldDefinition>,
+): FieldDefinition["type"] | "unknown" {
+  if (node.kind === "literal") return typeof node.value as "number" | "string" | "boolean";
+  if (node.kind === "reference") return fieldForReference(node.path, input, state)?.type ?? "unknown";
+  if (node.kind === "quantifier") return "boolean";
+  if (node.kind === "unary") return node.operator === "!" ? "boolean" : inferExpressionType(node.operand, input, state);
+  if (["==", "!=", ">", ">=", "<", "<=", "&&", "||"].includes(node.operator)) return "boolean";
+  return inferExpressionType(node.left, input, state);
 }
 
 function fieldForReference(

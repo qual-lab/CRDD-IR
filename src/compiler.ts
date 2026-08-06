@@ -18,7 +18,19 @@ export type CompilationResult = {
 
 export async function compileMarkdown(path: string): Promise<CompilationResult> {
   const { contract, fence } = await loadSourceContract(path);
+  if (contract.operation.returns !== undefined && contract.operation.output) {
+    assertExpressionMappingShape(contract.operation.returns, contract.operation.output, "returns");
+  }
+  for (const event of contract.operation.emits ?? []) {
+    if (event.value !== undefined && event.payload) {
+      assertExpressionMappingShape(event.value, event.payload, `emits.${event.type}.value`);
+    }
+  }
   const fields = fieldIndex(contract.operation.input, contract.operation.state);
+  const eventFields = {
+    ...fields,
+    ...Object.fromEntries(flattenFields("previous", contract.operation.state)),
+  };
   const ir: CrddIr = {
     irVersion: "0.1",
     operation: {
@@ -28,6 +40,9 @@ export async function compileMarkdown(path: string): Promise<CompilationResult> 
       input: contract.operation.input,
       state: contract.operation.state,
       ...(contract.operation.output ? { output: contract.operation.output } : {}),
+      ...(contract.operation.returns ? {
+        returns: normalizeExpressionMapping(contract.operation.returns, fields, "returns"),
+      } : {}),
       requires: contract.operation.requires.map((requirement) => ({
         id: requirement.id,
         expression: normalizeWithContext(requirement.condition, fields, requirement.id),
@@ -94,7 +109,15 @@ export async function compileMarkdown(path: string): Promise<CompilationResult> 
             ? {} : { idempotency: contract.operation.execution.idempotency }),
         },
       } : {}),
-      ...(contract.operation.emits ? { emits: structuredClone(contract.operation.emits) } : {}),
+      ...(contract.operation.emits ? {
+        emits: contract.operation.emits.map((event) => ({
+          ...structuredClone(event),
+          ...(event.when ? { when: normalizeWithContext(event.when, eventFields, `${event.type}.when`) } : {}),
+          ...(event.value ? {
+            value: normalizeExpressionMapping(event.value, eventFields, `${event.type}.value`),
+          } : {}),
+        })),
+      } : {}),
       ...(contract.operation.extensions
         ? {
             extensions: structuredClone(contract.operation.extensions),
@@ -118,6 +141,46 @@ export async function compileMarkdown(path: string): Promise<CompilationResult> 
       contractEndLine: fence.endLine,
     },
   };
+}
+
+function assertExpressionMappingShape(value: unknown, field: FieldDefinition, path: string): void {
+  if (field.type === "object") {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) throw new Error(`${path}: must be an object mapping`);
+    const record = value as Record<string, unknown>;
+    for (const key of Object.keys(record)) if (!field.properties[key]) throw new Error(`${path}.${key}: is not declared by the schema`);
+    for (const [key, child] of Object.entries(field.properties)) {
+      if (!(key in record)) throw new Error(`${path}.${key}: mapping is required`);
+      assertExpressionMappingShape(record[key], child, `${path}.${key}`);
+    }
+    return;
+  }
+  if (field.type === "array") {
+    if (!Array.isArray(value)) throw new Error(`${path}: must be an array mapping`);
+    value.forEach((item, index) => assertExpressionMappingShape(item, field.items, `${path}[${index}]`));
+    return;
+  }
+  if (field.type === "map") {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) throw new Error(`${path}: must be a map mapping`);
+    for (const [key, item] of Object.entries(value)) assertExpressionMappingShape(item, field.values, `${path}.${key}`);
+    return;
+  }
+  if (typeof value !== "string") throw new Error(`${path}: must be an expression string`);
+}
+
+function normalizeExpressionMapping(
+  value: unknown,
+  fields: Record<string, FieldDefinition>,
+  context: string,
+): unknown {
+  if (typeof value === "string") return normalizeWithContext(value, fields, context);
+  if (Array.isArray(value)) {
+    return value.map((item, index) => normalizeExpressionMapping(item, fields, `${context}[${index}]`));
+  }
+  if (typeof value === "object" && value !== null) {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) =>
+      [key, normalizeExpressionMapping(item, fields, `${context}.${key}`)]));
+  }
+  throw new Error(`${context}: expected expression mapping`);
 }
 
 function fieldIndex(

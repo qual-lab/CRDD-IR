@@ -123,11 +123,6 @@ function assertStateTransitionTargetCompatibility(
       `Target "${target}" does not yet project async execution semantics; use target "ir" or an async-capable adapter`,
     );
   }
-  if (operation.output !== undefined || (operation.emits?.length ?? 0) > 0) {
-    throw new Error(
-      `Target "${target}" does not yet project output or event semantics; use target "ir" or a capable adapter`,
-    );
-  }
   const unsupported = [...Object.values(operation.input), ...Object.values(operation.state)]
     .find((field) => containsGeneralApplicationType(field, true));
   if (unsupported) {

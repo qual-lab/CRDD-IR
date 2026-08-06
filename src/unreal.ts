@@ -30,7 +30,8 @@ export function generateUnreal(
     ...generateUnrealBridge(operation),
     ...((operation.portableRules?.length ?? 0) > 0 ||
       operation.effects.some((effect) => effect.when !== undefined) ||
-      operation.requires.some((requirement) => requirement.when !== undefined)
+      operation.requires.some((requirement) => requirement.when !== undefined) ||
+      operation.returns !== undefined || operation.emits?.some((event) => event.value !== undefined)
       ? [{
           name: `${operationName}Conformance.spec.cpp`,
           content: generatePortableConformanceFixture(ir, operation),
@@ -122,6 +123,11 @@ function generateHeader(
       return `    ${type} ${cppField(name, field)}${field.type === "array" || field.type === "map" ? "" : ` = ${cppDefault(field)}`};`;
     })
     .join("\n");
+  const resultTypes = cppResultTypes(operation);
+  const resultFields = operation.returns === undefined ? "" : `
+    FCrdd${operationName}Output Output;`;
+  const eventFields = operation.emits?.some((event) => event.value !== undefined) ? `
+    TArray<FCrdd${operationName}Event> Events;` : "";
 
   const generationIdentity = metadata.irSha256
     ? `// CRDD-IR Generator: ${metadata.generatorVersion ?? "unknown"}\n` +
@@ -142,6 +148,7 @@ ${opaqueStruct}
 ${arrayStructs}
 ${objectStructs}
 ${unionStructs ? `${unionStructs}\n` : ""}
+${resultTypes}
 struct FCrdd${operationName}Input
 {
 ${inputFields}
@@ -164,6 +171,7 @@ struct FCrdd${operationName}Result
     ECrdd${operationName}Error Error = ECrdd${operationName}Error::None;
     FString FailedRequirement;
     FCrdd${operationName}State State;
+${resultFields}${eventFields}
     TArray<FString> Traces;
 };
 
@@ -263,6 +271,7 @@ ${failureCheck.split("\n").map((line) => `    ${line}`).join("\n")}
   const allChecks = [checks, portableChecks].filter(Boolean).join("\n\n");
 
   const effects = operation.effects.map((effect) => cppEffect(effect, operation)).join("\n");
+  const semanticResult = cppSemanticResult(operation);
   const successTraces = operation.traces.map((trace) => `TEXT("${trace}")`).join(", ");
   const errorCases = operation.errors
     .map(
@@ -359,6 +368,8 @@ ${traces(operation)}
 
 ${opaqueIncludes}${evidenceIncludes}#include <initializer_list>
 #include <limits>
+#include "Algo/AllOf.h"
+#include "Algo/AnyOf.h"
 
 namespace
 {
@@ -415,6 +426,7 @@ ${allChecks}
     Result.State = InitialState;
     Result.Traces = {${successTraces}};
 ${effects}
+${semanticResult}
     return Result;
 }
 
@@ -1020,6 +1032,7 @@ function generatePortableConformanceFixture(ir: CrddIr, operation: Operation): s
     const traceAssertions = expected.traces.map((trace) =>
       `        TestTrue(TEXT("case ${index + 1}: ${testCase.id} trace ${escapeCpp(trace)}"), Result.Traces.Contains(TEXT("${escapeCpp(trace)}")));`
     ).join("\n");
+    const semanticAssertions = cppSemanticAssertions(expected, operation, index + 1);
     return `    {
         FCrdd${operationName}Input Input;
         FCrdd${operationName}State State;
@@ -1036,6 +1049,7 @@ ${[...inputAssignments, ...stateAssignments].map((line) => `        ${line}`).jo
             TestEqual(TEXT("case ${index + 1}: rollback"), Result.FailedRequirement, TEXT("${escapeCpp(expected.ok ? "" : expected.failedRequirement)}"));
         }
 ${traceAssertions}
+${semanticAssertions ? `${semanticAssertions}\n` : ""}
     }`;
   }).join("\n\n");
   const snapshotOwnership = cppSnapshotOwnershipTest(operation);
@@ -1270,6 +1284,7 @@ function firstCheckedAddition(
   node: ExpressionNode,
   operation: Operation,
 ): [string, string] | undefined {
+  if (node.kind === "quantifier") return firstCheckedAddition(node.predicate, operation);
   if (node.kind !== "binary") return undefined;
   if (
     (node.operator === "+" || node.operator === "-") &&
@@ -1345,6 +1360,14 @@ function compileCheckedExpression(
     if (node.kind === "unary") {
       const operand = compile(node.operand);
       return { ...operand, expression: `(${node.operator}${operand.expression})` };
+    }
+    if (node.kind === "quantifier") {
+      return {
+        expression: cppExpressionNode(node, operation, stateRoot),
+        statements: [],
+        overflowChecks: [],
+        integer: false,
+      };
     }
     const left = compile(node.left);
     const right = compile(node.right);
@@ -1586,11 +1609,150 @@ function generatedFieldShape(field: FieldDefinition): string {
 }
 
 function cppExpression(expression: string, operation: Operation, stateRoot: string): string {
-  return expression
-    .replace(/"(?:[^"\\]|\\.)*"/g, (literal) => `TEXT(${literal})`)
-    .replace(/\b(?:input|state)\.[A-Za-z_][A-Za-z0-9_.]*/g, (reference) =>
-      cppReference(reference, operation, stateRoot),
-    );
+  return stripGeneratedOuterParens(cppExpressionNode(parseSourceExpression(expression), operation, stateRoot));
+}
+
+function cppSemanticAssertions(
+  expected: import("./model.ts").SimulationResult,
+  operation: Operation,
+  caseNumber: number,
+): string {
+  const lines: string[] = [];
+  if (expected.ok && expected.output !== undefined && operation.output?.type === "object" && isExpressionRecord(expected.output)) {
+    for (const [name, value] of Object.entries(expected.output)) {
+      const field = operation.output.properties[name];
+      if (field && ["boolean", "integer", "number", "string"].includes(field.type)) {
+        lines.push(`        TestEqual(TEXT("case ${caseNumber}: output ${escapeCpp(name)}"), Result.Output.${cppField(name, field)}, ${cppFixtureLiteral(value)});`);
+      }
+    }
+  }
+  if (expected.events !== undefined) {
+    lines.push(`        TestEqual(TEXT("case ${caseNumber}: event count"), Result.Events.Num(), ${expected.events.length});`);
+    expected.events.forEach((event, index) => {
+      lines.push(`        TestEqual(TEXT("case ${caseNumber}: event ${index + 1} type"), Result.Events[${index}].Type, FString(TEXT("${escapeCpp(event.type)}")));`);
+    });
+  }
+  return lines.join("\n");
+}
+
+function cppFixtureLiteral(value: unknown): string {
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "number") return String(value);
+  if (typeof value === "string") return `FString(TEXT("${escapeCpp(value)}"))`;
+  throw new Error(`Unsupported semantic fixture value ${JSON.stringify(value)}`);
+}
+
+function stripGeneratedOuterParens(value: string): string {
+  if (!value.startsWith("(") || !value.endsWith(")")) return value;
+  let depth = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    if (value[index] === "(") depth += 1;
+    else if (value[index] === ")") depth -= 1;
+    if (depth === 0 && index < value.length - 1) return value;
+  }
+  return value.slice(1, -1);
+}
+
+function cppSemanticResult(operation: Operation): string {
+  const name = pascalIdentifier(operation.id);
+  const lines: string[] = [];
+  if (operation.returns !== undefined) {
+    if (operation.output?.type !== "object" || !isExpressionRecord(operation.returns)) {
+      throw new Error("Unreal executable output currently requires an object mapping");
+    }
+    for (const [fieldName, expression] of Object.entries(operation.returns)) {
+      if (typeof expression !== "string" || !operation.output.properties[fieldName]) throw new Error(`Invalid output mapping ${fieldName}`);
+      lines.push(`    Result.Output.${cppField(fieldName, operation.output.properties[fieldName])} = ${cppExpression(expression, operation, "Result.State")};`);
+    }
+  }
+  for (const event of operation.emits ?? []) {
+    if (event.value === undefined) continue;
+    if (event.payload?.type !== "object" || !isExpressionRecord(event.value)) throw new Error(`Invalid event mapping ${event.type}`);
+    const condition = event.when ? cppExpression(event.when, operation, "Result.State") : "true";
+    lines.push(`    if (${condition})\n    {`);
+    lines.push(`        FCrdd${name}Event Event;`);
+    lines.push(`        Event.Type = TEXT("${escape(event.type)}");`);
+    for (const [fieldName, expression] of Object.entries(event.value)) {
+      if (typeof expression !== "string" || !event.payload.properties[fieldName]) throw new Error(`Invalid event payload mapping ${fieldName}`);
+      lines.push(`        Event.${pascalIdentifier(event.type)}.${cppField(fieldName, event.payload.properties[fieldName])} = ${cppExpression(expression, operation, "Result.State")};`);
+    }
+    lines.push("        Result.Events.Add(MoveTemp(Event));", "    }");
+  }
+  return lines.join("\n");
+}
+
+function isExpressionRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function cppResultTypes(operation: Operation): string {
+  const name = pascalIdentifier(operation.id);
+  const definitions: string[] = [];
+  if (operation.output?.type === "object" && operation.returns !== undefined) {
+    definitions.push(`struct FCrdd${name}Output\n{\n${Object.entries(operation.output.properties)
+      .map(([fieldName, field]) => `    ${cppType(field)} ${cppField(fieldName, field)} = ${cppDefault(field)};`).join("\n")}\n};`);
+  }
+  const executableEvents = (operation.emits ?? []).filter((event) => event.value !== undefined);
+  for (const event of executableEvents) {
+    if (event.payload?.type !== "object") throw new Error(`Unreal executable event ${event.type} requires an object payload`);
+    definitions.push(`struct FCrdd${name}${pascalIdentifier(event.type)}Payload\n{\n${Object.entries(event.payload.properties)
+      .map(([fieldName, field]) => `    ${cppType(field)} ${cppField(fieldName, field)} = ${cppDefault(field)};`).join("\n")}\n};`);
+  }
+  if (executableEvents.length) {
+    definitions.push(`struct FCrdd${name}Event\n{\n    FString Type;\n${executableEvents
+      .map((event) => `    FCrdd${name}${pascalIdentifier(event.type)}Payload ${pascalIdentifier(event.type)};`).join("\n")}\n};`);
+  }
+  return definitions.join("\n\n");
+}
+
+function cppExpressionNode(
+  node: ExpressionNode,
+  operation: Operation,
+  stateRoot: string,
+  itemField?: FieldDefinition,
+  itemRoot = "Item",
+): string {
+  if (node.kind === "literal") {
+    if (typeof node.value === "string") return `TEXT(${JSON.stringify(node.value)})`;
+    if (typeof node.value === "boolean") return node.value ? "true" : "false";
+    return String(node.value);
+  }
+  if (node.kind === "reference") {
+    if (node.path.startsWith("item.")) {
+      if (!itemField) throw new Error(`Item reference outside collection predicate: ${node.path}`);
+      const relative = node.path.slice("item.".length);
+      if (itemField.type !== "object") {
+        if (relative !== "value") throw new Error(`Unknown collection item reference: ${node.path}`);
+        return itemRoot;
+      }
+      let current: FieldDefinition = itemField;
+      let result = itemRoot;
+      for (const part of relative.split(".")) {
+        if (current.type !== "object" || !current.properties[part]) throw new Error(`Unknown collection item reference: ${node.path}`);
+        current = current.properties[part];
+        result += `.${cppField(part, current)}`;
+      }
+      return result;
+    }
+    return cppReference(node.path, operation, stateRoot);
+  }
+  if (node.kind === "unary") return `(${node.operator}${cppExpressionNode(node.operand, operation, stateRoot, itemField, itemRoot)})`;
+  if (node.kind === "quantifier") {
+    if (node.collection.kind !== "reference") throw new Error(`${node.operator} collection must be a reference`);
+    const collectionField = fieldForExpressionReference(node.collection.path, operation);
+    if (!collectionField || (collectionField.type !== "array" && collectionField.type !== "map")) {
+      throw new Error(`${node.operator} collection must reference an array or map`);
+    }
+    const item = collectionField.type === "array" ? collectionField.items : collectionField.values;
+    const algorithm = node.operator === "all" ? "AllOf" : "AnyOf";
+    return `Algo::${algorithm}(${cppReference(node.collection.path, operation, stateRoot)}, [&](const auto& Item) { return ${cppExpressionNode(node.predicate, operation, stateRoot, item, collectionField.type === "map" ? "Item.Value" : "Item")}; })`;
+  }
+  return `(${cppExpressionNode(node.left, operation, stateRoot, itemField, itemRoot)} ${node.operator} ${cppExpressionNode(node.right, operation, stateRoot, itemField, itemRoot)})`;
+}
+
+function fieldForExpressionReference(reference: string, operation: Operation): FieldDefinition | undefined {
+  const [scope, name] = reference.split(".");
+  return scope === "input" ? operation.input[name] : operation.state[name];
 }
 
 function cppEffectValue(value: unknown, operation: Operation): string {
@@ -1637,6 +1799,9 @@ function cppReference(reference: string, operation: Operation, stateRoot: string
       result += `.${cppField(propertyName, field)}`;
     }
     return result;
+  }
+  if (reference.startsWith("previous.")) {
+    return cppReference(`state.${reference.slice("previous.".length)}`, operation, "InitialState");
   }
   throw new Error(`Unsupported Unreal reference "${reference}"`);
 }

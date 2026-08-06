@@ -6,17 +6,20 @@ type Token =
   | { kind: "number"; value: number; unit?: string; offset: number }
   | { kind: "string"; value: string; offset: number }
   | { kind: "boolean"; value: boolean; offset: number }
+  | { kind: "function"; value: "all" | "any"; offset: number }
   | { kind: "operator"; value: string; offset: number }
-  | { kind: "paren"; value: "(" | ")"; offset: number };
+  | { kind: "paren"; value: "(" | ")"; offset: number }
+  | { kind: "comma"; value: ","; offset: number };
 
 export type ExpressionNode =
   | { kind: "reference"; path: string }
   | { kind: "literal"; value: number | string | boolean; unit?: string }
   | { kind: "unary"; operator: "!" | "-"; operand: ExpressionNode }
-  | { kind: "binary"; operator: string; left: ExpressionNode; right: ExpressionNode };
+  | { kind: "binary"; operator: string; left: ExpressionNode; right: ExpressionNode }
+  | { kind: "quantifier"; operator: "all" | "any"; collection: ExpressionNode; predicate: ExpressionNode };
 
 type ValueType = {
-  kind: "number" | "boolean" | "string" | "array";
+  kind: "number" | "boolean" | "string" | "array" | "object" | "map" | "union" | "opaque";
   unit?: string;
 };
 
@@ -83,6 +86,22 @@ export function parseSourceExpression(expression: string): ExpressionNode {
   function parsePrimary(): ExpressionNode {
     const token = tokens[cursor++];
     if (!token) throw syntaxError(expression, expression.length, "unexpected end of expression");
+    if (token.kind === "function") {
+      const opening = tokens[cursor++];
+      if (opening?.kind !== "paren" || opening.value !== "(") {
+        throw syntaxError(expression, token.offset, `function ${token.value} requires (`);
+      }
+      const collection = parseOr();
+      if (tokens[cursor++]?.kind !== "comma") {
+        throw syntaxError(expression, token.offset, `function ${token.value} requires two arguments`);
+      }
+      const predicate = parseOr();
+      const closing = tokens[cursor++];
+      if (closing?.kind !== "paren" || closing.value !== ")") {
+        throw syntaxError(expression, token.offset, `function ${token.value} requires closing )`);
+      }
+      return { kind: "quantifier", operator: token.value, collection, predicate };
+    }
     if (token.kind === "reference") return { kind: "reference", path: token.value };
     if (token.kind === "number") return { kind: "literal", value: token.value, unit: token.unit };
     if (token.kind === "string" || token.kind === "boolean") {
@@ -145,7 +164,13 @@ function tokenize(expression: string): Token[] {
       offset += booleanLiteral[0].length;
       continue;
     }
-    const reference = rest.match(/^(?:input|state)\.[A-Za-z_][A-Za-z0-9_.]*/);
+    const fn = rest.match(/^(all|any)\b/);
+    if (fn) {
+      tokens.push({ kind: "function", value: fn[1] as "all" | "any", offset });
+      offset += fn[0].length;
+      continue;
+    }
+    const reference = rest.match(/^(?:input|state|previous|item)\.[A-Za-z_][A-Za-z0-9_.]*/);
     if (reference) {
       tokens.push({ kind: "reference", value: reference[0], offset });
       offset += reference[0].length;
@@ -153,6 +178,11 @@ function tokenize(expression: string): Token[] {
     }
     if (rest[0] === "(" || rest[0] === ")") {
       tokens.push({ kind: "paren", value: rest[0], offset });
+      offset += 1;
+      continue;
+    }
+    if (rest[0] === ",") {
+      tokens.push({ kind: "comma", value: ",", offset });
       offset += 1;
       continue;
     }
@@ -169,10 +199,28 @@ function inferAndNormalize(
   if (node.kind === "reference") {
     const field = fields[node.path];
     if (!field) throw new Error(`references undefined field "${node.path}"`);
+    if (field.type === "integer" || field.type === "number") return { kind: "number", unit: field.unit };
     return { kind: field.type, unit: field.unit };
   }
   if (node.kind === "literal") {
     return { kind: typeof node.value as ValueType["kind"], unit: node.unit };
+  }
+  if (node.kind === "quantifier") {
+    if (node.collection.kind !== "reference") throw new Error(`${node.operator} collection must be a reference`);
+    const collection = fields[node.collection.path];
+    if (!collection || (collection.type !== "array" && collection.type !== "map")) {
+      throw new Error(`${node.operator} collection must reference an array or map`);
+    }
+    const item = collection.type === "array" ? collection.items : collection.values;
+    const scoped = { ...fields };
+    if (item.type === "object") {
+      for (const [path, field] of flattenItemFields(item.properties)) scoped[`item.${path}`] = field;
+    } else {
+      scoped["item.value"] = item;
+    }
+    const predicate = inferAndNormalize(node.predicate, scoped, unitRegistry);
+    if (predicate.kind !== "boolean") throw new Error(`${node.operator} predicate must be boolean`);
+    return { kind: "boolean" };
   }
   if (node.kind === "unary") {
     const operand = inferAndNormalize(node.operand, fields, unitRegistry);
@@ -260,10 +308,24 @@ function printExpression(node: ExpressionNode, parentPrecedence = 0): string {
     return JSON.stringify(node.value);
   }
   if (node.kind === "unary") return `${node.operator}${printExpression(node.operand, 5)}`;
+  if (node.kind === "quantifier") {
+    return `${node.operator}(${printExpression(node.collection)}, ${printExpression(node.predicate)})`;
+  }
 
   const precedence = operatorPrecedence(node.operator);
   const text = `${printExpression(node.left, precedence)} ${node.operator} ${printExpression(node.right, precedence + 1)}`;
   return precedence < parentPrecedence ? `(${text})` : text;
+}
+
+function flattenItemFields(
+  fields: Record<string, FieldDefinition>,
+  prefix = "",
+): Array<[string, FieldDefinition]> {
+  return Object.entries(fields).flatMap(([name, field]) => {
+    const path = prefix ? `${prefix}.${name}` : name;
+    return [[path, field] as [string, FieldDefinition],
+      ...(field.type === "object" ? flattenItemFields(field.properties, path) : [])];
+  });
 }
 
 function operatorPrecedence(operator: string): number {

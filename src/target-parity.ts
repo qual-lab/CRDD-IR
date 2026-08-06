@@ -123,6 +123,16 @@ function parityRequirements(compilation: CompilationResult): string[] {
   const requirements = ["IR-TARGET-001", "IR-PARITY-001"];
   const kinds = new Set((compilation.ir.operation.portableRules ?? []).map((rule) => rule.kind));
   if ([...kinds].some((kind) => kind.startsWith("collection."))) requirements.push("IR-COLLECTION-001");
+  const semanticExpressions = JSON.stringify({
+    returns: compilation.ir.operation.returns,
+    effects: compilation.ir.operation.effects,
+    emits: compilation.ir.operation.emits,
+  });
+  if (/\b(?:all|any)\(/.test(semanticExpressions)) requirements.push("IR-COLLECTION-QUANTIFIER-001");
+  if (compilation.ir.operation.returns !== undefined ||
+      compilation.ir.operation.emits?.some((event) => event.value !== undefined)) {
+    requirements.push("IR-OUTPUT-EVENT-001");
+  }
   const fields = [...Object.values(compilation.ir.operation.input), ...Object.values(compilation.ir.operation.state)];
   if (fields.some((field) => field.type === "union")) requirements.push("IR-UNION-001");
   if (fields.some((field) => field.type === "array" && field.items.type !== "object")) {
