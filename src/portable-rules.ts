@@ -64,6 +64,18 @@ export function portableRuleSatisfied(
 
   const collection = collectionValues(getPath(context, rule.collection));
   if (!collection) return false;
+  if (rule.kind === "collection.all" || rule.kind === "collection.any") {
+    const satisfied = (item: unknown) => rule.predicates.every((predicate) => {
+      const left = member(item, predicate.field);
+      const right = predicate.reference !== undefined
+        ? (predicate.reference.startsWith("item.")
+          ? member(item, predicate.reference.slice("item.".length))
+          : getPath(context, predicate.reference))
+        : predicate.value;
+      return comparePortable(left, right, predicate.operator);
+    });
+    return rule.kind === "collection.all" ? collection.every(satisfied) : collection.some(satisfied);
+  }
   if (rule.kind === "collection.unique") {
     const keys = collection.map((item) => rule.key ? member(item, rule.key) : item);
     return keys.every(isPortableId) && new Set(keys).size === keys.length;
@@ -89,6 +101,20 @@ export function portableRuleSatisfied(
     endpointExists(elements, member(relation, rule.from), rule.elementKey, rule.fromType) &&
     endpointExists(elements, member(relation, rule.to), rule.elementKey, rule.toType)
   );
+}
+
+function comparePortable(
+  left: unknown,
+  right: unknown,
+  operator: "eq" | "ne" | "lt" | "lte" | "gt" | "gte",
+): boolean {
+  if (operator === "eq") return portableEqual(left, right);
+  if (operator === "ne") return !portableEqual(left, right);
+  if ((typeof left !== "number" && typeof left !== "string") || typeof right !== typeof left) return false;
+  if (operator === "lt") return left < right;
+  if (operator === "lte") return left <= right;
+  if (operator === "gt") return left > right;
+  return left >= right;
 }
 
 export function canonicalJson(value: unknown): string {

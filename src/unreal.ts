@@ -559,6 +559,26 @@ ${existingLoop.close}
 ${candidatesLoop.close}
     }`;
   }
+  if (rule.kind === "collection.all" || rule.kind === "collection.any") {
+    const loop = cppCollectionLoop(rule.collection, operation, "Item");
+    const predicate = rule.predicates.map((entry) => cppCollectionPredicate(entry, operation)).join(" && ");
+    const initial = rule.kind === "collection.all" ? "true" : "false";
+    const combine = rule.kind === "collection.all"
+      ? `bCrddSatisfied = bCrddSatisfied && (${predicate});`
+      : `bCrddSatisfied = bCrddSatisfied || (${predicate});`;
+    return `    // ${rule.id}: ${rule.kind}
+    // CRDD-PORTABLE-SEMANTICS: ${marker}
+    {
+        bool bCrddSatisfied = ${initial};
+${loop.open}
+            ${combine}
+${loop.close}
+        if (!bCrddSatisfied)
+        {
+            ${failure}
+        }
+    }`;
+  }
   const collection = cppPortablePath(rule.collection, operation);
   const loop = cppCollectionLoop(rule.collection, operation, "Item");
   if (rule.kind === "collection.unique") {
@@ -1610,6 +1630,38 @@ function generatedFieldShape(field: FieldDefinition): string {
 
 function cppExpression(expression: string, operation: Operation, stateRoot: string): string {
   return stripGeneratedOuterParens(cppExpressionNode(parseSourceExpression(expression), operation, stateRoot));
+}
+
+function cppCollectionPredicate(
+  predicate: Extract<PortableRule, { kind: "collection.all" | "collection.any" }>["predicates"][number],
+  operation: Operation,
+): string {
+  const item = collectionItem(operation, (operation.portableRules ?? []).find((rule) =>
+    (rule.kind === "collection.all" || rule.kind === "collection.any") && rule.predicates.includes(predicate)
+  )!.collection);
+  const leftDefinition = predicate.field.split(".").reduce<FieldDefinition | undefined>((current, part) =>
+    current?.type === "object" ? current.properties[part] : undefined, item);
+  const cppItemPath = (path: string) => {
+    let current: FieldDefinition = item;
+    return path.split(".").map((part) => {
+      if (current.type !== "object") throw new Error(`Portable predicate path "${path}" is not an object path`);
+      const next = current.properties[part];
+      if (!next) throw new Error(`Portable predicate path "${path}" is undefined`);
+      current = next;
+      return cppField(part, next);
+    }).join(".");
+  };
+  const left = `Item.${cppItemPath(predicate.field)}`;
+  const right = predicate.reference !== undefined
+    ? (predicate.reference.startsWith("item.")
+      ? `Item.${cppItemPath(predicate.reference.slice(5))}`
+      : cppPortablePath(predicate.reference, operation))
+    : cppLiteral(predicate.value, leftDefinition!);
+  return `${left} ${portableComparisonOperator(predicate.operator)} ${right}`;
+}
+
+function portableComparisonOperator(operator: "eq" | "ne" | "lt" | "lte" | "gt" | "gte"): string {
+  return ({ eq: "==", ne: "!=", lt: "<", lte: "<=", gt: ">", gte: ">=" } as const)[operator];
 }
 
 function cppSemanticAssertions(

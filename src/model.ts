@@ -81,7 +81,21 @@ export type Requirement = {
   when?: string;
 };
 
+export type PortableCollectionPredicate = {
+  field: string;
+  operator: "eq" | "ne" | "lt" | "lte" | "gt" | "gte";
+  reference?: string;
+  value?: string | number | boolean;
+};
+
 export type PortableRule =
+  | {
+      kind: "collection.all" | "collection.any";
+      id: string;
+      error: string;
+      collection: string;
+      predicates: PortableCollectionPredicate[];
+    }
   | {
       kind: "collection.unique";
       id: string;

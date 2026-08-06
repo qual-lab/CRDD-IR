@@ -540,6 +540,15 @@ function csPortableRule(rule: PortableRule, operation: Operation): string {
                 }
             }`;
   }
+  if (rule.kind === "collection.all" || rule.kind === "collection.any") {
+    const item = csCollectionItem(operation, rule.collection);
+    const predicate = rule.predicates.map((entry) => csCollectionPredicate(entry, item, operation)).join(" && ");
+    const method = rule.kind === "collection.all" ? "All" : "Any";
+    return `            // ${rule.id}: ${rule.kind}
+            // CRDD-PORTABLE-SEMANTICS: ${marker}
+            if (!${csCollectionValues(rule.collection, operation)}.${method}(item => ${predicate}))
+                ${failure}`;
+  }
   const collection = csCollectionValues(rule.collection, operation);
   if (rule.kind === "collection.unique") {
     const collectionField = portableCollectionField(operation, rule.collection);
@@ -1403,6 +1412,35 @@ function stateAssertions(
 function csExpression(expression: string, operation: Operation, stateRoot = "initialState"): string {
   return stripCsOuterParens(csExpressionNode(parseSourceExpression(expression), operation, stateRoot))
     .replace(/\(([^()]+) ([+-]) ([^()]+)\)/g, "$1 $2 $3");
+}
+
+function csCollectionPredicate(
+  predicate: Extract<PortableRule, { kind: "collection.all" | "collection.any" }>["predicates"][number],
+  item: Extract<FieldDefinition, { type: "object" }>,
+  operation: Operation,
+): string {
+  const fieldPath = (path: string) => path.split(".").map((part) => identifier(part)).join(".");
+  const leftDefinition = predicate.field.split(".").reduce<FieldDefinition | undefined>((current, part) =>
+    current?.type === "object" ? current.properties[part] : undefined, item);
+  const left = `item.${fieldPath(predicate.field)}`;
+  const right = predicate.reference !== undefined
+    ? (predicate.reference.startsWith("item.")
+      ? `item.${fieldPath(predicate.reference.slice(5))}`
+      : csPortablePath(predicate.reference, operation))
+    : csPredicateLiteral(predicate.value, leftDefinition!);
+  return `${left} ${portableComparisonOperator(predicate.operator)} ${right}`;
+}
+
+function csPredicateLiteral(value: unknown, field: FieldDefinition): string {
+  if (field.type === "string") return `"${escape(String(value ?? ""))}"`;
+  if (field.type === "boolean") return value ? "true" : "false";
+  if (field.type === "integer") return `${String(value ?? 0)}L`;
+  if (field.type === "number") return `${String(value ?? 0)}d`;
+  throw new Error(`Unsupported Unity portable predicate literal "${field.type}"`);
+}
+
+function portableComparisonOperator(operator: "eq" | "ne" | "lt" | "lte" | "gt" | "gte"): string {
+  return ({ eq: "==", ne: "!=", lt: "<", lte: "<=", gt: ">", gte: ">=" } as const)[operator];
 }
 
 function csSemanticAssertions(

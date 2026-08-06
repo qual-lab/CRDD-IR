@@ -387,6 +387,8 @@ function validateFixtureValues(value: unknown, path: string, add: AddDiagnostic)
 function validatePortableRules(value: unknown, add: AddDiagnostic): void {
   if (!Array.isArray(value)) return;
   const shapes: Record<string, string[]> = {
+    "collection.all": ["kind", "id", "error", "collection", "predicates"],
+    "collection.any": ["kind", "id", "error", "collection", "predicates"],
     "collection.unique": ["kind", "id", "error", "collection", "key"],
     "collection.reference": [
       "kind", "id", "error", "collection", "reference", "target", "targetKey", "targetType",
@@ -419,6 +421,38 @@ function validatePortableRules(value: unknown, add: AddDiagnostic): void {
       return;
     }
     rejectUnknown(rule, allowed, path, add);
+    if (rule.kind === "collection.all" || rule.kind === "collection.any") {
+      requireString(rule.kind, `${path}.kind`, add);
+      requireString(rule.id, `${path}.id`, add);
+      requireString(rule.error, `${path}.error`, add);
+      requireString(rule.collection, `${path}.collection`, add);
+      if (!Array.isArray(rule.predicates) || rule.predicates.length === 0) {
+        add("CRDD_SOURCE_PORTABLE_RULE", `${path}.predicates`, "must be a non-empty array");
+      } else {
+        rule.predicates.forEach((predicate, predicateIndex) => {
+          const predicatePath = `${path}.predicates[${predicateIndex}]`;
+          if (!isRecord(predicate)) {
+            add("CRDD_SOURCE_TYPE", predicatePath, "must be an object");
+            return;
+          }
+          rejectUnknown(predicate, ["field", "operator", "reference", "value"], predicatePath, add);
+          requireString(predicate.field, `${predicatePath}.field`, add);
+          if (!['eq', 'ne', 'lt', 'lte', 'gt', 'gte'].includes(String(predicate.operator))) {
+            add("CRDD_SOURCE_PORTABLE_RULE", `${predicatePath}.operator`, "uses an unsupported comparison operator");
+          }
+          const hasReference = predicate.reference !== undefined;
+          const hasValue = predicate.value !== undefined;
+          if (hasReference === hasValue) {
+            add("CRDD_SOURCE_PORTABLE_RULE", predicatePath, "must declare exactly one of reference or value");
+          }
+          if (hasReference) requireString(predicate.reference, `${predicatePath}.reference`, add);
+          if (hasValue && !["string", "number", "boolean"].includes(typeof predicate.value)) {
+            add("CRDD_SOURCE_TYPE", `${predicatePath}.value`, "must be a string, number, or boolean");
+          }
+        });
+      }
+      return;
+    }
     for (const key of allowed.filter((key) => !["targetType", "fromType", "toType"].includes(key))) {
       if (rule.kind === "collection.unique" && key === "key" && rule[key] === undefined) continue;
       requireString(rule[key], `${path}.${key}`, add);

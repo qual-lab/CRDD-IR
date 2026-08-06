@@ -21,6 +21,27 @@ A false quantifier is an ordinary boolean result unless the contract explicitly
 uses it in `requires`. Input validity and domain invariants therefore remain
 separate from a normal negative decision.
 
+Typed portable rules are available when a false result must reject the
+operation as an input or invariant violation:
+
+```yaml
+portable_rules:
+  - kind: collection.all
+    id: every-axis-is-valid
+    error: AXIS_INVALID
+    collection: input.axes
+    predicates:
+      - { field: value, operator: gte, reference: item.minimumValue }
+      - { field: value, operator: gte, reference: input.commonMinimum }
+```
+
+Each item evaluates all declared `predicates` with AND semantics. The rule then
+applies `all` or `any` across the collection. Empty collections retain the same
+mathematical behavior (`all=true`, `any=false`). A false portable rule returns
+its declared Rule ID and Error Code and performs the normal atomic rollback.
+Use expression quantifiers for ordinary boolean decisions and portable-rule
+quantifiers for rejection guards.
+
 ## Output and events
 
 An executable output declares both its schema and its expression mapping:

@@ -30,6 +30,20 @@ operation:
     - id: input-accepted
       condition: input.accepted == true
       error: INPUT_REJECTED
+  portable_rules:
+    - kind: collection.all
+      id: axis-minimum-is-nonnegative
+      error: AXIS_MINIMUM_INVALID
+      collection: input.axes
+      predicates:
+        - { field: minimumValue, operator: gte, value: 0 }
+        - { field: value, operator: gte, value: 0 }
+    - kind: collection.any
+      id: at-least-one-axis-meets-common-minimum
+      error: AXIS_THRESHOLD_NOT_MET
+      collection: input.axes
+      predicates:
+        - { field: minimumValue, operator: gte, reference: input.commonMinimum }
   effects:
     - target: state.crossed
       action: assign
@@ -37,6 +51,10 @@ operation:
   errors:
     - code: INPUT_REJECTED
       traces: [IR-OUTPUT-EVENT-001]
+    - code: AXIS_MINIMUM_INVALID
+      traces: [IR-COLLECTION-PREDICATE-001]
+    - code: AXIS_THRESHOLD_NOT_MET
+      traces: [IR-COLLECTION-PREDICATE-001]
   conformance:
     baseline:
       input:

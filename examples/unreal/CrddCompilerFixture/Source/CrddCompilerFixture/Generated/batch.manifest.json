@@ -98,7 +98,7 @@
     {
       "id": "EvaluateThresholdSet",
       "source": "test/fixtures/contracts/collection-result-events.md",
-      "digest": "4bc5a2a0d9bfdad0c082c13f7faeffb89854ded6002abb625a42373d15e36dcc",
+      "digest": "51cbc596ce73fed4cf601e6ce79a121a80acb461e7e11e7e07001eacbab48915",
       "outputDirectory": ".",
       "files": [
         {
@@ -115,15 +115,15 @@
         },
         {
           "path": "EvaluateThresholdSet.generated.cpp",
-          "sha256": "eb9c3684c1ce6d12541ffb3e7e994d8edbe1a3dbdbe1f71e091d4a23e693afbe"
+          "sha256": "737a4ff741fc3df8df06ec7d303b45a17cdcbe7e98ea1eefcab613eb4bc50f3a"
         },
         {
           "path": "EvaluateThresholdSet.generated.h",
-          "sha256": "0867c596b5dffcd4aa3c353e0211d7475a1f7e59335cf33b35c3cb4fa79b88f8"
+          "sha256": "e12dbc05abc4c5248cc59afa618e3f76afb2eff4914b918b191ce44d4bc47f60"
         },
         {
           "path": "EvaluateThresholdSetConformance.spec.cpp",
-          "sha256": "ae5a266e6ae5365d987f40a028ff4a8de2561073f4fc224da067bd48e97e6b85"
+          "sha256": "c4adb963d8c990e9d4d329f63f78a72b45a31bc38ce77bcc96e2a631de12c056"
         }
       ]
     },

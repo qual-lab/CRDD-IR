@@ -65,6 +65,56 @@ bool FCrddEvaluateThresholdSetPortableConformanceTest::RunTest(const FString&)
 
     }
 
+    {
+        FCrddEvaluateThresholdSetInput Input;
+        FCrddEvaluateThresholdSetState State;
+        auto& CrddItemInputAxes0 = Input.Axes.AddDefaulted_GetRef();
+        CrddItemInputAxes0.Value = 5;
+        CrddItemInputAxes0.Minimumvalue = 5;
+        auto& CrddItemInputAxes1 = Input.Axes.AddDefaulted_GetRef();
+        CrddItemInputAxes1.Value = 1;
+        CrddItemInputAxes1.Minimumvalue = -1;
+        Input.Commonminimum = 5;
+        Input.Accepted = true;
+        State.Crossed = false;
+        const FCrddEvaluateThresholdSetResult Result = FCrddEvaluateThresholdSetOperation::Execute(Input, State);
+        TestFalse(TEXT("case 3: axis-minimum-is-nonnegative-rejected success"), Result.bSucceeded);
+        TestEqual(
+            TEXT("case 3: axis-minimum-is-nonnegative-rejected error"),
+            FCrddEvaluateThresholdSetOperation::ErrorCode(Result.Error),
+            TEXT("AXIS_MINIMUM_INVALID")
+        );
+        if (!Result.bSucceeded)
+        {
+            TestEqual(TEXT("case 3: rollback"), Result.FailedRequirement, TEXT("axis-minimum-is-nonnegative"));
+        }
+        TestTrue(TEXT("case 3: axis-minimum-is-nonnegative-rejected trace IR-COLLECTION-PREDICATE-001"), Result.Traces.Contains(TEXT("IR-COLLECTION-PREDICATE-001")));
+        TestEqual(TEXT("case 3: event count"), Result.Events.Num(), 0);
+
+    }
+
+    {
+        FCrddEvaluateThresholdSetInput Input;
+        FCrddEvaluateThresholdSetState State;
+        Input.Commonminimum = 5;
+        Input.Accepted = true;
+        State.Crossed = false;
+        const FCrddEvaluateThresholdSetResult Result = FCrddEvaluateThresholdSetOperation::Execute(Input, State);
+        TestFalse(TEXT("case 4: at-least-one-axis-meets-common-minimum-rejected success"), Result.bSucceeded);
+        TestEqual(
+            TEXT("case 4: at-least-one-axis-meets-common-minimum-rejected error"),
+            FCrddEvaluateThresholdSetOperation::ErrorCode(Result.Error),
+            TEXT("AXIS_THRESHOLD_NOT_MET")
+        );
+        if (!Result.bSucceeded)
+        {
+            TestEqual(TEXT("case 4: rollback"), Result.FailedRequirement, TEXT("at-least-one-axis-meets-common-minimum"));
+        }
+        TestTrue(TEXT("case 4: at-least-one-axis-meets-common-minimum-rejected trace IR-COLLECTION-PREDICATE-001"), Result.Traces.Contains(TEXT("IR-COLLECTION-PREDICATE-001")));
+        TestEqual(TEXT("case 4: event count"), Result.Events.Num(), 0);
+
+    }
+
     return true;
 }
 #endif

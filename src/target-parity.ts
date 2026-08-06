@@ -128,7 +128,10 @@ function parityRequirements(compilation: CompilationResult): string[] {
     effects: compilation.ir.operation.effects,
     emits: compilation.ir.operation.emits,
   });
-  if (/\b(?:all|any)\(/.test(semanticExpressions)) requirements.push("IR-COLLECTION-QUANTIFIER-001");
+  if (/\b(?:all|any)\(/.test(semanticExpressions) ||
+      kinds.has("collection.all") || kinds.has("collection.any")) {
+    requirements.push("IR-COLLECTION-QUANTIFIER-001");
+  }
   if (compilation.ir.operation.returns !== undefined ||
       compilation.ir.operation.emits?.some((event) => event.value !== undefined)) {
     requirements.push("IR-OUTPUT-EVENT-001");

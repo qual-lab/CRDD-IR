@@ -67,6 +67,44 @@ FCrddEvaluateThresholdSetResult FCrddEvaluateThresholdSetOperation::Execute(
         );
     }
 
+    // axis-minimum-is-nonnegative: collection.all
+    // CRDD-PORTABLE-SEMANTICS: eyJjb2xsZWN0aW9uIjoiaW5wdXQuYXhlcyIsImVycm9yIjoiQVhJU19NSU5JTVVNX0lOVkFMSUQiLCJpZCI6ImF4aXMtbWluaW11bS1pcy1ub25uZWdhdGl2ZSIsImtpbmQiOiJjb2xsZWN0aW9uLmFsbCIsInByZWRpY2F0ZXMiOlt7ImZpZWxkIjoibWluaW11bVZhbHVlIiwib3BlcmF0b3IiOiJndGUiLCJ2YWx1ZSI6MH0seyJmaWVsZCI6InZhbHVlIiwib3BlcmF0b3IiOiJndGUiLCJ2YWx1ZSI6MH1dfQ==
+    {
+        bool bCrddSatisfied = true;
+    for (const auto& Item : Input.Axes)
+    {
+            bCrddSatisfied = bCrddSatisfied && (Item.Minimumvalue >= 0 && Item.Value >= 0);
+    }
+        if (!bCrddSatisfied)
+        {
+            return Failure(
+            ECrddEvaluateThresholdSetError::AxisMinimumInvalid,
+            TEXT("axis-minimum-is-nonnegative"),
+            InitialState,
+            {TEXT("IR-COLLECTION-PREDICATE-001")}
+        );
+        }
+    }
+
+    // at-least-one-axis-meets-common-minimum: collection.any
+    // CRDD-PORTABLE-SEMANTICS: eyJjb2xsZWN0aW9uIjoiaW5wdXQuYXhlcyIsImVycm9yIjoiQVhJU19USFJFU0hPTERfTk9UX01FVCIsImlkIjoiYXQtbGVhc3Qtb25lLWF4aXMtbWVldHMtY29tbW9uLW1pbmltdW0iLCJraW5kIjoiY29sbGVjdGlvbi5hbnkiLCJwcmVkaWNhdGVzIjpbeyJmaWVsZCI6Im1pbmltdW1WYWx1ZSIsIm9wZXJhdG9yIjoiZ3RlIiwicmVmZXJlbmNlIjoiaW5wdXQuY29tbW9uTWluaW11bSJ9XX0=
+    {
+        bool bCrddSatisfied = false;
+    for (const auto& Item : Input.Axes)
+    {
+            bCrddSatisfied = bCrddSatisfied || (Item.Minimumvalue >= Input.Commonminimum);
+    }
+        if (!bCrddSatisfied)
+        {
+            return Failure(
+            ECrddEvaluateThresholdSetError::AxisThresholdNotMet,
+            TEXT("at-least-one-axis-meets-common-minimum"),
+            InitialState,
+            {TEXT("IR-COLLECTION-PREDICATE-001")}
+        );
+        }
+    }
+
     FCrddEvaluateThresholdSetResult Result;
     Result.bSucceeded = true;
     Result.State = InitialState;
@@ -92,6 +130,10 @@ FString FCrddEvaluateThresholdSetOperation::ErrorCode(ECrddEvaluateThresholdSetE
         return TEXT("");
     case ECrddEvaluateThresholdSetError::InputRejected:
         return TEXT("INPUT_REJECTED");
+    case ECrddEvaluateThresholdSetError::AxisMinimumInvalid:
+        return TEXT("AXIS_MINIMUM_INVALID");
+    case ECrddEvaluateThresholdSetError::AxisThresholdNotMet:
+        return TEXT("AXIS_THRESHOLD_NOT_MET");
     default:
         return TEXT("UNKNOWN");
     }

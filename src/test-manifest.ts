@@ -1195,6 +1195,35 @@ function falsifyPortableRule(ir: CrddIr, id: string, baseline: SimulationRequest
     setPath(request as unknown as Record<string, unknown>, rule.hash, "f".repeat(64));
     return request;
   }
+  if (rule.kind === "collection.all" || rule.kind === "collection.any") {
+    const collectionValue = getPath(request as unknown as Record<string, unknown>, rule.collection);
+    const collection = mutableCollection(collectionValue, rule.collection);
+    if (rule.kind === "collection.any") {
+      const definition = fieldDefinition(ir, rule.collection);
+      setPath(
+        request as unknown as Record<string, unknown>,
+        rule.collection,
+        definition?.type === "map" ? {} : [],
+      );
+      return request;
+    }
+    const field = fieldDefinition(ir, rule.collection);
+    const itemField = field?.type === "array" ? field.items : field?.type === "map" ? field.values : undefined;
+    if (itemField?.type !== "object") throw new Error(`Portable collection "${rule.collection}" must contain objects`);
+    const item = baselineFieldValue(itemField) as Record<string, unknown>;
+    const predicate = rule.predicates[0];
+    const referenceValue = predicate.reference?.startsWith("item.")
+      ? getPath(item, predicate.reference.slice("item.".length))
+      : predicate.reference
+      ? getPath(request as unknown as Record<string, unknown>, predicate.reference)
+      : predicate.value;
+    const badValue = typeof referenceValue === "number"
+      ? (["gte", "gt", "eq"].includes(predicate.operator) ? referenceValue - 1 : referenceValue + 1)
+      : typeof referenceValue === "boolean" ? !referenceValue : `${String(referenceValue)}-different`;
+    setPath(item, predicate.field, badValue);
+    collection.add(item);
+    return request;
+  }
   const collectionValue = getPath(request as unknown as Record<string, unknown>, rule.collection);
   const collection = mutableCollection(collectionValue, rule.collection);
   const field = fieldDefinition(ir, rule.collection);

@@ -196,6 +196,8 @@ function validatePortableRules(
   }
   const ids: string[] = [];
   const requiredByKind: Record<string, string[]> = {
+    "collection.all": ["collection"],
+    "collection.any": ["collection"],
     "collection.unique": ["collection"],
     "collection.reference": ["collection", "reference", "target", "targetKey"],
     "collection.membership": ["collection", "parentReference", "parents", "parentKey"],
@@ -225,6 +227,27 @@ function validatePortableRules(
       return;
     }
     for (const key of required) requireString(rule, key, path, diagnostics);
+    if (rule.kind === "collection.all" || rule.kind === "collection.any") {
+      if (!Array.isArray(rule.predicates) || rule.predicates.length === 0) {
+        diagnostics.push(error(`${path}.predicates`, "must be a non-empty array"));
+      } else {
+        rule.predicates.forEach((predicate, predicateIndex) => {
+          const predicatePath = `${path}.predicates[${predicateIndex}]`;
+          if (!isRecord(predicate)) {
+            diagnostics.push(error(predicatePath, "must be an object"));
+            return;
+          }
+          requireString(predicate, "field", predicatePath, diagnostics);
+          if (!["eq", "ne", "lt", "lte", "gt", "gte"].includes(String(predicate.operator))) {
+            diagnostics.push(error(`${predicatePath}.operator`, "has an unsupported comparison operator"));
+          }
+          if ((predicate.reference === undefined) === (predicate.value === undefined)) {
+            diagnostics.push(error(predicatePath, "must declare exactly one of reference or value"));
+          }
+          if (predicate.reference !== undefined) requireString(predicate, "reference", predicatePath, diagnostics);
+        });
+      }
+    }
     for (const key of ["targetType", "fromType", "toType"]) {
       if (rule[key] === undefined) continue;
       if (!isRecord(rule[key])) {
@@ -529,6 +552,35 @@ function validatePortableRuleReferences(
     return;
   }
   const collection = field("collection");
+  if (rule.kind === "collection.all" || rule.kind === "collection.any") {
+    const collectionItem = collectionObjectItem(collection);
+    if (!collectionItem) {
+      diagnostics.push(error(`${path}.collection`, "must reference an array or map of objects"));
+      return;
+    }
+    if (!Array.isArray(rule.predicates)) return;
+    rule.predicates.forEach((candidate, index) => {
+      if (!isRecord(candidate)) return;
+      const predicatePath = `${path}.predicates[${index}]`;
+      const memberField = typeof candidate.field === "string"
+        ? fieldForNestedReference(collectionItem, candidate.field)
+        : undefined;
+      if (!memberField) {
+        diagnostics.push(error(`${predicatePath}.field`, `references undefined item field "${String(candidate.field)}"`));
+      }
+      if (typeof candidate.reference === "string") {
+        const referenceField = candidate.reference.startsWith("item.")
+          ? fieldForNestedReference(collectionItem, candidate.reference.slice("item.".length))
+          : fieldForReference(candidate.reference, input, state);
+        if (!referenceField) {
+          diagnostics.push(error(`${predicatePath}.reference`, `references undefined field "${candidate.reference}"`));
+        } else if (memberField && memberField.type !== referenceField.type) {
+          diagnostics.push(error(`${predicatePath}.reference`, "must have the same type as the item field"));
+        }
+      }
+    });
+    return;
+  }
   if (rule.kind === "collection.unique" && collection?.type === "array" &&
       ["string", "integer"].includes(collection.items.type)) {
     if (rule.key !== undefined) {
@@ -876,6 +928,20 @@ function fieldForReference(
   for (const part of parts) {
     if (field?.type !== "object") return undefined;
     field = field.properties[part];
+  }
+  return field;
+}
+
+function fieldForNestedReference(
+  root: Extract<FieldDefinition, { type: "object" }>,
+  reference: string,
+): FieldDefinition | undefined {
+  let field: FieldDefinition = root;
+  for (const part of reference.split(".")) {
+    if (field.type !== "object") return undefined;
+    const next: FieldDefinition | undefined = field.properties[part];
+    if (!next) return undefined;
+    field = next;
   }
   return field;
 }

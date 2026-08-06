@@ -9,6 +9,8 @@ import { generateUnity } from "../src/unity.ts";
 import { validateUnityTargetProfile } from "../src/unity-target.ts";
 import { verifyTargetParity } from "../src/target-parity.ts";
 import { validateUnrealTargetProfile } from "../src/unreal-target.ts";
+import { portableRuleSatisfied } from "../src/portable-rules.ts";
+import type { PortableRule } from "../src/model.ts";
 
 const contract = "test/fixtures/contracts/collection-result-events.md";
 
@@ -22,6 +24,28 @@ test("collection all/any are deterministic boolean expressions with mathematical
   assert.equal(evaluateExpression("all(input.items, item.value >= item.minimumValue)", {
     input: { items: [{ value: 4, minimumValue: 3 }, { value: 5, minimumValue: 5 }] },
   }), true);
+});
+
+test("typed collection all/any guards preserve AND predicates and mathematical empty semantics", () => {
+  const base = {
+    id: "threshold-guard",
+    error: "THRESHOLD_NOT_MET",
+    collection: "input.axes",
+    predicates: [
+      { field: "value", operator: "gte", reference: "item.minimumValue" },
+      { field: "value", operator: "gte", reference: "input.commonMinimum" },
+    ],
+  } as const;
+  const all = { ...base, kind: "collection.all" } satisfies PortableRule;
+  const any = { ...base, kind: "collection.any" } satisfies PortableRule;
+  assert.equal(portableRuleSatisfied(all, { input: { axes: [], commonMinimum: 3 }, state: {} }), true);
+  assert.equal(portableRuleSatisfied(any, { input: { axes: [], commonMinimum: 3 }, state: {} }), false);
+  const context = {
+    input: { axes: [{ value: 4, minimumValue: 3 }, { value: 2, minimumValue: 2 }], commonMinimum: 3 },
+    state: {},
+  };
+  assert.equal(portableRuleSatisfied(all, context), false);
+  assert.equal(portableRuleSatisfied(any, context), true);
 });
 
 test("returns use post-effect state and events fire only on the false-to-true edge", async () => {
@@ -82,10 +106,14 @@ test("Unreal and Unity project identical quantifiers, output, edge events, and b
   const cs = unity.find((file) => file.name.endsWith(".Generated.cs") && !file.name.includes("Bridge"))!.content;
   const csBridge = unity.find((file) => file.name.endsWith(".Bridge.Generated.cs"))!.content;
   assert.match(cpp, /Algo::AllOf\(Input\.Axes/);
+  assert.match(cpp, /axis-minimum-is-nonnegative: collection\.all/);
+  assert.match(cpp, /at-least-one-axis-meets-common-minimum: collection\.any/);
   assert.match(cpp, /InitialState\.Crossed == false/);
   assert.match(cpp, /Result\.Events\.Add/);
   assert.match(cppBridge, /Result\.Output = ContractResult\.Output/);
   assert.match(cs, /input\.Axes\.All\(item =>/);
+  assert.match(cs, /axis-minimum-is-nonnegative: collection\.all/);
+  assert.match(cs, /at-least-one-axis-meets-common-minimum: collection\.any/);
   assert.match(cs, /initialState\.Crossed == false/);
   assert.match(cs, /result\.Events = events/);
   assert.match(csBridge, /Output = contract\.Output/);
