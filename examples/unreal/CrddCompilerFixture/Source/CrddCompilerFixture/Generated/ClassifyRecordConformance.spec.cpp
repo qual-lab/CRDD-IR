@@ -32,6 +32,7 @@ bool FCrddClassifyRecordPortableConformanceTest::RunTest(const FString&)
             TestEqual(TEXT("case 1: rollback"), Result.FailedRequirement, TEXT(""));
         }
         TestTrue(TEXT("case 1: classify-record-success trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
+
     }
 
     {
@@ -55,6 +56,7 @@ bool FCrddClassifyRecordPortableConformanceTest::RunTest(const FString&)
             TestEqual(TEXT("case 2: rollback"), Result.FailedRequirement, TEXT(""));
         }
         TestTrue(TEXT("case 2: classify-record-branch-count-band-none trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
+
     }
 
     {
@@ -78,6 +80,7 @@ bool FCrddClassifyRecordPortableConformanceTest::RunTest(const FString&)
             TestEqual(TEXT("case 3: rollback"), Result.FailedRequirement, TEXT(""));
         }
         TestTrue(TEXT("case 3: classify-record-branch-one-signal-a trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
+
     }
 
     {
@@ -101,6 +104,7 @@ bool FCrddClassifyRecordPortableConformanceTest::RunTest(const FString&)
             TestEqual(TEXT("case 4: rollback"), Result.FailedRequirement, TEXT(""));
         }
         TestTrue(TEXT("case 4: classify-record-branch-one-signal-b trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
+
     }
 
     {
@@ -124,6 +128,7 @@ bool FCrddClassifyRecordPortableConformanceTest::RunTest(const FString&)
             TestEqual(TEXT("case 5: rollback"), Result.FailedRequirement, TEXT(""));
         }
         TestTrue(TEXT("case 5: classify-record-branch-two-signals-a-b trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
+
     }
 
     {
@@ -147,6 +152,7 @@ bool FCrddClassifyRecordPortableConformanceTest::RunTest(const FString&)
             TestEqual(TEXT("case 6: rollback"), Result.FailedRequirement, TEXT(""));
         }
         TestTrue(TEXT("case 6: classify-record-branch-one-signal-a-marked trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
+
     }
 
     {
@@ -170,6 +176,7 @@ bool FCrddClassifyRecordPortableConformanceTest::RunTest(const FString&)
             TestEqual(TEXT("case 7: rollback"), Result.FailedRequirement, TEXT(""));
         }
         TestTrue(TEXT("case 7: classify-record-coverage-legal-count-signals-001 trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
+
     }
 
     {
@@ -193,6 +200,7 @@ bool FCrddClassifyRecordPortableConformanceTest::RunTest(const FString&)
             TestEqual(TEXT("case 8: rollback"), Result.FailedRequirement, TEXT(""));
         }
         TestTrue(TEXT("case 8: classify-record-coverage-legal-count-signals-002 trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
+
     }
 
     {
@@ -216,6 +224,7 @@ bool FCrddClassifyRecordPortableConformanceTest::RunTest(const FString&)
             TestEqual(TEXT("case 9: rollback"), Result.FailedRequirement, TEXT(""));
         }
         TestTrue(TEXT("case 9: classify-record-coverage-legal-count-signals-003 trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
+
     }
 
     {
@@ -239,6 +248,7 @@ bool FCrddClassifyRecordPortableConformanceTest::RunTest(const FString&)
             TestEqual(TEXT("case 10: rollback"), Result.FailedRequirement, TEXT(""));
         }
         TestTrue(TEXT("case 10: classify-record-coverage-legal-count-signals-004 trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
+
     }
 
     {
@@ -262,6 +272,7 @@ bool FCrddClassifyRecordPortableConformanceTest::RunTest(const FString&)
             TestEqual(TEXT("case 11: rollback"), Result.FailedRequirement, TEXT(""));
         }
         TestTrue(TEXT("case 11: classify-record-coverage-legal-count-signals-005 trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
+
     }
 
     {
@@ -285,6 +296,7 @@ bool FCrddClassifyRecordPortableConformanceTest::RunTest(const FString&)
             TestEqual(TEXT("case 12: rollback"), Result.FailedRequirement, TEXT(""));
         }
         TestTrue(TEXT("case 12: classify-record-coverage-legal-count-signals-006 trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
+
     }
 
     {
@@ -308,6 +320,7 @@ bool FCrddClassifyRecordPortableConformanceTest::RunTest(const FString&)
             TestEqual(TEXT("case 13: rollback"), Result.FailedRequirement, TEXT(""));
         }
         TestTrue(TEXT("case 13: classify-record-coverage-legal-count-signals-007 trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
+
     }
 
     {
@@ -331,6 +344,7 @@ bool FCrddClassifyRecordPortableConformanceTest::RunTest(const FString&)
             TestEqual(TEXT("case 14: rollback"), Result.FailedRequirement, TEXT("count-none"));
         }
         TestTrue(TEXT("case 14: count-none-falsified trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
+
     }
 
     {
@@ -354,6 +368,7 @@ bool FCrddClassifyRecordPortableConformanceTest::RunTest(const FString&)
             TestEqual(TEXT("case 15: rollback"), Result.FailedRequirement, TEXT("count-one"));
         }
         TestTrue(TEXT("case 15: count-one-falsified trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
+
     }
 
     {
@@ -377,6 +392,7 @@ bool FCrddClassifyRecordPortableConformanceTest::RunTest(const FString&)
             TestEqual(TEXT("case 16: rollback"), Result.FailedRequirement, TEXT("count-two"));
         }
         TestTrue(TEXT("case 16: count-two-falsified trace IR-CONFORMANCE-SEED-001"), Result.Traces.Contains(TEXT("IR-CONFORMANCE-SEED-001")));
+
     }
 
     return true;

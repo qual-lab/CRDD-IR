@@ -4,6 +4,8 @@
 
 #include <initializer_list>
 #include <limits>
+#include "Algo/AllOf.h"
+#include "Algo/AnyOf.h"
 
 namespace
 {
@@ -128,6 +130,7 @@ FCrddAppendRecordResult FCrddAppendRecordOperation::Execute(
     Result.State = InitialState;
     Result.Traces = {TEXT("REQ-NUMERIC-BOUNDARY")};
     Result.State.Records.Add({Input.RecordId, Input.SpanMm, Input.ExtentMm, Input.DepthMm, Input.SegmentSpanMm, Input.SegmentExtentMm, Input.OffsetMm, Input.BaselineMm});
+
     return Result;
 }
 

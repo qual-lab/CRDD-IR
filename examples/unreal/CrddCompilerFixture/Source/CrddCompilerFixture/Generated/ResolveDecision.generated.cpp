@@ -4,6 +4,8 @@
 
 #include <initializer_list>
 #include <limits>
+#include "Algo/AllOf.h"
+#include "Algo/AnyOf.h"
 
 namespace
 {
@@ -93,6 +95,7 @@ FCrddResolveDecisionResult FCrddResolveDecisionOperation::Execute(
         Result.State.Status = TEXT("withdrawn");
         Result.Traces.Add(TEXT("BRANCH-WITHDRAW"));
     }
+
     return Result;
 }
 

@@ -59,6 +59,9 @@ export function validateIr(value: unknown): Diagnostic[] {
     if (!isRecord(operation.output)) diagnostics.push(error("$.operation.output", "must be a field definition"));
     else validateField(operation.output, "$.operation.output", diagnostics);
   }
+  if (operation.returns !== undefined && operation.output === undefined) {
+    diagnostics.push(error("$.operation.output", "is required when returns is declared"));
+  }
 
   if (!Array.isArray(operation.requires)) {
     diagnostics.push(error("$.operation.requires", "must be an array"));
@@ -193,6 +196,8 @@ function validatePortableRules(
   }
   const ids: string[] = [];
   const requiredByKind: Record<string, string[]> = {
+    "collection.all": ["collection"],
+    "collection.any": ["collection"],
     "collection.unique": ["collection"],
     "collection.reference": ["collection", "reference", "target", "targetKey"],
     "collection.membership": ["collection", "parentReference", "parents", "parentKey"],
@@ -222,6 +227,27 @@ function validatePortableRules(
       return;
     }
     for (const key of required) requireString(rule, key, path, diagnostics);
+    if (rule.kind === "collection.all" || rule.kind === "collection.any") {
+      if (!Array.isArray(rule.predicates) || rule.predicates.length === 0) {
+        diagnostics.push(error(`${path}.predicates`, "must be a non-empty array"));
+      } else {
+        rule.predicates.forEach((predicate, predicateIndex) => {
+          const predicatePath = `${path}.predicates[${predicateIndex}]`;
+          if (!isRecord(predicate)) {
+            diagnostics.push(error(predicatePath, "must be an object"));
+            return;
+          }
+          requireString(predicate, "field", predicatePath, diagnostics);
+          if (!["eq", "ne", "lt", "lte", "gt", "gte"].includes(String(predicate.operator))) {
+            diagnostics.push(error(`${predicatePath}.operator`, "has an unsupported comparison operator"));
+          }
+          if ((predicate.reference === undefined) === (predicate.value === undefined)) {
+            diagnostics.push(error(predicatePath, "must declare exactly one of reference or value"));
+          }
+          if (predicate.reference !== undefined) requireString(predicate, "reference", predicatePath, diagnostics);
+        });
+      }
+    }
     for (const key of ["targetType", "fromType", "toType"]) {
       if (rule[key] === undefined) continue;
       if (!isRecord(rule[key])) {
@@ -283,6 +309,12 @@ function validateEvents(value: unknown, diagnostics: Diagnostic[]): void {
     if (event.payload !== undefined) {
       if (!isRecord(event.payload)) diagnostics.push(error(`${path}.payload`, "must be a field definition"));
       else validateField(event.payload, `${path}.payload`, diagnostics);
+    }
+    if (event.when !== undefined && typeof event.when !== "string") {
+      diagnostics.push(error(`${path}.when`, "must be an expression string"));
+    }
+    if (event.value !== undefined && event.payload === undefined) {
+      diagnostics.push(error(`${path}.payload`, "is required when value is declared"));
     }
   });
   reportDuplicateIds(types, "$.operation.emits", "event type", diagnostics);
@@ -520,6 +552,70 @@ function validatePortableRuleReferences(
     return;
   }
   const collection = field("collection");
+  if (rule.kind === "collection.all" || rule.kind === "collection.any") {
+    const collectionItem = collectionObjectItem(collection);
+    if (!collectionItem) {
+      diagnostics.push(error(`${path}.collection`, "must reference an array or map of objects"));
+      return;
+    }
+    if (!Array.isArray(rule.predicates)) return;
+    rule.predicates.forEach((candidate, index) => {
+      if (!isRecord(candidate)) return;
+      const predicatePath = `${path}.predicates[${index}]`;
+      const memberField = typeof candidate.field === "string"
+        ? fieldForNestedReference(collectionItem, candidate.field)
+        : undefined;
+      if (!memberField) {
+        diagnostics.push(error(`${predicatePath}.field`, `references undefined item field "${String(candidate.field)}"`));
+      } else if (!isPortableComparableScalar(memberField)) {
+        diagnostics.push(error(
+          `${predicatePath}.field`,
+          `must reference a portable scalar field, not "${memberField.type}"`,
+        ));
+      }
+      if (typeof candidate.reference === "string") {
+        const referenceField = candidate.reference.startsWith("item.")
+          ? fieldForNestedReference(collectionItem, candidate.reference.slice("item.".length))
+          : fieldForReference(candidate.reference, input, state);
+        if (!referenceField) {
+          diagnostics.push(error(`${predicatePath}.reference`, `references undefined field "${candidate.reference}"`));
+        } else if (!isPortableComparableScalar(referenceField)) {
+          diagnostics.push(error(
+            `${predicatePath}.reference`,
+            `must reference a portable scalar field, not "${referenceField.type}"`,
+          ));
+        } else if (memberField && memberField.type !== referenceField.type) {
+          diagnostics.push(error(`${predicatePath}.reference`, "must have the same type as the item field"));
+        } else if (memberField && (memberField.unit ?? null) !== (referenceField.unit ?? null)) {
+          diagnostics.push(error(
+            `${predicatePath}.reference`,
+            `compares incompatible units "${memberField.unit ?? "none"}" and "${referenceField.unit ?? "none"}"`,
+          ));
+        }
+      }
+      if (candidate.value !== undefined && memberField) {
+        const literalType = typeof candidate.value;
+        const expectedType = memberField.type === "integer" || memberField.type === "number"
+          ? "number"
+          : memberField.type;
+        if (literalType !== expectedType ||
+            (memberField.type === "integer" && !Number.isSafeInteger(candidate.value))) {
+          diagnostics.push(error(
+            `${predicatePath}.value`,
+            `must match item field type "${memberField.type}"`,
+          ));
+        }
+      }
+      if (["lt", "lte", "gt", "gte"].includes(String(candidate.operator)) && memberField &&
+          memberField.type !== "integer" && memberField.type !== "number") {
+        diagnostics.push(error(
+          `${predicatePath}.operator`,
+          `operator "${String(candidate.operator)}" requires a numeric item field`,
+        ));
+      }
+    });
+    return;
+  }
   if (rule.kind === "collection.unique" && collection?.type === "array" &&
       ["string", "integer"].includes(collection.items.type)) {
     if (rule.key !== undefined) {
@@ -736,6 +832,7 @@ function validateExpressionReferences(
   diagnostics: Diagnostic[],
 ): void {
   for (const reference of extractReferences(expression)) {
+    if (reference.startsWith("item.")) continue;
     if (!fieldForReference(reference, input, state)) {
       diagnostics.push(error(path, `references undefined field "${reference}"`));
     }
@@ -819,7 +916,14 @@ function validateAssignmentUnits(
   state: Record<string, FieldDefinition>,
   diagnostics: Diagnostic[],
 ): void {
+  try {
+    const expressionType = inferExpressionType(parseSourceExpression(expression), input, state);
+    if (expressionType === "boolean" && target.type === "boolean") return;
+  } catch {
+    // Reference and expression validators report the detailed diagnostic.
+  }
   for (const reference of extractReferences(expression)) {
+    if (reference.startsWith("item.")) continue;
     const source = fieldForReference(reference, input, state);
     if (!source) continue;
     if (source.type !== target.type) {
@@ -830,6 +934,19 @@ function validateAssignmentUnits(
       );
     }
   }
+}
+
+function inferExpressionType(
+  node: ExpressionNode,
+  input: Record<string, FieldDefinition>,
+  state: Record<string, FieldDefinition>,
+): FieldDefinition["type"] | "unknown" {
+  if (node.kind === "literal") return typeof node.value as "number" | "string" | "boolean";
+  if (node.kind === "reference") return fieldForReference(node.path, input, state)?.type ?? "unknown";
+  if (node.kind === "quantifier") return "boolean";
+  if (node.kind === "unary") return node.operator === "!" ? "boolean" : inferExpressionType(node.operand, input, state);
+  if (["==", "!=", ">", ">=", "<", "<=", "&&", "||"].includes(node.operator)) return "boolean";
+  return inferExpressionType(node.left, input, state);
 }
 
 function fieldForReference(
@@ -848,6 +965,25 @@ function fieldForReference(
     field = field.properties[part];
   }
   return field;
+}
+
+function fieldForNestedReference(
+  root: Extract<FieldDefinition, { type: "object" }>,
+  reference: string,
+): FieldDefinition | undefined {
+  let field: FieldDefinition = root;
+  for (const part of reference.split(".")) {
+    if (field.type !== "object") return undefined;
+    const next: FieldDefinition | undefined = field.properties[part];
+    if (!next) return undefined;
+    field = next;
+  }
+  return field;
+}
+
+function isPortableComparableScalar(field: FieldDefinition): boolean {
+  return field.type === "boolean" || field.type === "string" ||
+    field.type === "integer" || field.type === "number";
 }
 
 function reportDuplicateIds(
