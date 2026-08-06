@@ -689,6 +689,23 @@ function mutationCandidates(value: unknown, numericSeeds: number[] = []): unknow
   }
   if (typeof value === "boolean") return [!value];
   if (typeof value === "string") return ["", "__crdd_counterexample__"];
+  if (Array.isArray(value)) {
+    const candidates: unknown[] = [[]];
+    if (value.length > 0) {
+      candidates.push([...value, structuredClone(value[0])]);
+      if (typeof value[0] === "string") candidates.push(["__crdd_counterexample__", ...value.slice(1)]);
+      if (typeof value[0] === "object" && value[0] !== null && !Array.isArray(value[0])) {
+        for (const [key, current] of Object.entries(value[0] as Record<string, unknown>)) {
+          const replacements = mutationCandidates(current, numericSeeds);
+          if (replacements.length === 0) continue;
+          const first = structuredClone(value[0]) as Record<string, unknown>;
+          first[key] = replacements[0];
+          candidates.push([first, ...structuredClone(value.slice(1))]);
+        }
+      }
+    }
+    return candidates;
+  }
   return [];
 }
 

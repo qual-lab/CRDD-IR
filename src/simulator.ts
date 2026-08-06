@@ -168,7 +168,10 @@ function validateFieldValue(
     if (typeof value !== "object" || value === null || Array.isArray(value)) {
       throw new Error(`${label} must be a map`);
     }
-    return Object.fromEntries(Object.entries(value as Record<string, unknown>)
+    const entries = Object.entries(value as Record<string, unknown>);
+    if (definition.minItems !== undefined && entries.length < definition.minItems) throw new Error(`${label} must contain at least ${definition.minItems} item(s)`);
+    if (definition.maxItems !== undefined && entries.length > definition.maxItems) throw new Error(`${label} must contain at most ${definition.maxItems} item(s)`);
+    return Object.fromEntries(entries
       .map(([key, item]) => [key, validateFieldValue(item, definition.values, `${label}.${key}`)]));
   }
   if (definition.type === "opaque") {
