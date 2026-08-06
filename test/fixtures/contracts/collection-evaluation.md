@@ -12,6 +12,11 @@ operation:
       type: array
       maxItems: 15
       items: { type: string }
+    truthCatalog:
+      type: array
+      visibility: private
+      maxItems: 15
+      items: { type: string }
     records:
       type: array
       maxItems: 100
@@ -90,7 +95,7 @@ operation:
       condition: count(input.selectedIds, selected, true) > 0
       error: EMPTY_SELECTION
     - id: selected-ids-known
-      condition: count(input.selectedIds, selected, true) == join_count(input.selectedIds, selected, input.truthNodes, truth, selected.value == truth.truthId)
+      condition: count(input.selectedIds, selected, true) == join_count(input.selectedIds, selected, input.truthCatalog, known, selected.value == known.value)
       error: UNKNOWN_SELECTION_ID
     - id: records-are-valid
       condition: count(input.records, record, true) == join_count(input.records, record, input.observationRelations, relation, record.observationId == relation.observationId && record.captureMethod == relation.captureMethod)
@@ -100,6 +105,10 @@ operation:
       id: selected-ids-unique
       error: DUPLICATE_SELECTION
       collection: input.selectedIds
+    - kind: collection.unique
+      id: truth-catalog-ids-unique
+      error: INVALID_PRIVATE_GRAPH
+      collection: input.truthCatalog
     - kind: collection.unique
       id: record-ids-unique
       error: DUPLICATE_RECORD
@@ -159,13 +168,13 @@ operation:
       input:
         expectedRevision: 4
         selectedIds: [truth-primary, truth-cover, wrong]
+        truthCatalog: [truth-primary, truth-contributing, truth-cover, wrong]
         records:
           - { recordId: record-1, observationId: obs-1, captureMethod: photo }
         truthNodes:
           - { truthId: truth-primary, role: primary }
           - { truthId: truth-contributing, role: contributing }
           - { truthId: truth-cover, role: cover }
-          - { truthId: wrong, role: cover }
         observationRelations:
           - { observationId: obs-1, captureMethod: photo, truthId: truth-primary, relation: supports, reliability: 3, importance: 2 }
         policy:
@@ -191,12 +200,12 @@ operation:
         input:
           expectedRevision: 4
           selectedIds: [truth-primary, truth-cover, wrong]
+          truthCatalog: [truth-primary, truth-contributing, truth-cover, wrong]
           records: [{ recordId: record-1, observationId: obs-1, captureMethod: photo }]
           truthNodes:
             - { truthId: truth-primary, role: primary }
             - { truthId: truth-contributing, role: contributing }
             - { truthId: truth-cover, role: cover }
-            - { truthId: wrong, role: cover }
           observationRelations:
             - { observationId: obs-1, captureMethod: photo, truthId: truth-primary, relation: supports, reliability: 3, importance: 2 }
           policy: { primaryWeight: 10, contributingWeight: 5, coverWeight: 1, incorrectPenalty: 2, rewardMultiplier: 3, highBandMinimum: 15, mediumBandMinimum: 8 }
@@ -206,12 +215,12 @@ operation:
         input:
           expectedRevision: 4
           selectedIds: [truth-primary, truth-cover, wrong]
+          truthCatalog: [truth-primary, truth-contributing, truth-cover, wrong]
           records: [{ recordId: record-1, observationId: obs-1, captureMethod: photo }]
           truthNodes:
             - { truthId: truth-primary, role: primary }
             - { truthId: truth-contributing, role: contributing }
             - { truthId: truth-cover, role: cover }
-            - { truthId: wrong, role: cover }
           observationRelations:
             - { observationId: obs-1, captureMethod: photo, truthId: truth-primary, relation: supports, reliability: 3, importance: 2 }
           policy: { primaryWeight: 10, contributingWeight: 5, coverWeight: 1, incorrectPenalty: 2, rewardMultiplier: 3, highBandMinimum: 15, mediumBandMinimum: 8 }

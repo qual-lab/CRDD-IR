@@ -16,12 +16,12 @@ const source = fileURLToPath(new URL("fixtures/contracts/collection-evaluation.m
 const input = {
   expectedRevision: 4,
   selectedIds: ["truth-primary", "truth-cover", "wrong"],
+  truthCatalog: ["truth-primary", "truth-contributing", "truth-cover", "wrong"],
   records: [{ recordId: "record-1", observationId: "obs-1", captureMethod: "photo" }],
   truthNodes: [
     { truthId: "truth-primary", role: "primary" },
     { truthId: "truth-contributing", role: "contributing" },
     { truthId: "truth-cover", role: "cover" },
-    { truthId: "wrong", role: "cover" },
   ],
   observationRelations: [
     { observationId: "obs-1", captureMethod: "photo", truthId: "truth-primary", relation: "supports", reliability: 3, importance: 2 },
@@ -41,9 +41,9 @@ test("deterministic collection joins, filters, groups, and aggregates stay insid
   };
   const result = simulate(compilation.ir, { input, state });
   assert.equal(result.ok, true);
-  assert.deepEqual(result.output, { truthAccuracyScore: 12, reportingQualityScore: 5, totalScore: 17, reward: 51, resultBand: "high", revision: 5 });
-  assert.equal(result.state.rewardBalance, 151);
-  assert.deepEqual(result.events?.[0]?.payload, { totalScore: 17, reward: 51, resultBand: "high", revision: 5 });
+  assert.deepEqual(result.output, { truthAccuracyScore: 9, reportingQualityScore: 5, totalScore: 14, reward: 42, resultBand: "medium", revision: 5 });
+  assert.equal(result.state.rewardBalance, 142);
+  assert.deepEqual(result.events?.[0]?.payload, { totalScore: 14, reward: 42, resultBand: "medium", revision: 5 });
   assert.equal(JSON.stringify(result.output).includes("truthNodes"), false);
   assert.equal(JSON.stringify(result.output).includes("observationRelations"), false);
 });
@@ -65,6 +65,14 @@ test("invalid collection submissions fail atomically without reward or events", 
   }
 });
 
+test("a known selection outside the authoritative truth set receives the incorrect penalty", async () => {
+  const { ir } = await compileMarkdown(source);
+  const result = simulate(ir, { input, state });
+  assert.equal(result.ok, true);
+  assert.equal(result.output?.truthAccuracyScore, 9);
+  assert.equal(result.output?.totalScore, 14);
+});
+
 test("Unreal and Unity generate the same aggregate operations without adapter scoring", async () => {
   const compilation = await compileMarkdown(source);
   compilation.ir.operation.conformance = {
@@ -78,7 +86,7 @@ test("Unreal and Unity generate the same aggregate operations without adapter sc
   const unityProfile = validateUnityTargetProfile(JSON.parse(await readFile("examples/unity/profiles/unity-6-il2cpp.json", "utf8")));
   const unity = generateUnity(compilation.ir, unityProfile).map((file) => file.content).join("\n");
   assert.match(unreal, /CrddTryAddInt64/);
-  assert.match(unreal, /Result\.Output\.Totalscore, int64\{17\}/);
+  assert.match(unreal, /Result\.Output\.Totalscore, int64\{14\}/);
   assert.match(unity, /SelectMany|LongCount|Sum/);
   assert.doesNotMatch(unreal + unity, /Product Adapter.*Score/i);
   const unrealProfile = validateUnrealTargetProfile(JSON.parse(await readFile("examples/unreal/profiles/ue-5.8-editor.json", "utf8")));
@@ -118,6 +126,6 @@ test("aggregate arithmetic fails closed when collection bounds cannot prove over
   const directory = await mkdtemp(join(tmpdir(), "crdd-aggregate-bounds-"));
   const path = join(directory, "contract.md");
   const contract = await readFile(source, "utf8");
-  await writeFile(path, contract.replace("      maxItems: 15\n", ""), "utf8");
+  await writeFile(path, contract.replace(/      maxItems: 15\r?\n/, ""), "utf8");
   await assert.rejects(() => compileMarkdown(path), /collection requires maxItems for overflow proof/);
 });
