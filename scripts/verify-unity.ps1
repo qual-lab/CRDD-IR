@@ -31,7 +31,8 @@ $compoundEvidenceSource = Join-Path $repository "test\fixtures\contracts\compoun
 $conditionalEffectsSource = Join-Path $repository "test\fixtures\contracts\conditional-effects.md"
 $multiFieldConformanceSource = Join-Path $repository "test\fixtures\contracts\multi-field-conformance.md"
 $resultSemanticsSource = Join-Path $repository "test\fixtures\contracts\collection-result-events.md"
-$sources = @($Source, $portableSource, $compoundEvidenceSource, $conditionalEffectsSource, $multiFieldConformanceSource, $resultSemanticsSource) |
+$collectionEvaluationSource = Join-Path $repository "test\fixtures\contracts\collection-evaluation.md"
+$sources = @($Source, $portableSource, $compoundEvidenceSource, $conditionalEffectsSource, $multiFieldConformanceSource, $resultSemanticsSource, $collectionEvaluationSource) |
     ForEach-Object { [System.IO.Path]::GetFullPath($_) } |
     Select-Object -Unique
 

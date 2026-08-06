@@ -414,6 +414,7 @@
         },
         "optional": { "type": "boolean" },
         "nullable": { "type": "boolean" },
+        "visibility": { "const": "private" },
         "default": { "type": ["number", "string", "boolean"] }
       },
       "additionalProperties": false
@@ -429,7 +430,8 @@
           "additionalProperties": { "$ref": "#/$defs/field" }
         },
         "optional": { "type": "boolean" },
-        "nullable": { "type": "boolean" }
+        "nullable": { "type": "boolean" },
+        "visibility": { "const": "private" }
       },
       "additionalProperties": false
     },
@@ -446,7 +448,8 @@
             "minItems": { "type": "integer", "minimum": 0 },
             "maxItems": { "type": "integer", "minimum": 0 },
             "optional": { "type": "boolean" },
-            "nullable": { "type": "boolean" }
+            "nullable": { "type": "boolean" },
+            "visibility": { "const": "private" }
           },
           "additionalProperties": false
         },
@@ -456,8 +459,11 @@
           "properties": {
             "type": { "const": "map" },
             "values": { "$ref": "#/$defs/field" },
+            "minItems": { "type": "integer", "minimum": 0 },
+            "maxItems": { "type": "integer", "minimum": 0 },
             "optional": { "type": "boolean" },
-            "nullable": { "type": "boolean" }
+            "nullable": { "type": "boolean" },
+            "visibility": { "const": "private" }
           },
           "additionalProperties": false
         },
@@ -473,7 +479,8 @@
               "items": { "$ref": "#/$defs/object" }
             },
             "optional": { "type": "boolean" },
-            "nullable": { "type": "boolean" }
+            "nullable": { "type": "boolean" },
+            "visibility": { "const": "private" }
           },
           "additionalProperties": false
         }

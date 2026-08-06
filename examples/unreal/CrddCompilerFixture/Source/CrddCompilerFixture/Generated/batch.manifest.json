@@ -27,7 +27,7 @@
         },
         {
           "path": "AppendRecord.generated.h",
-          "sha256": "d22e0103ee56508a115efaace0f5773d8b859769455e061358be4da26a7402c4"
+          "sha256": "c3b536da7d7bdba6f0f2a15296a8d77253288217c9d49297df64bd7033facc64"
         },
         {
           "path": "AppendRecord.numeric.generated.spec.cpp",
@@ -59,7 +59,7 @@
         },
         {
           "path": "ApplyRecord.generated.h",
-          "sha256": "9bea047866ea0437b845a8f22783fbdaa9794af6697bbdd36709889909aa0a02"
+          "sha256": "08223c55b3b6015aefcfdac6faae5bf2c208e2ed2e55d5488c74ea3458bcd482"
         }
       ]
     },
@@ -87,11 +87,43 @@
         },
         {
           "path": "ClassifyRecord.generated.h",
-          "sha256": "6164c5410d54fe5773d5ef04c7ad701af2ccd029f2a5276acc4108d309682692"
+          "sha256": "a18c48fd8340c9a76ed49da4810e930148c6f5f252c65dc24ab1aff67374cb11"
         },
         {
           "path": "ClassifyRecordConformance.spec.cpp",
           "sha256": "f32cd11f915682889fec6ef6fb6ddc5a064b2272315d9f79f8c7fae07613b918"
+        }
+      ]
+    },
+    {
+      "id": "EvaluateCollectionSubmission",
+      "source": "test/fixtures/contracts/collection-evaluation.md",
+      "digest": "be04b2182292c41ce68e25cec89bb964c579bb3a682aeaa748a7abd942b36935",
+      "outputDirectory": ".",
+      "files": [
+        {
+          "path": "EvaluateCollectionSubmission.bridge.generated.cpp",
+          "sha256": "cc97002cda0a057ad1f52e30b837e1012870b51b1a577cda895d6e654fab789e"
+        },
+        {
+          "path": "EvaluateCollectionSubmission.bridge.generated.h",
+          "sha256": "2d5383397466e0b885332ad2a5950c4d091faea8048cd8a94475e9ba85b2dc05"
+        },
+        {
+          "path": "EvaluateCollectionSubmission.bridge.generated.spec.cpp",
+          "sha256": "f8abadcabea5f4971663f4d7ac436a45c13cae6014b9ca23d50c6322747be4e8"
+        },
+        {
+          "path": "EvaluateCollectionSubmission.generated.cpp",
+          "sha256": "a140b057ee826da105452d155231e8c451f31b97c2b9a874d2252061beebbedf"
+        },
+        {
+          "path": "EvaluateCollectionSubmission.generated.h",
+          "sha256": "2754ddd97b0b637c0c7b3f4892b4d69cc209e9750380e5f832ad100bb3b41d91"
+        },
+        {
+          "path": "EvaluateCollectionSubmissionConformance.spec.cpp",
+          "sha256": "157f73f8812068ae34f5b01de37a1181d1d14738dc00a910042fc30691ac3237"
         }
       ]
     },
@@ -119,7 +151,7 @@
         },
         {
           "path": "EvaluateThresholdSet.generated.h",
-          "sha256": "e12dbc05abc4c5248cc59afa618e3f76afb2eff4914b918b191ce44d4bc47f60"
+          "sha256": "7f4800ef67332ac92675229f3841ffcd6f6590a520af12508518bfc97f56c71f"
         },
         {
           "path": "EvaluateThresholdSetConformance.spec.cpp",
@@ -151,7 +183,7 @@
         },
         {
           "path": "PreserveEvidence.generated.h",
-          "sha256": "b3520f215f853d698ee152d64638be2ec654ebe2ef56975cea9ac5ca97714825"
+          "sha256": "b453077b30ef7adfee9ec32f2aea3606adfcfd9c47acfb2026195e39274baf61"
         },
         {
           "path": "PreserveEvidenceConformance.spec.cpp",
@@ -183,7 +215,7 @@
         },
         {
           "path": "ResolveDecision.generated.h",
-          "sha256": "3199b265fc5f3c91fc67b1a4ba4ca8e2003715edb969fddeee983c9bce31321a"
+          "sha256": "263ad3de779e3a1ef18f51a6af40e7078767e6f26d5afefc1bfd3e1e5628e2db"
         },
         {
           "path": "ResolveDecisionConformance.spec.cpp",
@@ -215,7 +247,7 @@
         },
         {
           "path": "ReviseRecord.generated.h",
-          "sha256": "092e6042b2c7b59721133ad6b558545fcd43244a3c5a7c9dfb383403c98c0aa2"
+          "sha256": "9eaf323bbaadc3bc3bc259f092f2f7f12af29742142692a9f07d7b56cc0d78df"
         }
       ]
     },
@@ -243,7 +275,7 @@
         },
         {
           "path": "SynchronizeModel.generated.h",
-          "sha256": "083b93f2fed23c1d8916b733f7118c056ade52c861fae7e22a594f186cb3910c"
+          "sha256": "5211c117f0edcb141de98474f09af878ab6a3104b42984f872434169359973f3"
         },
         {
           "path": "SynchronizeModelConformance.spec.cpp",

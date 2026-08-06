@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { DiagnosticError } from "./diagnostics.ts";
-import { normalizeSourceExpression } from "./source-expression.ts";
+import { normalizeSourceExpression, parseSourceExpression } from "./source-expression.ts";
 import { loadSourceContract } from "./source-contract.ts";
 import { validateIr } from "./ir.ts";
 import type { CrddIr, Diagnostic, FieldDefinition } from "./model.ts";
@@ -27,10 +27,16 @@ export async function compileMarkdown(path: string): Promise<CompilationResult> 
     }
   }
   const fields = fieldIndex(contract.operation.input, contract.operation.state);
+  if (contract.operation.returns !== undefined) {
+    assertNoPrivateProjection(contract.operation.returns, fields, "returns");
+  }
   const eventFields = {
     ...fields,
     ...Object.fromEntries(flattenFields("previous", contract.operation.state)),
   };
+  for (const event of contract.operation.emits ?? []) {
+    if (event.value !== undefined) assertNoPrivateProjection(event.value, eventFields, `emits.${event.type}.value`);
+  }
   const ir: CrddIr = {
     irVersion: "0.1",
     operation: {
@@ -183,6 +189,27 @@ function normalizeExpressionMapping(
   throw new Error(`${context}: expected expression mapping`);
 }
 
+function assertNoPrivateProjection(
+  value: unknown,
+  fields: Record<string, FieldDefinition>,
+  path: string,
+): void {
+  if (typeof value === "string") {
+    const node = parseSourceExpression(value);
+    if (node.kind === "reference" && fields[node.path]?.visibility === "private") {
+      throw new Error(`${path}: private field "${node.path}" cannot be projected directly`);
+    }
+    return;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => assertNoPrivateProjection(item, fields, `${path}[${index}]`));
+    return;
+  }
+  if (typeof value === "object" && value !== null) {
+    for (const [key, item] of Object.entries(value)) assertNoPrivateProjection(item, fields, `${path}.${key}`);
+  }
+}
+
 function fieldIndex(
   input: Record<string, FieldDefinition>,
   state: Record<string, FieldDefinition>,
@@ -196,12 +223,17 @@ function fieldIndex(
 function flattenFields(
   prefix: string,
   fields: Record<string, FieldDefinition>,
+  inheritedPrivate = false,
 ): Array<[string, FieldDefinition]> {
   return Object.entries(fields).flatMap(([name, field]) => {
     const path = `${prefix}.${name}`;
+    const isPrivate = inheritedPrivate || field.visibility === "private";
+    const indexedField = isPrivate && field.visibility !== "private"
+      ? { ...field, visibility: "private" as const }
+      : field;
     return [
-      [path, field] as [string, FieldDefinition],
-      ...(field.type === "object" ? flattenFields(path, field.properties) : []),
+      [path, indexedField] as [string, FieldDefinition],
+      ...(field.type === "object" ? flattenFields(path, field.properties, isPrivate) : []),
     ];
   });
 }

@@ -1519,9 +1519,12 @@ function csExpressionNode(
   operation: Operation,
   stateRoot: string,
   itemField?: FieldDefinition,
+  aliases: Record<string, { field: FieldDefinition; root: string }> = {},
 ): string {
   if (node.kind === "literal") return typeof node.value === "string" ? JSON.stringify(node.value) : String(node.value).toLowerCase();
   if (node.kind === "reference") {
+    const [alias, ...aliasParts] = node.path.split(".");
+    if (aliases[alias]) return csAliasReference(aliasParts, aliases[alias]);
     if (node.path.startsWith("item.")) {
       if (!itemField) throw new Error(`Item reference outside collection predicate: ${node.path}`);
       const relative = node.path.slice(5);
@@ -1537,7 +1540,7 @@ function csExpressionNode(
     }
     return csReference(node.path, operation, stateRoot);
   }
-  if (node.kind === "unary") return `(${node.operator}${csExpressionNode(node.operand, operation, stateRoot, itemField)})`;
+  if (node.kind === "unary") return `(${node.operator}${csExpressionNode(node.operand, operation, stateRoot, itemField, aliases)})`;
   if (node.kind === "quantifier") {
     if (node.collection.kind !== "reference") throw new Error(`${node.operator} collection must be a reference`);
     const [scope, name] = node.collection.path.split(".");
@@ -1545,9 +1548,58 @@ function csExpressionNode(
     if (!collection || (collection.type !== "array" && collection.type !== "map")) throw new Error(`${node.operator} requires collection`);
     const item = collection.type === "array" ? collection.items : collection.values;
     const source = csReference(node.collection.path, operation, stateRoot) + (collection.type === "map" ? ".Values" : "");
-    return `${source}.${node.operator === "all" ? "All" : "Any"}(item => ${csExpressionNode(node.predicate, operation, stateRoot, item)})`;
+    return `${source}.${node.operator === "all" ? "All" : "Any"}(item => ${csExpressionNode(node.predicate, operation, stateRoot, item, aliases)})`;
   }
-  return `(${csExpressionNode(node.left, operation, stateRoot, itemField)} ${node.operator} ${csExpressionNode(node.right, operation, stateRoot, itemField)})`;
+  if (node.kind === "aggregate") {
+    const info = csExpressionCollection(node.collection, operation, stateRoot);
+    const scoped = { ...aliases, [node.alias]: { field: info.item, root: node.alias } };
+    const predicate = csExpressionNode(node.predicate, operation, stateRoot, itemField, scoped);
+    if (node.operator === "count") return `${info.source}.LongCount(${node.alias} => ${predicate})`;
+    const value = csExpressionNode(node.value!, operation, stateRoot, itemField, scoped);
+    return `${info.source}.Where(${node.alias} => ${predicate}).Sum(${node.alias} => ${value})`;
+  }
+  if (node.kind === "joinAggregate") {
+    const left = csExpressionCollection(node.leftCollection, operation, stateRoot);
+    const right = csExpressionCollection(node.rightCollection, operation, stateRoot);
+    const scoped = { ...aliases,
+      [node.leftAlias]: { field: left.item, root: node.leftAlias },
+      [node.rightAlias]: { field: right.item, root: node.rightAlias } };
+    const predicate = csExpressionNode(node.predicate, operation, stateRoot, itemField, scoped);
+    const pairs = `${left.source}.SelectMany(${node.leftAlias} => ${right.source}.Where(${node.rightAlias} => ${predicate}).Select(${node.rightAlias} => new { ${node.leftAlias}, ${node.rightAlias} }))`;
+    if (node.operator === "join_count") return `${pairs}.LongCount()`;
+    const pairAliases = { ...aliases,
+      [node.leftAlias]: { field: left.item, root: `pair.${node.leftAlias}` },
+      [node.rightAlias]: { field: right.item, root: `pair.${node.rightAlias}` } };
+    return `${pairs}.Sum(pair => ${csExpressionNode(node.value!, operation, stateRoot, itemField, pairAliases)})`;
+  }
+  return `(${csExpressionNode(node.left, operation, stateRoot, itemField, aliases)} ${node.operator} ${csExpressionNode(node.right, operation, stateRoot, itemField, aliases)})`;
+}
+
+function csExpressionCollection(node: ExpressionNode, operation: Operation, stateRoot: string): { source: string; item: FieldDefinition } {
+  if (node.kind !== "reference") throw new Error("aggregate collection must be a reference");
+  const field = fieldForCsExpressionReference(node.path, operation);
+  if (!field || (field.type !== "array" && field.type !== "map")) throw new Error("aggregate requires a collection");
+  return { source: csReference(node.path, operation, stateRoot) + (field.type === "map" ? ".Values" : ""), item: field.type === "array" ? field.items : field.values };
+}
+
+function fieldForCsExpressionReference(reference: string, operation: Operation): FieldDefinition | undefined {
+  const [scope, name] = reference.split(".");
+  return scope === "input" ? operation.input[name] : operation.state[name];
+}
+
+function csAliasReference(parts: string[], alias: { field: FieldDefinition; root: string }): string {
+  if (alias.field.type !== "object") {
+    if (parts.join(".") !== "value") throw new Error("primitive aggregate alias only exposes value");
+    return alias.root;
+  }
+  let field: FieldDefinition = alias.field;
+  let result = alias.root;
+  for (const part of parts) {
+    if (field.type !== "object" || !field.properties[part]) throw new Error(`Unknown aggregate alias field ${part}`);
+    field = field.properties[part];
+    result += `.${csField(part, field)}`;
+  }
+  return result;
 }
 
 function csReference(reference: string, operation: Operation, stateRoot: string): string {
