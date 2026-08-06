@@ -39,6 +39,10 @@ Each item evaluates all declared `predicates` with AND semantics. The rule then
 applies `all` or `any` across the collection. Empty collections retain the same
 mathematical behavior (`all=true`, `any=false`). A false portable rule returns
 its declared Rule ID and Error Code and performs the normal atomic rollback.
+Predicate literals must match the selected field type, references must have the
+same type and unit, and ordered operators (`lt/lte/gt/gte`) are restricted to
+integer and number fields. String and boolean predicates use `eq/ne` only;
+invalid combinations fail during `check` before target generation.
 Use expression quantifiers for ordinary boolean decisions and portable-rule
 quantifiers for rejection guards.
 

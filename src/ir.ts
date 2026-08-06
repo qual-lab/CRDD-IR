@@ -576,7 +576,32 @@ function validatePortableRuleReferences(
           diagnostics.push(error(`${predicatePath}.reference`, `references undefined field "${candidate.reference}"`));
         } else if (memberField && memberField.type !== referenceField.type) {
           diagnostics.push(error(`${predicatePath}.reference`, "must have the same type as the item field"));
+        } else if (memberField && (memberField.unit ?? null) !== (referenceField.unit ?? null)) {
+          diagnostics.push(error(
+            `${predicatePath}.reference`,
+            `compares incompatible units "${memberField.unit ?? "none"}" and "${referenceField.unit ?? "none"}"`,
+          ));
         }
+      }
+      if (candidate.value !== undefined && memberField) {
+        const literalType = typeof candidate.value;
+        const expectedType = memberField.type === "integer" || memberField.type === "number"
+          ? "number"
+          : memberField.type;
+        if (literalType !== expectedType ||
+            (memberField.type === "integer" && !Number.isSafeInteger(candidate.value))) {
+          diagnostics.push(error(
+            `${predicatePath}.value`,
+            `must match item field type "${memberField.type}"`,
+          ));
+        }
+      }
+      if (["lt", "lte", "gt", "gte"].includes(String(candidate.operator)) && memberField &&
+          memberField.type !== "integer" && memberField.type !== "number") {
+        diagnostics.push(error(
+          `${predicatePath}.operator`,
+          `operator "${String(candidate.operator)}" requires a numeric item field`,
+        ));
       }
     });
     return;

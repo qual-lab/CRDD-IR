@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { compileMarkdown } from "../src/compiler.ts";
 import { evaluateExpression } from "../src/expression.ts";
 import { simulate } from "../src/simulator.ts";
@@ -11,6 +14,7 @@ import { verifyTargetParity } from "../src/target-parity.ts";
 import { validateUnrealTargetProfile } from "../src/unreal-target.ts";
 import { portableRuleSatisfied } from "../src/portable-rules.ts";
 import type { PortableRule } from "../src/model.ts";
+import { DiagnosticError } from "../src/diagnostics.ts";
 
 const contract = "test/fixtures/contracts/collection-result-events.md";
 
@@ -46,6 +50,33 @@ test("typed collection all/any guards preserve AND predicates and mathematical e
   };
   assert.equal(portableRuleSatisfied(all, context), false);
   assert.equal(portableRuleSatisfied(any, context), true);
+});
+
+test("typed collection predicates fail closed on literal type, reference unit, and ordered scalar mismatches", async () => {
+  const original = await readFile(contract, "utf8");
+  const invalidContracts = [
+    original.replace("{ field: minimumValue, operator: gte, value: 0 }",
+      "{ field: minimumValue, operator: gte, value: invalid-threshold }"),
+    original.replace("commonMinimum: { type: integer }",
+      "commonMinimum: { type: integer }\n    incompatibleMinimum: { type: integer, unit: second, optional: true, default: 0 }")
+      .replace("minimumValue: { type: integer }",
+        "minimumValue: { type: integer }\n          unitValue: { type: integer, unit: metre, optional: true, default: 0 }")
+      .replace("{ field: minimumValue, operator: gte, reference: input.commonMinimum }",
+        "{ field: unitValue, operator: gte, reference: input.incompatibleMinimum }"),
+    original.replace("{ field: minimumValue, operator: gte, value: 0 }",
+      "{ field: label, operator: gte, value: invalid }")
+      .replace("minimumValue: { type: integer }", "minimumValue: { type: integer }\n          label: { type: string }"),
+  ];
+  const expected = ["must match item field type", "incompatible units", "requires a numeric item field"];
+  const directory = await mkdtemp(join(tmpdir(), "crdd-typed-quantifier-"));
+  for (const [index, source] of invalidContracts.entries()) {
+    const path = join(directory, `invalid-${index}.md`);
+    await writeFile(path, source, "utf8");
+    await assert.rejects(() => compileMarkdown(path), (error: unknown) =>
+      error instanceof DiagnosticError && error.diagnostics.some((diagnostic) =>
+        diagnostic.message.includes(expected[index])
+      ));
+  }
 });
 
 test("returns use post-effect state and events fire only on the false-to-true edge", async () => {
