@@ -567,6 +567,11 @@ function validatePortableRuleReferences(
         : undefined;
       if (!memberField) {
         diagnostics.push(error(`${predicatePath}.field`, `references undefined item field "${String(candidate.field)}"`));
+      } else if (!isPortableComparableScalar(memberField)) {
+        diagnostics.push(error(
+          `${predicatePath}.field`,
+          `must reference a portable scalar field, not "${memberField.type}"`,
+        ));
       }
       if (typeof candidate.reference === "string") {
         const referenceField = candidate.reference.startsWith("item.")
@@ -574,6 +579,11 @@ function validatePortableRuleReferences(
           : fieldForReference(candidate.reference, input, state);
         if (!referenceField) {
           diagnostics.push(error(`${predicatePath}.reference`, `references undefined field "${candidate.reference}"`));
+        } else if (!isPortableComparableScalar(referenceField)) {
+          diagnostics.push(error(
+            `${predicatePath}.reference`,
+            `must reference a portable scalar field, not "${referenceField.type}"`,
+          ));
         } else if (memberField && memberField.type !== referenceField.type) {
           diagnostics.push(error(`${predicatePath}.reference`, "must have the same type as the item field"));
         } else if (memberField && (memberField.unit ?? null) !== (referenceField.unit ?? null)) {
@@ -969,6 +979,11 @@ function fieldForNestedReference(
     field = next;
   }
   return field;
+}
+
+function isPortableComparableScalar(field: FieldDefinition): boolean {
+  return field.type === "boolean" || field.type === "string" ||
+    field.type === "integer" || field.type === "number";
 }
 
 function reportDuplicateIds(

@@ -66,8 +66,17 @@ test("typed collection predicates fail closed on literal type, reference unit, a
     original.replace("{ field: minimumValue, operator: gte, value: 0 }",
       "{ field: label, operator: gte, value: invalid }")
       .replace("minimumValue: { type: integer }", "minimumValue: { type: integer }\n          label: { type: string }"),
+    original.replace("minimumValue: { type: integer }",
+      "minimumValue: { type: integer }\n          metadata:\n            type: object\n            properties:\n              code: { type: string }")
+      .replace("{ field: minimumValue, operator: gte, value: 0 }",
+        "{ field: metadata, operator: eq, reference: item.metadata }"),
   ];
-  const expected = ["must match item field type", "incompatible units", "requires a numeric item field"];
+  const expected = [
+    "must match item field type",
+    "incompatible units",
+    "requires a numeric item field",
+    "must reference a portable scalar field",
+  ];
   const directory = await mkdtemp(join(tmpdir(), "crdd-typed-quantifier-"));
   for (const [index, source] of invalidContracts.entries()) {
     const path = join(directory, `invalid-${index}.md`);

@@ -42,7 +42,10 @@ its declared Rule ID and Error Code and performs the normal atomic rollback.
 Predicate literals must match the selected field type, references must have the
 same type and unit, and ordered operators (`lt/lte/gt/gte`) are restricted to
 integer and number fields. String and boolean predicates use `eq/ne` only;
-invalid combinations fail during `check` before target generation.
+invalid combinations fail during `check` before target generation. Predicate
+operands are restricted to portable scalar fields (`boolean`, `string`,
+`integer`, and `number`). Structural values such as object, array, map, union,
+and opaque are rejected; v0.9.0 does not define implicit structural equality.
 Use expression quantifiers for ordinary boolean decisions and portable-rule
 quantifiers for rejection guards.
 
